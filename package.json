@@ -1,0 +1,50 @@
+{
+  "name": "md-viewer",
+  "version": "0.1.0",
+  "description": "Fast macOS markdown viewer with Mermaid and export workflows",
+  "main": "dist/main/index.js",
+  "bin": {
+    "mdv": "dist/cli/mdv.js"
+  },
+  "scripts": {
+    "clean": "rimraf dist out",
+    "build": "npm run clean && tsc -p tsconfig.build.json && npm run copy:renderer",
+    "copy:renderer": "mkdir -p dist && cp -R src/renderer dist/renderer",
+    "dev": "npm run build && electron .",
+    "start": "electron .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "package": "npm run build && electron-forge package",
+    "make": "npm run build && electron-forge make",
+    "set-md-default": "swift scripts/set-md-default.swift"
+  },
+  "config": {
+    "forge": "./forge.config.js"
+  },
+  "keywords": [
+    "markdown",
+    "mermaid",
+    "electron",
+    "pdf",
+    "export"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^24.10.1",
+    "electron": "^40.6.1",
+    "rimraf": "^6.1.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  },
+  "dependencies": {
+    "@turbodocx/html-to-docx": "^1.20.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "cheerio": "^1.1.2",
+    "highlight.js": "^11.11.1",
+    "markdown-it": "^14.1.1",
+    "mermaid": "^11.12.3"
+  }
+}

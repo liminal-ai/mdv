@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file:; font-src 'self' data:;">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MD Viewer</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="toolbar-group">
+        <button id="openBtn" type="button">Open Markdown</button>
+        <button id="reloadBtn" type="button">Reload</button>
+      </div>
+      <div class="toolbar-group">
+        <button id="exportPdfBtn" type="button">Export PDF</button>
+        <button id="exportDocxBtn" type="button">Export DOCX</button>
+        <button id="exportHtmlBtn" type="button">Export HTML Folder</button>
+      </div>
+    </header>
+
+    <section class="status-row">
+      <div id="statusText">No markdown file loaded.</div>
+    </section>
+
+    <section id="warnings" class="warnings hidden" aria-live="polite"></section>
+
+    <main id="previewHost" class="preview" tabindex="0">
+      <div class="empty-state">
+        Drop a <code>.md</code> file here, or use <strong>Open Markdown</strong>.
+      </div>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
