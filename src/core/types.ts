@@ -49,6 +49,42 @@ export interface RenderResult {
   inputPath: string;
 }
 
+export interface DocumentPayload {
+  filePath: string;
+  markdown: string;
+  html: string;
+  warnings: RenderWarning[];
+}
+
+export interface RenderPreviewPayload {
+  html: string;
+  warnings: RenderWarning[];
+}
+
+export interface DocumentTabSession {
+  tabId: string;
+  filePath: string;
+  title: string;
+  savedMarkdown: string;
+  currentMarkdown: string;
+  renderHtml: string;
+  warnings: RenderWarning[];
+  isDirty: boolean;
+  hasExternalChange: boolean;
+  lastDiskMtimeMs?: number;
+}
+
+export interface TabsStatePayload {
+  tabs: DocumentTabSession[];
+  activeTabId: string | null;
+}
+
+export interface OpenDocumentResult {
+  ok: boolean;
+  tabId?: string;
+  reason?: string;
+}
+
 export interface ExportRequest {
   render: RenderResult;
   format: 'pdf' | 'html' | 'docx';
@@ -59,6 +95,27 @@ export interface ExportRequest {
 export interface DocxExportResult {
   outputFile: string;
   warnings: RenderWarning[];
+}
+
+export interface FolderNode {
+  type: 'dir' | 'file';
+  name: string;
+  path: string;
+  children?: FolderNode[];
+}
+
+export interface PinnedFolder {
+  path: string;
+  label: string;
+}
+
+export interface AppPreferences {
+  pinnedFolders: string[];
+  lastRootFolder?: string;
+  sidebarCollapsed?: boolean;
+  sidebarWidth?: number;
+  openTabs?: string[];
+  activeTabPath?: string;
 }
 
 export interface MermaidRenderOutcome {

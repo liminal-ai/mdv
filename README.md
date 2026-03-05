@@ -5,6 +5,9 @@ Fast, lightweight macOS Markdown viewer with local Mermaid rendering and export 
 ## Features
 
 - Open `.md` or `.markdown` files from app, drag/drop, or CLI.
+- Open multiple markdown files in document tabs (reuses existing tab for the same file).
+- Viewer-first `Render` mode with optional `Edit` mode for quick changes.
+- Left sidebar markdown navigator with pinned folders and recursive tree browsing.
 - GFM-style markdown rendering with syntax highlighting.
 - Mermaid diagrams rendered locally in an isolated hidden Chromium context.
 - Export to PDF (US Letter default).
@@ -13,6 +16,8 @@ Fast, lightweight macOS Markdown viewer with local Mermaid rendering and export 
 - Offline runtime behavior: remote images are blocked and reported as warnings.
 - Live reload when the currently opened markdown file changes on disk.
 - Print-oriented layout heuristics for PDF/DOCX: 1-inch margins, keep-together blocks, and manual `<!-- pagebreak -->` markers.
+- Native app menu for open/reload/export/navigation actions.
+- Drag/drop to open markdown files (render-pane target when tabs are already open).
 
 ## Requirements
 
@@ -24,6 +29,20 @@ Fast, lightweight macOS Markdown viewer with local Mermaid rendering and export 
 ```bash
 npm ci
 npm run build
+```
+
+### Icon Assets
+
+Generate source icon (uses imagegen skill if `OPENAI_API_KEY` is set, otherwise local fallback):
+
+```bash
+npm run icon:generate
+```
+
+Build `.icns` and favicons:
+
+```bash
+npm run icon:build
 ```
 
 ## Run Desktop App

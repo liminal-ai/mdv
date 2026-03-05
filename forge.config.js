@@ -4,6 +4,7 @@ const { MakerZIP } = require('@electron-forge/maker-zip');
 const config = {
   packagerConfig: {
     asar: true,
+    icon: './assets/icon/md-viewer',
     appBundleId: 'com.leemoore.mdviewer',
     appCategoryType: 'public.app-category.productivity',
     executableName: 'MD Viewer',
