@@ -1,26 +1,20 @@
 import { load } from 'cheerio';
 
 export function preparePrintHtml(htmlBody: string): string {
-  const manualBreak = '<div class="page-break" style="page-break-after: always;"></div>';
+  const manualBreak = '<section class="mdv-block mdv-block-page-break mdv-allow-split"><div class="mdv-page-break-line" aria-hidden="true"></div></section>';
   const normalizedHtml = htmlBody
     .replaceAll('<p><!-- pagebreak --></p>', manualBreak)
     .replaceAll('<!-- pagebreak -->', manualBreak);
 
   const $ = load(normalizedHtml);
 
-  $('h1, h2, h3').addClass('mdv-print-keep-with-next');
-  $('pre, table, blockquote, .mdv-warning, .mdv-missing-image, .mdv-mermaid-diagram').addClass(
-    'mdv-print-keep-together'
-  );
-
-  $('img').each((_, element) => {
-    const alt = ($(element).attr('alt') || '').trim();
-    if (alt.startsWith('Mermaid diagram')) {
-      $(element).addClass('mdv-print-keep-together');
-    }
-  });
-
-  $('p, li').addClass('mdv-print-text');
+  $('table').addClass('mdv-table');
+  $('thead').addClass('mdv-table-head');
+  $('tbody').addClass('mdv-table-body');
+  $('tr').addClass('mdv-table-row');
+  $('th').addClass('mdv-table-cell mdv-table-heading-cell');
+  $('td').addClass('mdv-table-cell mdv-table-data-cell');
+  $('img').addClass('mdv-content-image');
 
   return $('body').html() || $.root().html() || '';
 }

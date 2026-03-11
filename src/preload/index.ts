@@ -1,197 +1,203 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+import {
+  IPC_CHANNELS,
+  IPC_EVENTS,
+  type ActionResult,
+  type DiskReadResult,
+  type ExportPayload,
+  type ExportResult,
+  type FolderStatePayload,
+  type FolderTreeResult,
+  type LegacyDocumentActionResult,
+  type MdvBridge,
+  type PinnedFoldersResult,
+  type TabsDiskChangedPayload,
+  type TabsOpenRequestPayload,
+  type UiCommand,
+  type UiCommandPayload
+} from '../core/ipc';
 import type {
   DocumentPayload,
   DocumentTabSession,
-  FolderNode,
   OpenDocumentResult,
-  PinnedFolder,
   RenderPreviewPayload,
   TabsStatePayload
 } from '../core/types';
 
-type ActionResult = { ok: boolean; reason?: string; filePath?: string };
-
-type ExportResult = {
-  ok: boolean;
-  reason?: string;
-  filePath?: string;
-  warnings?: Array<{ code: string; message: string; location?: string }>;
-};
-
-function openDocumentResultToAction(result: OpenDocumentResult): ActionResult {
+function toLegacyActionResult(result: OpenDocumentResult): LegacyDocumentActionResult {
   return {
     ok: result.ok,
     reason: result.reason,
-    filePath: result.tabId
+    tabId: result.tabId
   };
 }
 
-const api = {
+async function toLegacyOpenActionResult(result: OpenDocumentResult): Promise<LegacyDocumentActionResult> {
+  if (!result.ok || !result.tabId) {
+    return toLegacyActionResult(result);
+  }
+
+  const active = (await ipcRenderer.invoke(IPC_CHANNELS.tabsGetActive)) as DocumentTabSession | null;
+  return {
+    ...toLegacyActionResult(result),
+    filePath: active?.tabId === result.tabId ? active.filePath : undefined
+  };
+}
+
+const api: MdvBridge = {
   getTabsState(): Promise<TabsStatePayload> {
-    return ipcRenderer.invoke('tabs:get-state');
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsGetState);
   },
   openTabDialog(): Promise<OpenDocumentResult> {
-    return ipcRenderer.invoke('tabs:open-dialog');
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsOpenDialog);
   },
   openTabPath(filePath: string): Promise<OpenDocumentResult> {
-    return ipcRenderer.invoke('tabs:open-path', filePath);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsOpenPath, filePath);
   },
   activateTab(tabId: string): Promise<OpenDocumentResult> {
-    return ipcRenderer.invoke('tabs:activate', tabId);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsActivate, tabId);
   },
   closeTab(tabId: string): Promise<OpenDocumentResult> {
-    return ipcRenderer.invoke('tabs:close', tabId);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsClose, tabId);
   },
   closeOtherTabs(tabId: string): Promise<OpenDocumentResult> {
-    return ipcRenderer.invoke('tabs:close-others', tabId);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsCloseOthers, tabId);
   },
   saveTab(tabId: string, markdown: string): Promise<ActionResult> {
-    return ipcRenderer.invoke('tabs:save', tabId, markdown);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsSave, tabId, markdown);
   },
   saveTabAs(tabId: string, markdown: string): Promise<ActionResult> {
-    return ipcRenderer.invoke('tabs:save-as', tabId, markdown);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsSaveAs, tabId, markdown);
   },
   renderTab(tabId: string, markdown: string): Promise<{ ok: boolean; reason?: string; preview?: RenderPreviewPayload }> {
-    return ipcRenderer.invoke('tabs:render', tabId, markdown);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsRender, tabId, markdown);
   },
-  readTabFromDisk(tabId: string): Promise<{ ok: boolean; reason?: string; markdown?: string }> {
-    return ipcRenderer.invoke('tabs:disk-read', tabId);
+  readTabFromDisk(tabId: string): Promise<DiskReadResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsDiskRead, tabId);
   },
   reloadTabFromDisk(tabId: string): Promise<ActionResult> {
-    return ipcRenderer.invoke('tabs:reload-from-disk', tabId);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsReloadFromDisk, tabId);
   },
   ackDiskChange(tabId: string): Promise<{ ok: boolean; reason?: string }> {
-    return ipcRenderer.invoke('tabs:ack-disk-change', tabId);
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsAckDiskChange, tabId);
   },
   getActiveTab(): Promise<DocumentTabSession | null> {
-    return ipcRenderer.invoke('tabs:get-active');
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsGetActive);
   },
-
-  // Compatibility bridge for one release.
-  async openDialog(): Promise<ActionResult> {
-    const result = (await ipcRenderer.invoke('tabs:open-dialog')) as OpenDocumentResult;
-    return openDocumentResultToAction(result);
+  exportPdf(payload?: ExportPayload): Promise<ExportResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.exportPdf, payload);
   },
-  async openPath(filePath: string): Promise<ActionResult> {
-    const result = (await ipcRenderer.invoke('tabs:open-path', filePath)) as OpenDocumentResult;
-    return openDocumentResultToAction(result);
+  exportDocx(payload?: ExportPayload): Promise<ExportResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.exportDocx, payload);
   },
-  async reload(): Promise<ActionResult> {
-    const active = (await ipcRenderer.invoke('tabs:get-active')) as DocumentTabSession | null;
-    if (!active) {
-      return { ok: false, reason: 'No file loaded.' };
-    }
-    return ipcRenderer.invoke('tabs:reload-from-disk', active.tabId);
-  },
-  async saveDocument(markdown: string): Promise<ActionResult> {
-    const active = (await ipcRenderer.invoke('tabs:get-active')) as DocumentTabSession | null;
-    if (!active) {
-      return { ok: false, reason: 'No file loaded.' };
-    }
-    return ipcRenderer.invoke('tabs:save', active.tabId, markdown);
-  },
-  async saveDocumentAs(markdown: string): Promise<ActionResult> {
-    const active = (await ipcRenderer.invoke('tabs:get-active')) as DocumentTabSession | null;
-    if (!active) {
-      return { ok: false, reason: 'No file loaded.' };
-    }
-    return ipcRenderer.invoke('tabs:save-as', active.tabId, markdown);
-  },
-  async renderMarkdown(markdown: string): Promise<{ ok: boolean; reason?: string; preview?: RenderPreviewPayload }> {
-    const active = (await ipcRenderer.invoke('tabs:get-active')) as DocumentTabSession | null;
-    if (!active) {
-      return { ok: false, reason: 'No file loaded.' };
-    }
-    return ipcRenderer.invoke('tabs:render', active.tabId, markdown);
-  },
-  async readCurrentFromDisk(): Promise<{ ok: boolean; reason?: string; markdown?: string }> {
-    const active = (await ipcRenderer.invoke('tabs:get-active')) as DocumentTabSession | null;
-    if (!active) {
-      return { ok: false, reason: 'No file loaded.' };
-    }
-    return ipcRenderer.invoke('tabs:disk-read', active.tabId);
-  },
-  async getState(): Promise<DocumentPayload | null> {
-    return ipcRenderer.invoke('document:get-state');
-  },
-
-  exportPdf(payload?: { tabId?: string; markdown?: string }): Promise<ExportResult> {
-    return ipcRenderer.invoke('export:pdf', payload);
-  },
-  exportDocx(payload?: { tabId?: string; markdown?: string }): Promise<ExportResult> {
-    return ipcRenderer.invoke('export:docx', payload);
-  },
-  exportHtml(payload?: { tabId?: string; markdown?: string }): Promise<ExportResult> {
-    return ipcRenderer.invoke('export:html', payload);
+  exportHtml(payload?: ExportPayload): Promise<ExportResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.exportHtml, payload);
   },
   quitApp(): Promise<{ ok: boolean }> {
-    return ipcRenderer.invoke('app:quit');
+    return ipcRenderer.invoke(IPC_CHANNELS.appQuit);
   },
-
-  getFolderState(): Promise<{
-    rootPath: string | null;
-    pinnedFolders: PinnedFolder[];
-    sidebarCollapsed: boolean;
-    sidebarWidth: number;
-  }> {
-    return ipcRenderer.invoke('folders:get-state');
+  getFolderState(): Promise<FolderStatePayload> {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersGetState);
   },
-  chooseRootFolder(): Promise<{ ok: boolean; reason?: string; rootPath?: string; tree?: FolderNode[] }> {
-    return ipcRenderer.invoke('folders:choose-root');
+  chooseRootFolder() {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersChooseRoot);
   },
-  listFolderTree(rootPath?: string): Promise<{
-    ok: boolean;
-    reason?: string;
-    rootPath?: string;
-    tree: FolderNode[];
-  }> {
-    return ipcRenderer.invoke('folders:list-tree', rootPath);
+  listFolderTree(rootPath?: string): Promise<FolderTreeResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersListTree, rootPath);
   },
-  getPinnedFolders(): Promise<PinnedFolder[]> {
-    return ipcRenderer.invoke('folders:get-pins');
+  getPinnedFolders() {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersGetPins);
   },
-  pinFolder(folderPath?: string): Promise<{ ok: boolean; reason?: string; pinnedFolders?: PinnedFolder[] }> {
-    return ipcRenderer.invoke('folders:pin', folderPath);
+  pinFolder(folderPath?: string): Promise<PinnedFoldersResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersPin, folderPath);
   },
-  unpinFolder(folderPath: string): Promise<{ ok: boolean; reason?: string; pinnedFolders?: PinnedFolder[] }> {
-    return ipcRenderer.invoke('folders:unpin', folderPath);
+  unpinFolder(folderPath: string): Promise<PinnedFoldersResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersUnpin, folderPath);
   },
-  setRootFromPin(folderPath: string): Promise<{
-    ok: boolean;
-    reason?: string;
-    rootPath?: string;
-    tree?: FolderNode[];
-  }> {
-    return ipcRenderer.invoke('folders:set-root-from-pin', folderPath);
+  setRootFromPin(folderPath: string) {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersSetRootFromPin, folderPath);
   },
-  refreshFolders(): Promise<{ ok: boolean; reason?: string; rootPath?: string; tree: FolderNode[] }> {
-    return ipcRenderer.invoke('folders:refresh');
+  refreshFolders(): Promise<FolderTreeResult> {
+    return ipcRenderer.invoke(IPC_CHANNELS.foldersRefresh);
   },
   toggleSidebarState(collapsed: boolean): Promise<{ ok: boolean }> {
-    return ipcRenderer.invoke('ui:toggle-sidebar-state', collapsed);
+    return ipcRenderer.invoke(IPC_CHANNELS.uiToggleSidebarState, collapsed);
   },
   setSidebarWidth(width: number): Promise<{ ok: boolean }> {
-    return ipcRenderer.invoke('ui:set-sidebar-width', width);
+    return ipcRenderer.invoke(IPC_CHANNELS.uiSetSidebarWidth, width);
   },
-
   onTabsStateUpdated(handler: (payload: TabsStatePayload) => void): () => void {
     const wrapped = (_event: Electron.IpcRendererEvent, payload: TabsStatePayload) => handler(payload);
-    ipcRenderer.on('tabs:state-updated', wrapped);
-    return () => ipcRenderer.removeListener('tabs:state-updated', wrapped);
+    ipcRenderer.on(IPC_EVENTS.tabsStateUpdated, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.tabsStateUpdated, wrapped);
   },
-  onTabsDiskChanged(handler: (payload: { tabId: string; filePath: string }) => void): () => void {
-    const wrapped = (_event: Electron.IpcRendererEvent, payload: { tabId: string; filePath: string }) => handler(payload);
-    ipcRenderer.on('tabs:disk-changed', wrapped);
-    return () => ipcRenderer.removeListener('tabs:disk-changed', wrapped);
+  onTabsDiskChanged(handler: (payload: TabsDiskChangedPayload) => void): () => void {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: TabsDiskChangedPayload) => handler(payload);
+    ipcRenderer.on(IPC_EVENTS.tabsDiskChanged, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.tabsDiskChanged, wrapped);
   },
-  onTabsOpenRequest(handler: (payload: { filePath: string }) => void): () => void {
-    const wrapped = (_event: Electron.IpcRendererEvent, payload: { filePath: string }) => handler(payload);
-    ipcRenderer.on('tabs:open-request', wrapped);
-    return () => ipcRenderer.removeListener('tabs:open-request', wrapped);
+  onTabsOpenRequest(handler: (payload: TabsOpenRequestPayload) => void): () => void {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: TabsOpenRequestPayload) => handler(payload);
+    ipcRenderer.on(IPC_EVENTS.tabsOpenRequest, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.tabsOpenRequest, wrapped);
+  },
+  onUiCommand(handler: (command: UiCommand) => void): () => void {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: UiCommandPayload) => handler(payload.command);
+    ipcRenderer.on(IPC_EVENTS.uiCommand, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.uiCommand, wrapped);
+  },
+  onToggleSidebar(handler: () => void): () => void {
+    const wrapped = () => handler();
+    ipcRenderer.on(IPC_EVENTS.uiToggleSidebar, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.uiToggleSidebar, wrapped);
   },
 
-  // Compatibility events for older renderer code.
+  // Compatibility bridge preserved during refactor.
+  async openDialog(): Promise<ActionResult> {
+    return toLegacyOpenActionResult(await ipcRenderer.invoke(IPC_CHANNELS.tabsOpenDialog));
+  },
+  async openPath(filePath: string): Promise<ActionResult> {
+    return toLegacyOpenActionResult(await ipcRenderer.invoke(IPC_CHANNELS.tabsOpenPath, filePath));
+  },
+  async reload(): Promise<ActionResult> {
+    const active = (await ipcRenderer.invoke(IPC_CHANNELS.tabsGetActive)) as DocumentTabSession | null;
+    if (!active) {
+      return { ok: false, reason: 'No file loaded.' };
+    }
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsReloadFromDisk, active.tabId);
+  },
+  async saveDocument(markdown: string): Promise<ActionResult> {
+    const active = (await ipcRenderer.invoke(IPC_CHANNELS.tabsGetActive)) as DocumentTabSession | null;
+    if (!active) {
+      return { ok: false, reason: 'No file loaded.' };
+    }
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsSave, active.tabId, markdown);
+  },
+  async saveDocumentAs(markdown: string): Promise<ActionResult> {
+    const active = (await ipcRenderer.invoke(IPC_CHANNELS.tabsGetActive)) as DocumentTabSession | null;
+    if (!active) {
+      return { ok: false, reason: 'No file loaded.' };
+    }
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsSaveAs, active.tabId, markdown);
+  },
+  async renderMarkdown(markdown: string): Promise<{ ok: boolean; reason?: string; preview?: RenderPreviewPayload }> {
+    const active = (await ipcRenderer.invoke(IPC_CHANNELS.tabsGetActive)) as DocumentTabSession | null;
+    if (!active) {
+      return { ok: false, reason: 'No file loaded.' };
+    }
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsRender, active.tabId, markdown);
+  },
+  async readCurrentFromDisk(): Promise<DiskReadResult> {
+    const active = (await ipcRenderer.invoke(IPC_CHANNELS.tabsGetActive)) as DocumentTabSession | null;
+    if (!active) {
+      return { ok: false, reason: 'No file loaded.' };
+    }
+    return ipcRenderer.invoke(IPC_CHANNELS.tabsDiskRead, active.tabId);
+  },
+  async getState(): Promise<DocumentPayload | null> {
+    return ipcRenderer.invoke(IPC_CHANNELS.documentGetState);
+  },
   onDocumentUpdated(handler: (payload: DocumentPayload) => void): () => void {
     const wrapped = (_event: Electron.IpcRendererEvent, payload: TabsStatePayload) => {
       const active = payload.tabs.find((tab) => tab.tabId === payload.activeTabId);
@@ -207,32 +213,21 @@ const api = {
       });
     };
 
-    ipcRenderer.on('tabs:state-updated', wrapped);
-    return () => ipcRenderer.removeListener('tabs:state-updated', wrapped);
+    ipcRenderer.on(IPC_EVENTS.tabsStateUpdated, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.tabsStateUpdated, wrapped);
   },
   onDiskChanged(handler: (payload: { filePath: string }) => void): () => void {
-    const wrapped = (_event: Electron.IpcRendererEvent, payload: { tabId: string; filePath: string }) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: TabsDiskChangedPayload) => {
       handler({ filePath: payload.filePath });
     };
 
-    ipcRenderer.on('tabs:disk-changed', wrapped);
-    return () => ipcRenderer.removeListener('tabs:disk-changed', wrapped);
+    ipcRenderer.on(IPC_EVENTS.tabsDiskChanged, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.tabsDiskChanged, wrapped);
   },
-  onOpenRequest(handler: (payload: { filePath: string }) => void): () => void {
-    const wrapped = (_event: Electron.IpcRendererEvent, payload: { filePath: string }) => handler(payload);
-    ipcRenderer.on('tabs:open-request', wrapped);
-    return () => ipcRenderer.removeListener('tabs:open-request', wrapped);
-  },
-
-  onUiCommand(handler: (command: string) => void): () => void {
-    const wrapped = (_event: Electron.IpcRendererEvent, payload: { command: string }) => handler(payload.command);
-    ipcRenderer.on('ui:command', wrapped);
-    return () => ipcRenderer.removeListener('ui:command', wrapped);
-  },
-  onToggleSidebar(handler: () => void): () => void {
-    const wrapped = () => handler();
-    ipcRenderer.on('ui:toggle-sidebar', wrapped);
-    return () => ipcRenderer.removeListener('ui:toggle-sidebar', wrapped);
+  onOpenRequest(handler: (payload: TabsOpenRequestPayload) => void): () => void {
+    const wrapped = (_event: Electron.IpcRendererEvent, payload: TabsOpenRequestPayload) => handler(payload);
+    ipcRenderer.on(IPC_EVENTS.tabsOpenRequest, wrapped);
+    return () => ipcRenderer.removeListener(IPC_EVENTS.tabsOpenRequest, wrapped);
   }
 };
 

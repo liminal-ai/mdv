@@ -6,91 +6,214 @@ export function documentCss(pageSize: 'Letter' | 'A4' = 'Letter'): string {
   return `
 :root {
   color-scheme: light;
-  --fg: #111827;
-  --muted: #4b5563;
-  --bg: #ffffff;
-  --surface: #f3f4f6;
-  --border: #d1d5db;
-  --code-bg: #111827;
-  --code-fg: #f9fafb;
-  --warn-bg: #fef3c7;
-  --warn-border: #f59e0b;
+  --mdv-doc-fg: #172033;
+  --mdv-doc-muted: #556070;
+  --mdv-doc-bg: #ffffff;
+  --mdv-doc-surface: #f5f7fb;
+  --mdv-doc-surface-strong: #eef2f8;
+  --mdv-doc-border: #d7deea;
+  --mdv-doc-border-strong: #c2ccda;
+  --mdv-doc-code-bg: #111827;
+  --mdv-doc-code-fg: #f9fafb;
+  --mdv-doc-accent: #1f5fbf;
+  --mdv-doc-warn-bg: #fff5d4;
+  --mdv-doc-warn-border: #dfb24f;
+  --mdv-doc-danger-bg: #fee2e2;
+  --mdv-doc-danger-border: #fca5a5;
 }
-* { box-sizing: border-box; }
-body {
+body.mdv-export-shell {
   margin: 0;
-  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: var(--fg);
-  background: var(--bg);
+  color: var(--mdv-doc-fg);
+  background: var(--mdv-doc-bg);
 }
-main {
+.mdv-document,
+.mdv-document * {
+  box-sizing: border-box;
+}
+.mdv-document {
+  color: var(--mdv-doc-fg);
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.mdv-document-screen {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 18px 22px 28px;
+}
+.mdv-document-export {
   max-width: 980px;
   margin: 0 auto;
   padding: 24px;
 }
-h1, h2, h3, h4, h5, h6 { line-height: 1.2; margin-top: 1.4em; }
-a { color: #1d4ed8; }
-pre {
-  background: var(--code-bg);
-  color: var(--code-fg);
-  border-radius: 10px;
-  padding: 12px;
-  overflow-x: auto;
+.mdv-document .mdv-block {
+  margin: 0 0 1rem;
 }
-code {
+.mdv-document .mdv-block:last-child {
+  margin-bottom: 0;
+}
+.mdv-document .mdv-block-heading {
+  margin-top: 1.45rem;
+  margin-bottom: 0.75rem;
+}
+.mdv-document .mdv-block-heading:first-child {
+  margin-top: 0;
+}
+.mdv-document .mdv-heading {
+  margin: 0;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+.mdv-document .mdv-heading-h1 {
+  font-size: 2.15rem;
+}
+.mdv-document .mdv-heading-h2 {
+  font-size: 1.55rem;
+}
+.mdv-document .mdv-heading-h3 {
+  font-size: 1.2rem;
+}
+.mdv-document .mdv-paragraph {
+  margin: 0;
+}
+.mdv-document .mdv-link {
+  color: var(--mdv-doc-accent);
+}
+.mdv-document .mdv-list {
+  margin: 0;
+  padding-left: 1.45rem;
+}
+.mdv-document .mdv-list-item + .mdv-list-item {
+  margin-top: 0.32rem;
+}
+.mdv-document .mdv-blockquote {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-left: 4px solid var(--mdv-doc-border-strong);
+  background: linear-gradient(180deg, #fafbfd, #f5f7fb);
+  color: var(--mdv-doc-muted);
+  border-radius: 0 12px 12px 0;
+}
+.mdv-document .mdv-code-block {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--mdv-doc-code-bg);
+  color: var(--mdv-doc-code-fg);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+.mdv-document .mdv-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
   font-size: 0.92em;
 }
-pre code { background: transparent; }
-:not(pre) > code {
-  background: var(--surface);
-  padding: 2px 6px;
-  border-radius: 6px;
+.mdv-document :not(pre) > code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 0.92em;
+  background: var(--mdv-doc-surface);
+  border-radius: 7px;
+  padding: 0.12rem 0.35rem;
 }
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
+.mdv-document .mdv-figure {
+  margin: 0;
+  display: grid;
+  gap: 0.55rem;
 }
-th, td {
-  border: 1px solid var(--border);
-  padding: 8px;
-  vertical-align: top;
+.mdv-document .mdv-figure-frame {
+  border: 1px solid var(--mdv-doc-border);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #fbfcfe);
+  padding: 12px;
+  overflow: auto;
 }
-img { max-width: 100%; }
-blockquote {
-  border-left: 4px solid var(--border);
-  margin: 1em 0;
-  padding: 0.2em 1em;
-  color: var(--muted);
+.mdv-document .mdv-figure-image,
+.mdv-document .mdv-content-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
-.mdv-warning {
-  border: 1px solid var(--warn-border);
-  background: var(--warn-bg);
-  border-radius: 8px;
-  padding: 10px;
-  margin: 10px 0;
+.mdv-document .mdv-mermaid-frame svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
-.mdv-mermaid-diagram {
+.mdv-document .mdv-table-shell {
   overflow-x: auto;
-  padding: 8px;
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin: 8px 0;
+  border: 1px solid var(--mdv-doc-border);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #fbfcfe);
 }
-.mdv-missing-image {
-  border: 1px dashed #ef4444;
-  color: #7f1d1d;
-  background: #fee2e2;
-  border-radius: 8px;
-  padding: 10px;
-  margin: 8px 0;
+.mdv-document .mdv-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 }
-.page-break {
-  margin: 1.2em 0;
-  border: 0;
-  border-top: 2px dashed var(--border);
+.mdv-document .mdv-table-head {
+  background: var(--mdv-doc-surface-strong);
+}
+.mdv-document .mdv-table-row:nth-child(even) {
+  background: rgba(238, 242, 248, 0.4);
+}
+.mdv-document .mdv-table-cell {
+  min-width: 7rem;
+  max-width: 22rem;
+  padding: 0.7rem 0.85rem;
+  border-right: 1px solid var(--mdv-doc-border);
+  border-bottom: 1px solid var(--mdv-doc-border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.mdv-document .mdv-table-row:last-child .mdv-table-cell {
+  border-bottom: 0;
+}
+.mdv-document .mdv-table-cell:last-child {
+  border-right: 0;
+}
+.mdv-document .mdv-table-heading-cell {
+  font-weight: 700;
+}
+.mdv-document .mdv-align-left {
+  text-align: left;
+}
+.mdv-document .mdv-align-center {
+  text-align: center;
+}
+.mdv-document .mdv-align-right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.mdv-document .mdv-align-default {
+  text-align: left;
+}
+.mdv-document .mdv-warning {
+  border: 1px solid var(--mdv-doc-warn-border);
+  background: var(--mdv-doc-warn-bg);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.mdv-document .mdv-missing-image {
+  border: 1px solid var(--mdv-doc-danger-border);
+  background: var(--mdv-doc-danger-bg);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.mdv-document .mdv-block-page-break {
+  margin: 1.35rem 0;
+}
+.mdv-document .mdv-page-break-line {
+  border-top: 2px dashed var(--mdv-doc-border-strong);
+}
+.mdv-document .mdv-keep-with-next {
+  break-after: avoid-page;
+  page-break-after: avoid;
+}
+.mdv-document .mdv-keep-together {
+  break-inside: avoid-page;
+  page-break-inside: avoid;
+}
+.mdv-document .mdv-allow-split {
+  break-inside: auto;
+  page-break-inside: auto;
 }
 @media print {
   @page {
@@ -98,34 +221,55 @@ blockquote {
     margin: 1in;
   }
 
-  body { background: #fff; }
-  main { max-width: 100%; padding: 0; margin: 0; }
-  h1, h2, h3 {
-    break-after: avoid-page;
-    page-break-after: avoid;
+  body.mdv-export-shell {
+    background: #fff;
   }
-  thead { display: table-header-group; }
-  .mdv-print-keep-together {
+
+  .mdv-document-print {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .mdv-document .mdv-table-shell {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .mdv-document .mdv-table {
+    width: 100%;
+    min-width: 100%;
+    table-layout: fixed;
+  }
+
+  .mdv-document .mdv-table-head {
+    display: table-header-group;
+  }
+
+  .mdv-document .mdv-table-row {
     break-inside: avoid-page;
     page-break-inside: avoid;
   }
-  .mdv-print-keep-with-next {
-    break-after: avoid-page;
-    page-break-after: avoid;
+
+  .mdv-document .mdv-table-cell {
+    max-width: none;
   }
-  .mdv-print-text {
-    orphans: 3;
-    widows: 3;
-  }
-  pre {
+
+  .mdv-document .mdv-code-block {
     overflow: visible;
     white-space: pre-wrap;
   }
-  .page-break {
-    margin: 0;
-    border: 0;
+
+  .mdv-document .mdv-block-page-break {
     break-after: page;
     page-break-after: always;
+    margin: 0;
+  }
+
+  .mdv-document .mdv-page-break-line {
+    display: none;
   }
 }
 `;
@@ -149,8 +293,8 @@ export function wrapDocumentHtml(
     <title>${safeTitle}</title>
     <style>${documentCss(pageSize)}</style>
   </head>
-  <body>
-    <main>
+  <body class="mdv-export-shell">
+    <main class="mdv-document mdv-document-export mdv-document-print">
       ${body}
     </main>
   </body>

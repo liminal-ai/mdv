@@ -9,6 +9,18 @@ export interface TabIdentity {
   filePath: string;
 }
 
+export interface PreviewBlockIdentity {
+  id: string;
+  signature: string;
+}
+
+export interface PreviewPatchPlan {
+  insertedIds: string[];
+  updatedIds: string[];
+  removedIds: string[];
+  orderedIds: string[];
+}
+
 export function computeDirty(savedMarkdown: string, currentMarkdown: string): boolean {
   return savedMarkdown !== currentMarkdown;
 }
@@ -82,4 +94,34 @@ export function nextActiveTabAfterClose(tabOrder: string[], closingTabId: string
   }
 
   return remaining[Math.min(closedIndex - 1, remaining.length - 1)] ?? remaining[0] ?? null;
+}
+
+export function buildPreviewPatchPlan(
+  currentBlocks: PreviewBlockIdentity[],
+  nextBlocks: PreviewBlockIdentity[]
+): PreviewPatchPlan {
+  const currentById = new Map(currentBlocks.map((block) => [block.id, block.signature]));
+  const nextIds = new Set(nextBlocks.map((block) => block.id));
+
+  const insertedIds: string[] = [];
+  const updatedIds: string[] = [];
+  for (const block of nextBlocks) {
+    const currentSignature = currentById.get(block.id);
+    if (currentSignature === undefined) {
+      insertedIds.push(block.id);
+      continue;
+    }
+    if (currentSignature !== block.signature) {
+      updatedIds.push(block.id);
+    }
+  }
+
+  const removedIds = currentBlocks.filter((block) => !nextIds.has(block.id)).map((block) => block.id);
+
+  return {
+    insertedIds,
+    updatedIds,
+    removedIds,
+    orderedIds: nextBlocks.map((block) => block.id)
+  };
 }

@@ -53,6 +53,14 @@ function toDataUri(mime: string, payload: Buffer): string {
   return `data:${mime};base64,${payload.toString('base64')}`;
 }
 
+function buildDiagramLookup(diagrams: DiagramAsset[]): Map<string, DiagramAsset> {
+  const diagramByPath = new Map<string, DiagramAsset>();
+  for (const diagram of diagrams) {
+    diagramByPath.set(diagram.svgPath, diagram);
+  }
+  return diagramByPath;
+}
+
 function resolveImagePath(baseDir: string, src: string): string {
   if (src.startsWith('file://')) {
     return fileURLToPath(src);
@@ -122,11 +130,7 @@ export async function inlineImagesForDocx(
   warnings: RenderWarning[]
 ): Promise<string> {
   const $ = load(htmlBody);
-  const diagramByPath = new Map<string, DiagramAsset>();
-
-  for (const diagram of diagrams) {
-    diagramByPath.set(diagram.svgPath, diagram);
-  }
+  const diagramByPath = buildDiagramLookup(diagrams);
 
   const imageNodes = $('img').toArray();
   for (const node of imageNodes) {
@@ -199,6 +203,65 @@ export async function inlineImagesForDocx(
       });
       $(node).attr('src', toDataUri('image/svg+xml', payload));
     }
+  }
+
+  return $('body').html() || $.root().html() || '';
+}
+
+export async function inlineImagesForPdf(
+  htmlBody: string,
+  baseDir: string,
+  diagrams: DiagramAsset[],
+  warnings: RenderWarning[]
+): Promise<string> {
+  const $ = load(htmlBody);
+  const diagramByPath = buildDiagramLookup(diagrams);
+
+  const imageNodes = $('img').toArray();
+  for (const node of imageNodes) {
+    const src = ($(node).attr('src') || '').trim();
+    if (!src || /^(https?:)?\/\//i.test(src) || src.startsWith('data:')) {
+      continue;
+    }
+
+    if (src.startsWith('./assets/') || src.startsWith('assets/')) {
+      const fileName = src.split('/').pop();
+      if (!fileName) {
+        continue;
+      }
+
+      const diagram = diagramByPath.get(fileName);
+      if (!diagram || !diagram.svgContent) {
+        warnings.push({
+          code: 'MERMAID_RENDER_FAILED',
+          message: `Unable to resolve Mermaid asset for PDF: ${src}`,
+          location: src
+        });
+        continue;
+      }
+
+      $(node).attr('src', toDataUri('image/svg+xml', Buffer.from(diagram.svgContent, 'utf8')));
+      continue;
+    }
+
+    const resolved = resolveImagePath(baseDir, src);
+    let payload: Buffer;
+    try {
+      payload = await fs.readFile(resolved);
+    } catch {
+      warnings.push({
+        code: 'MISSING_LOCAL_IMAGE',
+        message: `Missing or unreadable local image: ${src}`,
+        location: src
+      });
+      $(node).replaceWith(
+        `<div class="mdv-missing-image">Missing local image in PDF export: <code>${escapeHtml(src)}</code></div>`
+      );
+      continue;
+    }
+
+    const mime = detectMimeFromPath(resolved);
+    $(node).attr('src', toDataUri(mime, payload));
   }
 
   return $('body').html() || $.root().html() || '';

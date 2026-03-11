@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildPreviewPatchPlan,
   computeDirty,
   createDebouncedRunner,
   findOpenTabIdByPath,
@@ -66,5 +67,25 @@ describe('editor state helpers', () => {
     expect(nextActiveTabAfterClose(['a', 'b', 'c'], 'b', 'b')).toBe('a');
     expect(nextActiveTabAfterClose(['a', 'b', 'c'], 'c', 'a')).toBe('a');
     expect(nextActiveTabAfterClose(['a'], 'a', 'a')).toBeNull();
+  });
+
+  it('builds a keyed preview patch plan without replacing unchanged blocks', () => {
+    const plan = buildPreviewPatchPlan(
+      [
+        { id: 'a', signature: 'a-1' },
+        { id: 'b', signature: 'b-1' },
+        { id: 'c', signature: 'c-1' }
+      ],
+      [
+        { id: 'a', signature: 'a-1' },
+        { id: 'b', signature: 'b-2' },
+        { id: 'd', signature: 'd-1' }
+      ]
+    );
+
+    expect(plan.insertedIds).toEqual(['d']);
+    expect(plan.updatedIds).toEqual(['b']);
+    expect(plan.removedIds).toEqual(['c']);
+    expect(plan.orderedIds).toEqual(['a', 'b', 'd']);
   });
 });

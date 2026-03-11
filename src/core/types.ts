@@ -32,6 +32,76 @@ export interface RenderRequest {
   offline: true;
 }
 
+export type MarkdownBlockKind =
+  | 'heading'
+  | 'paragraph'
+  | 'list'
+  | 'table'
+  | 'code'
+  | 'blockquote'
+  | 'image'
+  | 'mermaid'
+  | 'page-break'
+  | 'warning';
+
+export type LayoutHint = 'keep-with-next' | 'keep-together' | 'allow-split' | 'figure' | 'table-header-repeat';
+
+export type TableAlignment = 'left' | 'center' | 'right' | 'default';
+
+export interface TableCellModel {
+  html: string;
+  text: string;
+  align: TableAlignment;
+  isHeader: boolean;
+  columnIndex: number;
+}
+
+export interface TableRowModel {
+  cells: TableCellModel[];
+}
+
+export interface TableModel {
+  alignments: TableAlignment[];
+  headerRows: TableRowModel[];
+  bodyRows: TableRowModel[];
+}
+
+export interface ResolvedAsset {
+  id: string;
+  kind: 'local-image' | 'mermaid-diagram';
+  originalSrc: string;
+  previewSrc?: string;
+  exportSrc: string;
+  alt: string;
+  mime: string;
+  svgContent?: string;
+}
+
+export interface RenderedBlock {
+  id: string;
+  kind: MarkdownBlockKind;
+  html: string;
+  layoutHints: LayoutHint[];
+  signature: string;
+}
+
+export interface NormalizedBlock {
+  id: string;
+  kind: MarkdownBlockKind;
+  textContent: string;
+  layoutHints: LayoutHint[];
+  previewHtml: string;
+  exportHtml: string;
+  signature: string;
+  asset?: ResolvedAsset;
+  table?: TableModel;
+}
+
+export interface NormalizedDocument {
+  blocks: NormalizedBlock[];
+  assets: ResolvedAsset[];
+}
+
 export interface DiagramAsset {
   id: string;
   source: string;
@@ -43,6 +113,9 @@ export interface DiagramAsset {
 export interface RenderResult {
   html: string;
   exportHtml: string;
+  previewBlocks: RenderedBlock[];
+  exportBlocks: RenderedBlock[];
+  document: NormalizedDocument;
   diagrams: DiagramAsset[];
   warnings: RenderWarning[];
   baseDir: string;
@@ -58,6 +131,7 @@ export interface DocumentPayload {
 
 export interface RenderPreviewPayload {
   html: string;
+  blocks: RenderedBlock[];
   warnings: RenderWarning[];
 }
 
@@ -68,6 +142,7 @@ export interface DocumentTabSession {
   savedMarkdown: string;
   currentMarkdown: string;
   renderHtml: string;
+  renderBlocks: RenderedBlock[];
   warnings: RenderWarning[];
   isDirty: boolean;
   hasExternalChange: boolean;

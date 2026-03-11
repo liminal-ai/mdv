@@ -44,6 +44,9 @@ graph TD
     expect(result.html).toContain('mdv-warning');
     expect(result.warnings.some((warning) => warning.code === 'REMOTE_IMAGE_BLOCKED')).toBe(true);
     expect(result.exportHtml).toContain('./assets/diagram-001.svg');
-    expect(result.exportHtml).toContain('class="page-break"');
+    expect(result.exportHtml).toContain('mdv-block-page-break');
+    expect(result.previewBlocks.map((block) => block.kind)).toEqual(['heading', 'mermaid', 'page-break', 'warning']);
+    expect(result.document.assets).toHaveLength(1);
+    expect(result.document.assets[0]?.kind).toBe('mermaid-diagram');
   });
 });

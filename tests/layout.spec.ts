@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { preparePrintHtml } from '../src/core/export/layout';
 
 describe('preparePrintHtml', () => {
-  it('adds balanced print classes and preserves page-break blocks', () => {
+  it('normalizes print-oriented table classes and preserves page-break blocks', () => {
     const html = `
       <h2>Heading</h2>
       <p>Paragraph</p>
@@ -14,10 +14,11 @@ describe('preparePrintHtml', () => {
 
     const output = preparePrintHtml(html);
 
-    expect(output).toContain('mdv-print-keep-with-next');
-    expect(output).toContain('mdv-print-keep-together');
-    expect(output).toContain('mdv-print-text');
-    expect(output).toContain('class="page-break"');
-    expect(output).toContain('page-break-after: always;');
+    expect(output).toContain('mdv-table');
+    expect(output).toContain('mdv-table-head');
+    expect(output).toContain('mdv-table-row');
+    expect(output).toContain('mdv-table-cell');
+    expect(output).toContain('mdv-block-page-break');
+    expect(output).toContain('mdv-page-break-line');
   });
 });
