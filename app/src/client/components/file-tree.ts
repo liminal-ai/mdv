@@ -122,25 +122,26 @@ export function mountFileTree(
     const rows = Array.from(container.querySelectorAll<HTMLElement>('.tree-node__row'));
     if (rows.length === 0) return;
 
-    if (focusedIndex < 0 || focusedIndex >= rows.length) {
-      focusedIndex = 0;
-    }
+    const hasValidFocus = focusedIndex >= 0 && focusedIndex < rows.length;
 
     switch (event.key) {
       case 'ArrowDown': {
         event.preventDefault();
-        focusedIndex = Math.min(focusedIndex + 1, rows.length - 1);
+        focusedIndex = hasValidFocus ? Math.min(focusedIndex + 1, rows.length - 1) : 0;
         rows[focusedIndex]?.focus();
         break;
       }
       case 'ArrowUp': {
         event.preventDefault();
-        focusedIndex = Math.max(focusedIndex - 1, 0);
+        focusedIndex = hasValidFocus ? Math.max(focusedIndex - 1, 0) : 0;
         rows[focusedIndex]?.focus();
         break;
       }
       case 'ArrowRight': {
         event.preventDefault();
+        if (!hasValidFocus) {
+          focusedIndex = 0;
+        }
         const currentNode = visible[focusedIndex];
         if (currentNode?.type === 'directory' && !expandedSet.has(currentNode.path)) {
           actions.onToggleDir(currentNode.path);
@@ -149,6 +150,9 @@ export function mountFileTree(
       }
       case 'ArrowLeft': {
         event.preventDefault();
+        if (!hasValidFocus) {
+          focusedIndex = 0;
+        }
         const currentNode = visible[focusedIndex];
         if (currentNode?.type === 'directory' && expandedSet.has(currentNode.path)) {
           actions.onToggleDir(currentNode.path);
@@ -157,6 +161,9 @@ export function mountFileTree(
       }
       case 'Enter': {
         event.preventDefault();
+        if (!hasValidFocus) {
+          focusedIndex = 0;
+        }
         const currentNode = visible[focusedIndex];
         if (currentNode) {
           if (currentNode.type === 'directory') {

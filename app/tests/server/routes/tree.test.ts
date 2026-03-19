@@ -1,4 +1,4 @@
-import { mkdir, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../../src/server/app.js';
@@ -211,17 +211,22 @@ describe('tree routes', () => {
   });
 
   it('TC-10.1a: Permission denied on root returns 403', async () => {
-    const sessionDir = await createTempDir();
-    tempDirs.push(sessionDir);
-    const app = await buildApp({ sessionDir });
+    const root = await createRoot();
+    await chmod(root, 0o000);
 
-    const response = await app.inject({
-      method: 'GET',
-      url: `/api/tree?root=${encodeURIComponent('/root/forbidden')}`,
-    });
+    try {
+      const response = await getTree(root);
 
-    expect([403, 404]).toContain(response.statusCode);
-    await app.close();
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toEqual({
+        error: {
+          code: 'PERMISSION_DENIED',
+          message: `Cannot read directory: ${root}`,
+        },
+      });
+    } finally {
+      await chmod(root, 0o700);
+    }
   });
 
   it('TC-10.2a: Root directory not found returns 404', async () => {
@@ -274,7 +279,7 @@ describe('tree routes', () => {
     expect(names).not.toContain('broken-link.md');
   });
 
-  it('Non-absolute root rejected (not 200)', async () => {
+  it('Non-absolute root rejected with 400 INVALID_ROOT', async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);
     const app = await buildApp({ sessionDir });
@@ -284,7 +289,13 @@ describe('tree routes', () => {
       url: `/api/tree?root=${encodeURIComponent('relative/path')}`,
     });
 
-    expect(response.statusCode).not.toBe(200);
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_ROOT',
+        message: 'Root path must be absolute.',
+      },
+    });
     await app.close();
   });
 

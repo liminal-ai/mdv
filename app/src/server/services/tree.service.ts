@@ -1,4 +1,5 @@
 import { readdir, realpath, stat } from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import path from 'node:path';
 import type { TreeNode } from '../schemas/index.js';
 
@@ -28,11 +29,21 @@ function computeMdCount(node: TreeNode): number {
   return count;
 }
 
-async function scanDir(dirPath: string, visited: Set<string>): Promise<TreeNode[]> {
+async function scanDir(
+  dirPath: string,
+  visited: Set<string>,
+  options: {
+    entries?: Dirent[];
+    throwOnReadError?: boolean;
+  } = {},
+): Promise<TreeNode[]> {
   let realDir: string;
   try {
     realDir = await realpath(dirPath);
-  } catch {
+  } catch (error) {
+    if (options.throwOnReadError) {
+      throw error;
+    }
     return [];
   }
 
@@ -41,8 +52,11 @@ async function scanDir(dirPath: string, visited: Set<string>): Promise<TreeNode[
 
   let entries;
   try {
-    entries = await readdir(dirPath, { withFileTypes: true });
-  } catch {
+    entries = options.entries ?? (await readdir(dirPath, { withFileTypes: true }));
+  } catch (error) {
+    if (options.throwOnReadError) {
+      throw error;
+    }
     return [];
   }
 
@@ -103,6 +117,7 @@ export async function scanTree(rootPath: string): Promise<TreeNode[]> {
     throw err;
   }
 
+  const rootEntries = await readdir(rootPath, { withFileTypes: true });
   const visited = new Set<string>();
-  return scanDir(rootPath, visited);
+  return scanDir(rootPath, visited, { entries: rootEntries, throwOnReadError: true });
 }

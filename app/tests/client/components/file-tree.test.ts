@@ -216,10 +216,9 @@ describe('file tree', () => {
     const rows = Array.from(treeHost.querySelectorAll<HTMLElement>('.tree-node__row'));
     expect(rows.length).toBeGreaterThan(0);
 
-    // Simulate ArrowDown
     treeHost.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(rows[0]);
 
-    // Simulate Enter on a directory
     treeHost.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(onToggleDir.mock.calls.length + onSelectFile.mock.calls.length).toBeGreaterThan(0);
   });

@@ -152,4 +152,83 @@ describe('menu bar', () => {
 
     expect(store.get().sidebarVisible).toBe(true);
   });
+
+  describe('theme system', () => {
+    it('TC-7.1a: Theme submenu lists 4 themes', () => {
+      renderMenuBar();
+
+      getButtonByText('View').click();
+
+      expect(document.body.textContent).toContain('Light Default');
+      expect(document.body.textContent).toContain('Light Warm');
+      expect(document.body.textContent).toContain('Dark Default');
+      expect(document.body.textContent).toContain('Dark Cool');
+
+      const themeButtons = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('.menu-bar__submenu button'),
+      );
+      expect(themeButtons).toHaveLength(4);
+    });
+
+    it('TC-7.1b: Current theme has checkmark indicator', () => {
+      renderMenuBar();
+
+      getButtonByText('View').click();
+
+      const lightDefaultButton = getButtonByText('Light Default');
+      expect(lightDefaultButton.textContent).toContain('✓');
+
+      const darkDefaultButton = getButtonByText('Dark Default');
+      expect(darkDefaultButton.textContent).not.toContain('✓');
+    });
+
+    it('TC-7.2a: Selecting theme calls onSetTheme with theme id', () => {
+      const { actions } = renderMenuBar();
+
+      getButtonByText('View').click();
+      getButtonByText('Dark Default').click();
+
+      expect(actions.onSetTheme).toHaveBeenCalledWith('dark-default');
+    });
+
+    it('TC-7.2b: Theme applies synchronously without flash', () => {
+      const { store, actions } = renderMenuBar();
+
+      actions.onSetTheme.mockImplementation((themeId: string) => {
+        store.update({ session: { ...store.get().session, theme: themeId } }, ['session']);
+      });
+
+      getButtonByText('View').click();
+      getButtonByText('Dark Default').click();
+
+      // After re-render, dark-default should be the current theme with checkmark
+      getButtonByText('View').click();
+      const darkButton = getButtonByText('Dark Default');
+      expect(darkButton.textContent).toContain('✓');
+
+      const lightButton = getButtonByText('Light Default');
+      expect(lightButton.textContent).not.toContain('✓');
+    });
+
+    it('TC-7.4a: Adding a theme definition makes it appear in menu', () => {
+      renderMenuBar({
+        availableThemes: [
+          { id: 'light-default', label: 'Light Default', variant: 'light' },
+          { id: 'light-warm', label: 'Light Warm', variant: 'light' },
+          { id: 'dark-default', label: 'Dark Default', variant: 'dark' },
+          { id: 'dark-cool', label: 'Dark Cool', variant: 'dark' },
+          { id: 'dark-forest', label: 'Dark Forest', variant: 'dark' },
+        ],
+      });
+
+      getButtonByText('View').click();
+
+      expect(document.body.textContent).toContain('Dark Forest');
+
+      const themeButtons = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('.menu-bar__submenu button'),
+      );
+      expect(themeButtons).toHaveLength(5);
+    });
+  });
 });

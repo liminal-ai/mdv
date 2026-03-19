@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
 import {
-  AbsolutePathSchema,
   ErrorResponseSchema,
   FileTreeResponseSchema,
 } from '../schemas/index.js';
@@ -14,7 +13,7 @@ export async function treeRoutes(app: FastifyInstance) {
     '/api/tree',
     {
       schema: {
-        querystring: z.object({ root: AbsolutePathSchema }),
+        querystring: z.object({ root: z.string() }),
         response: {
           200: FileTreeResponseSchema,
           400: ErrorResponseSchema,
@@ -26,6 +25,12 @@ export async function treeRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { root } = request.query;
+
+      if (!root.startsWith('/')) {
+        return reply
+          .code(400)
+          .send(toApiError(ErrorCode.INVALID_ROOT, 'Root path must be absolute.'));
+      }
 
       try {
         const tree = await scanTree(root);
