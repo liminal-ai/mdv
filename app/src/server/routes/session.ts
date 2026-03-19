@@ -58,12 +58,14 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
         await stat(root);
       } catch (error) {
         if (isPermissionError(error)) {
-          return reply.code(403).send(
-            toApiError(
-              ErrorCode.PERMISSION_DENIED,
-              'You do not have permission to access this folder.',
-            ),
-          );
+          return reply
+            .code(403)
+            .send(
+              toApiError(
+                ErrorCode.PERMISSION_DENIED,
+                'You do not have permission to access this folder.',
+              ),
+            );
         }
 
         if (isNotFoundError(error)) {

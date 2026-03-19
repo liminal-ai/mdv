@@ -65,10 +65,7 @@ export class ApiClient {
   }
 
   async getTree(root: string): Promise<FileTreeResponse> {
-    return this.request('/api/tree', {
-      method: 'POST',
-      body: { root },
-    });
+    return this.request(`/api/tree?root=${encodeURIComponent(root)}`);
   }
 
   async browse(): Promise<BrowseResponse> {

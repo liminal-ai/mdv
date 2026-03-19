@@ -48,9 +48,11 @@ describe('workspaces', () => {
 
     expect(actions.onToggleCollapsed).toHaveBeenCalledTimes(1);
     expect(document.querySelector<HTMLElement>('.section-content')?.hidden).toBe(true);
-    expect(document.querySelector('.disclosure-triangle')?.classList.contains(
-      'disclosure-triangle--collapsed',
-    )).toBe(true);
+    expect(
+      document
+        .querySelector('.disclosure-triangle')
+        ?.classList.contains('disclosure-triangle--collapsed'),
+    ).toBe(true);
   });
 
   it('TC-3.1b: Expand workspaces section', () => {
@@ -97,9 +99,9 @@ describe('workspaces', () => {
     renderWorkspaces();
 
     expect(
-      document.querySelector('.workspace-entry[data-path="/Users/leemoore/code"]')?.classList.contains(
-        'workspace-entry--active',
-      ),
+      document
+        .querySelector('.workspace-entry[data-path="/Users/leemoore/code"]')
+        ?.classList.contains('workspace-entry--active'),
     ).toBe(true);
   });
 

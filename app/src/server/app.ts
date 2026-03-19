@@ -4,6 +4,7 @@ import { staticPlugin } from './plugins/static.js';
 import { browseRoutes } from './routes/browse.js';
 import { clipboardRoutes } from './routes/clipboard.js';
 import { sessionRoutes } from './routes/session.js';
+import { treeRoutes } from './routes/tree.js';
 import type { BrowseService } from './services/browse.service.js';
 import type { SessionService } from './services/session.service.js';
 
@@ -27,6 +28,7 @@ export async function buildApp(opts?: AppOptions) {
   await app.register(browseRoutes, {
     browseService: opts?.browseService,
   });
+  await app.register(treeRoutes);
   await app.register(clipboardRoutes);
 
   return app;
