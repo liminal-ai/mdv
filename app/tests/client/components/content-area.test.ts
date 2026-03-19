@@ -45,6 +45,22 @@ describe('content area', () => {
     expect(document.body.textContent).toContain('No recent files');
   });
 
+  it('TC-8.3b (client): Empty recent files after server heals stale entries', () => {
+    document.body.innerHTML = '<div id="content-area"></div>';
+    const store = createStore({
+      session: {
+        ...createStore().get().session,
+        recentFiles: [],
+      },
+    });
+
+    mountContentArea(document.querySelector<HTMLElement>('#content-area')!, store, {
+      onBrowse: vi.fn(),
+    });
+
+    expect(document.body.textContent).toContain('No recent files');
+  });
+
   it('TC-1.3c: Recent files listed with names and paths', () => {
     document.body.innerHTML = '<div id="content-area"></div>';
     const store = createStore({

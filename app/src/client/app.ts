@@ -185,13 +185,15 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       applyTree(treeResponse.tree);
     } catch (error) {
       if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
+        const session = store.get().session;
         store.update(
           {
+            session: { ...session, lastRoot: null },
             tree: [],
             treeLoading: false,
             error: getErrorMessage(error),
           },
-          ['tree', 'treeLoading', 'error'],
+          ['session', 'tree', 'treeLoading', 'error'],
         );
         return;
       }
@@ -297,6 +299,18 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     },
   });
   keyboardManager.attach();
+
+  // Auto-load tree on bootstrap if a root was restored from session
+  if (bootstrap.session.lastRoot) {
+    setTreeLoading(true);
+    try {
+      const treeResponse = await api.getTree(bootstrap.session.lastRoot);
+      applyTree(treeResponse.tree);
+    } catch {
+      setTreeLoading(false);
+      // Silently fail — root may no longer exist; user can refresh or browse
+    }
+  }
 }
 
 void bootstrapApp().catch((error) => {

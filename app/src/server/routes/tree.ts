@@ -1,10 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
-import {
-  ErrorResponseSchema,
-  FileTreeResponseSchema,
-} from '../schemas/index.js';
+import { ErrorResponseSchema, FileTreeResponseSchema } from '../schemas/index.js';
 import { scanTree } from '../services/tree.service.js';
 import { ErrorCode, isNotFoundError, isPermissionError, toApiError } from '../utils/errors.js';
 

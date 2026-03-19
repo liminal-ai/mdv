@@ -53,8 +53,9 @@ export class SessionService {
 
     const session = await this.readSessionFromDisk();
     const healedSession = await this.healLastRoot(session);
+    const fullyHealed = await this.healRecentFiles(healedSession);
 
-    this.cache = healedSession;
+    this.cache = fullyHealed;
     await this.persist(this.cache);
 
     return cloneSession(this.cache);
@@ -119,12 +120,25 @@ export class SessionService {
   }
 
   private async mutate(mutator: (session: SessionState) => void): Promise<SessionState> {
-    const session = await this.load();
+    const session = await this.readSessionForMutation();
     const nextSession = cloneSession(session);
     mutator(nextSession);
 
     this.cache = nextSession;
     await this.persist(this.cache);
+
+    return cloneSession(this.cache);
+  }
+
+  private async readSessionForMutation(): Promise<SessionState> {
+    if (this.cache) {
+      return cloneSession(this.cache);
+    }
+
+    await this.fileSystem.mkdir(this.sessionDir, { recursive: true });
+
+    const session = await this.readSessionFromDisk();
+    this.cache = session;
 
     return cloneSession(this.cache);
   }
@@ -158,6 +172,28 @@ export class SessionService {
     return {
       ...session,
       lastRoot: null,
+    };
+  }
+
+  private async healRecentFiles(session: SessionState): Promise<SessionState> {
+    if (session.recentFiles.length === 0) {
+      return session;
+    }
+
+    const validFiles: Array<{ path: string; openedAt: string }> = [];
+    for (const file of session.recentFiles) {
+      if (await this.pathExists(file.path)) {
+        validFiles.push(file);
+      }
+    }
+
+    if (validFiles.length === session.recentFiles.length) {
+      return session;
+    }
+
+    return {
+      ...session,
+      recentFiles: validFiles,
     };
   }
 

@@ -19,6 +19,8 @@ describe('client bootstrap api mocks', () => {
   });
 
   async function renderApp(session = emptySession) {
+    vi.resetModules();
+
     const api = {
       bootstrap: vi.fn().mockResolvedValue({
         session,
@@ -109,6 +111,41 @@ describe('client bootstrap api mocks', () => {
     expect(document.body.textContent).toContain('No documents open');
   });
 
+  it('TC-1.2c (integration): Bootstrap with default session renders clean state', async () => {
+    await renderApp(emptySession);
+
+    expect(document.body.textContent).toContain('MD Viewer');
+    expect(document.body.textContent).toContain('No documents open');
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.documentElement.dataset.theme).toBe('light-default');
+  });
+
+  it('TC-1.2d (integration): Theme applied from session during bootstrap', async () => {
+    await renderApp(populatedSession);
+
+    expect(document.documentElement.dataset.theme).toBe('dark-default');
+  });
+
+  it('TC-8.2b (integration): Bootstrap with null root shows empty tree state', async () => {
+    const api = await renderApp({
+      ...populatedSession,
+      lastRoot: null,
+    });
+
+    expect(document.body.textContent).toContain('leemoore');
+    expect(document.body.textContent).toContain('liminal');
+    expect(document.body.textContent).toContain('code');
+    expect(document.body.textContent).toContain('No folder selected');
+    expect(api.getTree).not.toHaveBeenCalled();
+  });
+
+  it('TC-8.3a (integration): Recent files rendered on bootstrap', async () => {
+    await renderApp(populatedSession);
+
+    expect(document.body.textContent).toContain('README.md');
+    expect(document.body.textContent).toContain('/Users/leemoore/code/README.md');
+  });
+
   it('keeps the sidebar visible on startup even when workspaces are collapsed', async () => {
     await renderApp({
       ...emptySession,
@@ -151,5 +188,43 @@ describe('client bootstrap api mocks', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(api.getTree).toHaveBeenCalledWith('/Users/leemoore/code');
+  });
+
+  it('TC-8.3b: Session with no recent files after healing shows empty message', async () => {
+    const session = {
+      ...populatedSession,
+      recentFiles: [],
+    };
+    await renderApp(session);
+
+    expect(document.body.textContent).toContain('No recent files');
+  });
+
+  it('TC-10.1a: Permission denied error renders notification', async () => {
+    const session = populatedSession;
+    const api = await renderApp(session);
+
+    const { ApiError } = await import('../../src/client/api.js');
+    api.getTree.mockRejectedValueOnce(new ApiError(403, 'PERMISSION_DENIED', 'Cannot read'));
+
+    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector('[role="alert"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('Cannot read');
+  });
+
+  it('TC-10.2a: Deleted root on refresh shows error and clears tree', async () => {
+    const session = populatedSession;
+    const api = await renderApp(session);
+
+    const { ApiError } = await import('../../src/client/api.js');
+    api.getTree.mockRejectedValueOnce(new ApiError(404, 'PATH_NOT_FOUND', 'Directory not found'));
+
+    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector('[role="alert"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('Directory not found');
   });
 });

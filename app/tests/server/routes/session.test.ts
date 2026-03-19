@@ -518,6 +518,36 @@ describe('session routes', () => {
     await app.close();
   });
 
+  it('TC-8.3b: Stale recent file removed during bootstrap', async () => {
+    const sessionDir = await createTempDir();
+    tempDirs.push(sessionDir);
+    const paths = await createPopulatedPaths(sessionDir);
+    await writeSessionFile(sessionDir, {
+      workspaces: [],
+      lastRoot: paths.root,
+      recentFiles: [
+        { path: paths.recentFile, openedAt: '2026-03-03T00:00:00.000Z' },
+        { path: '/nonexistent/stale-file.md', openedAt: '2026-03-02T00:00:00.000Z' },
+      ],
+      theme: 'light-default',
+      sidebarState: { workspacesCollapsed: false },
+    });
+    const app = await buildApp({ sessionDir });
+
+    const response = await app.inject({ method: 'GET', url: '/api/session' });
+
+    expect(response.json().session.recentFiles).toEqual([
+      { path: paths.recentFile, openedAt: '2026-03-03T00:00:00.000Z' },
+    ]);
+
+    const persisted = await readSessionFile(sessionDir);
+    expect(persisted.recentFiles).toEqual([
+      { path: paths.recentFile, openedAt: '2026-03-03T00:00:00.000Z' },
+    ]);
+
+    await app.close();
+  });
+
   it('Invalid theme id is rejected with 400', async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);
