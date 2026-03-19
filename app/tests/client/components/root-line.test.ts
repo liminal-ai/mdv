@@ -1,0 +1,119 @@
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mountRootLine } from '../../../src/client/components/root-line.js';
+import { emptySession } from '../../fixtures/session.js';
+import { createStore } from '../support.js';
+
+function renderRootLine(lastRoot: string | null = '/Users/leemoore/code/project-atlas') {
+  document.body.innerHTML = '<div id="root-line"></div>';
+  const store = createStore({
+    session: {
+      ...emptySession,
+      lastRoot,
+    },
+    expandedDirsByRoot: {
+      '/Users/leemoore/code/project-atlas': ['/Users/leemoore/code/project-atlas/docs'],
+    },
+  });
+  const actions = {
+    onBrowse: vi.fn(),
+    onPin: vi.fn(),
+    onCopy: vi.fn(),
+    onRefresh: vi.fn(),
+  };
+
+  const cleanup = mountRootLine(document.querySelector<HTMLElement>('#root-line')!, store, actions);
+
+  return { store, actions, cleanup };
+}
+
+describe('root line', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('TC-4.1a: Path displayed truncated with tooltip', () => {
+    renderRootLine();
+
+    const path = document.querySelector<HTMLElement>('.root-line__path');
+
+    expect(path?.textContent).toBe('~/code/project-atlas');
+    expect(path?.title).toBe('/Users/leemoore/code/project-atlas');
+  });
+
+  it('TC-4.1b: No root selected state', () => {
+    renderRootLine(null);
+
+    expect(document.body.textContent).toContain('No folder selected');
+    expect(document.querySelector('.root-line__pin')).toBeNull();
+    expect(document.querySelector('.root-line__copy')).toBeNull();
+    expect(document.querySelector('.root-line__refresh')).toBeNull();
+  });
+
+  it('TC-4.2a: Browse action triggers folder picker', () => {
+    const { actions } = renderRootLine();
+
+    document.querySelector<HTMLButtonElement>('.root-line__browse')?.click();
+
+    expect(actions.onBrowse).toHaveBeenCalledTimes(1);
+  });
+
+  it('TC-4.2c: Browse icon always visible', () => {
+    renderRootLine();
+
+    expect(document.querySelector('.root-line__browse')?.className).toContain('root-line__browse');
+    expect(document.querySelector<HTMLButtonElement>('.root-line__browse')?.title).toBe(
+      'Browse folder',
+    );
+  });
+
+  it('TC-4.3a: Pin adds workspace', () => {
+    const { actions } = renderRootLine();
+
+    document.querySelector<HTMLButtonElement>('.root-line__pin')?.click();
+
+    expect(actions.onPin).toHaveBeenCalledTimes(1);
+  });
+
+  it('TC-4.4a: Copy copies root path', () => {
+    const { actions } = renderRootLine();
+
+    document.querySelector<HTMLButtonElement>('.root-line__copy')?.click();
+
+    expect(actions.onCopy).toHaveBeenCalledTimes(1);
+  });
+
+  it('TC-4.5a: Refresh reloads tree', () => {
+    const { actions } = renderRootLine();
+
+    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+
+    expect(actions.onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('TC-4.5b: Refresh preserves expand state', () => {
+    const { store } = renderRootLine();
+    const before = store.get().expandedDirsByRoot;
+
+    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+
+    expect(store.get().expandedDirsByRoot).toEqual(before);
+  });
+
+  it('TC-4.6a: Hover reveals pin copy and refresh via classes', () => {
+    renderRootLine();
+
+    expect(document.querySelector('.root-line__pin')?.className).toContain('root-line__pin');
+    expect(document.querySelector('.root-line__copy')?.className).toContain('root-line__copy');
+    expect(document.querySelector('.root-line__refresh')?.className).toContain(
+      'root-line__refresh',
+    );
+  });
+
+  it('TC-4.6b: Browse always visible without hover', () => {
+    renderRootLine();
+
+    expect(document.querySelector('.root-line__browse')).not.toBeNull();
+  });
+});

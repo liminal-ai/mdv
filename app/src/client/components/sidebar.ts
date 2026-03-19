@@ -1,66 +1,56 @@
 import type { StateStore } from '../state.js';
+import { mountRootLine, type RootLineActions } from './root-line.js';
+import { mountWorkspaces, type WorkspacesActions } from './workspaces.js';
 import { createElement } from '../utils/dom.js';
 
-function workspaceName(workspacePath: string): string {
-  const segments = workspacePath.split('/').filter(Boolean);
-  return segments.at(-1) ?? workspacePath;
+export interface SidebarActions
+  extends RootLineActions,
+    Omit<WorkspacesActions, 'onToggleCollapsed'> {
+  onToggleWorkspacesCollapsed: () => void;
 }
 
-export function mountSidebar(container: HTMLElement, store: StateStore): () => void {
-  const render = () => {
-    const state = store.get();
-    const workspaces = state.session.workspaces;
-    const listItems =
-      workspaces.length > 0
-        ? workspaces.map((workspace) =>
-            createElement('li', {
-              className: 'sidebar-workspace',
-              children: [
-                createElement('span', {
-                  className: 'sidebar-workspace__label',
-                  text: workspace.label || workspaceName(workspace.path),
-                }),
-                createElement('span', {
-                  className: 'sidebar-workspace__path',
-                  text: workspace.path,
-                }),
-              ],
-            }),
-          )
-        : [
-            createElement('li', {
-              className: 'sidebar-empty',
-              text: 'No workspaces pinned yet.',
-            }),
-          ];
+export function mountSidebar(
+  container: HTMLElement,
+  store: StateStore,
+  actions: SidebarActions,
+): () => void {
+  const workspacesHost = createElement('div', { className: 'sidebar__workspaces' });
+  const rootLineHost = createElement('div', { className: 'sidebar__root-line' });
+  const filesHeader = createElement('div', {
+    className: 'sidebar__files-header',
+    text: 'FILES',
+  });
+  const treeHost = createElement('div', { className: 'sidebar__tree' });
 
-    container.hidden = !state.sidebarVisible;
-    container.setAttribute('aria-hidden', String(!state.sidebarVisible));
-    container.dataset.visible = String(state.sidebarVisible);
-    container.parentElement?.setAttribute('data-sidebar-visible', String(state.sidebarVisible));
-    container.replaceChildren(
-      createElement('div', {
-        className: 'sidebar-panel',
-        children: [
-          createElement('div', {
-            className: 'sidebar-panel__header',
-            children: [
-              createElement('span', { className: 'sidebar-panel__eyebrow', text: 'Workspaces' }),
-              createElement('strong', {
-                className: 'sidebar-panel__title',
-                text: 'Pinned folders',
-              }),
-            ],
-          }),
-          createElement('ul', {
-            className: 'sidebar-workspaces',
-            children: listItems,
-          }),
-        ],
-      }),
-    );
+  container.replaceChildren(workspacesHost, rootLineHost, filesHeader, treeHost);
+
+  const cleanupWorkspaces = mountWorkspaces(workspacesHost, store, {
+    onToggleCollapsed: actions.onToggleWorkspacesCollapsed,
+    onSwitchRoot: actions.onSwitchRoot,
+    onRemoveWorkspace: actions.onRemoveWorkspace,
+  });
+  const cleanupRootLine = mountRootLine(rootLineHost, store, {
+    onBrowse: actions.onBrowse,
+    onPin: actions.onPin,
+    onCopy: actions.onCopy,
+    onRefresh: actions.onRefresh,
+  });
+
+  const render = () => {
+    const { sidebarVisible } = store.get();
+    container.hidden = !sidebarVisible;
+    container.setAttribute('aria-hidden', String(!sidebarVisible));
+    container.dataset.visible = String(sidebarVisible);
+    container.parentElement?.setAttribute('data-sidebar-visible', String(sidebarVisible));
   };
 
   render();
-  return store.subscribe(render);
+  const unsubscribe = store.subscribe(render);
+
+  return () => {
+    cleanupWorkspaces();
+    cleanupRootLine();
+    unsubscribe();
+    container.replaceChildren();
+  };
 }

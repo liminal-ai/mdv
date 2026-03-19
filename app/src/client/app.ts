@@ -5,6 +5,7 @@ import { mountMenuBar } from './components/menu-bar.js';
 import { mountSidebar } from './components/sidebar.js';
 import { mountTabStrip } from './components/tab-strip.js';
 import { StateStore, type ClientState } from './state.js';
+import { copyTextToClipboard } from './utils/clipboard.js';
 import { KeyboardManager } from './utils/keyboard.js';
 
 function applyTheme(themeId: string): void {
@@ -42,7 +43,7 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     treeLoading: false,
     activeMenuId: null,
     contextMenu: null,
-    sidebarVisible: !bootstrap.session.sidebarState.workspacesCollapsed,
+    sidebarVisible: true,
     expandedDirsByRoot: {},
     error: null,
   };
@@ -54,15 +55,62 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     store.update(
       {
         session,
-        sidebarVisible: !session.sidebarState.workspacesCollapsed,
         error: null,
       },
-      ['session', 'sidebarVisible', 'error'],
+      ['session', 'error'],
     );
+  };
+
+  const applyTree = (tree: ClientState['tree']) => {
+    store.update(
+      {
+        tree,
+        treeLoading: false,
+        error: null,
+      },
+      ['tree', 'treeLoading', 'error'],
+    );
+  };
+
+  const setTreeLoading = (treeLoading: boolean) => {
+    store.update({ treeLoading }, ['treeLoading']);
   };
 
   const setError = (error: unknown) => {
     store.update({ error: getErrorMessage(error) }, ['error']);
+  };
+
+  const switchRoot = async (path: string) => {
+    setTreeLoading(true);
+
+    try {
+      const session = await api.setRoot(path);
+
+      try {
+        const treeResponse = await api.getTree(path);
+        applySession(session);
+        applyTree(treeResponse.tree);
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
+          applySession(session);
+          store.update(
+            {
+              treeLoading: false,
+              error: getErrorMessage(error),
+            },
+            ['treeLoading', 'error'],
+          );
+          return;
+        }
+
+        applySession(session);
+        setTreeLoading(false);
+        setError(error);
+      }
+    } catch (error) {
+      setTreeLoading(false);
+      setError(error);
+    }
   };
 
   const browseForFolder = async () => {
@@ -72,15 +120,21 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
         return;
       }
 
-      applySession(await api.setRoot(selection.path));
+      await switchRoot(selection.path);
     } catch (error) {
       setError(error);
     }
   };
 
-  const toggleSidebar = async () => {
+  const toggleSidebar = () => {
+    const { sidebarVisible } = store.get();
+    store.update({ sidebarVisible: !sidebarVisible }, ['sidebarVisible']);
+  };
+
+  const toggleWorkspacesCollapsed = async () => {
     try {
-      applySession(await api.updateSidebar(store.get().sidebarVisible));
+      const collapsed = store.get().session.sidebarState.workspacesCollapsed;
+      applySession(await api.updateSidebar(!collapsed));
     } catch (error) {
       setError(error);
     }
@@ -89,6 +143,69 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
   const setTheme = async (themeId: string) => {
     try {
       applySession(await api.setTheme(themeId));
+    } catch (error) {
+      setError(error);
+    }
+  };
+
+  const pinWorkspace = async () => {
+    const root = store.get().session.lastRoot;
+    if (!root) {
+      return;
+    }
+
+    try {
+      applySession(await api.addWorkspace(root));
+    } catch (error) {
+      setError(error);
+    }
+  };
+
+  const removeWorkspace = async (path: string) => {
+    try {
+      applySession(await api.removeWorkspace(path));
+    } catch (error) {
+      setError(error);
+    }
+  };
+
+  const refreshTree = async () => {
+    const root = store.get().session.lastRoot;
+    if (!root) {
+      return;
+    }
+
+    setTreeLoading(true);
+
+    try {
+      const treeResponse = await api.getTree(root);
+      applyTree(treeResponse.tree);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
+        store.update(
+          {
+            tree: [],
+            treeLoading: false,
+            error: getErrorMessage(error),
+          },
+          ['tree', 'treeLoading', 'error'],
+        );
+        return;
+      }
+
+      setTreeLoading(false);
+      setError(error);
+    }
+  };
+
+  const copyRootPath = async () => {
+    const root = store.get().session.lastRoot;
+    if (!root) {
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(root, api);
     } catch (error) {
       setError(error);
     }
@@ -112,7 +229,15 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     onToggleSidebar: toggleSidebar,
     onSetTheme: setTheme,
   });
-  mountSidebar(sidebarHost, store);
+  mountSidebar(sidebarHost, store, {
+    onToggleWorkspacesCollapsed: toggleWorkspacesCollapsed,
+    onSwitchRoot: switchRoot,
+    onRemoveWorkspace: removeWorkspace,
+    onBrowse: browseForFolder,
+    onPin: pinWorkspace,
+    onCopy: copyRootPath,
+    onRefresh: refreshTree,
+  });
   mountTabStrip(tabStripHost, store);
   mountContentArea(contentAreaHost, store, { onBrowse: browseForFolder });
   mountErrorNotification(errorHost, store, {
@@ -134,7 +259,7 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     meta: true,
     description: 'Toggle Sidebar',
     action: () => {
-      void toggleSidebar();
+      toggleSidebar();
     },
   });
   keyboardManager.register({
