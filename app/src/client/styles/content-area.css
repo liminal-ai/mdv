@@ -1,0 +1,8 @@
+#content-area {
+  padding: 1.5rem;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  overflow: auto;
+}
+
+/* Placeholder for markdown rendering surface and empty-state messaging. */

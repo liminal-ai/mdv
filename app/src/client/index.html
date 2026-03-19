@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-theme="light-default">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MD Viewer</title>
+    <script>
+      try {
+        const stored = localStorage.getItem('mdv-theme');
+        if (stored) document.documentElement.dataset.theme = stored;
+      } catch {}
+    </script>
+    <link rel="stylesheet" href="/styles/themes.css" />
+    <link rel="stylesheet" href="/styles/base.css" />
+    <link rel="stylesheet" href="/styles/menu-bar.css" />
+    <link rel="stylesheet" href="/styles/sidebar.css" />
+    <link rel="stylesheet" href="/styles/tab-strip.css" />
+    <link rel="stylesheet" href="/styles/content-area.css" />
+    <link rel="stylesheet" href="/styles/context-menu.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header id="menu-bar"></header>
+      <div id="main">
+        <aside id="sidebar"></aside>
+        <div id="workspace">
+          <div id="tab-strip"></div>
+          <div id="content-area"></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

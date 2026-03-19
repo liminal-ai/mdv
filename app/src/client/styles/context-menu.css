@@ -1,0 +1,11 @@
+.context-menu {
+  position: fixed;
+  min-width: 12rem;
+  padding: 0.5rem;
+  background: var(--color-menu-bg);
+  border: 1px solid var(--color-menu-border);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-context-menu);
+}
+
+/* Placeholder for context actions, separators, and keyboard shortcut labels. */
