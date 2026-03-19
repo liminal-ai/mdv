@@ -142,9 +142,11 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
   };
 
   const setTheme = async (themeId: string) => {
+    applyTheme(themeId); // instant DOM update before API round-trip
     try {
       applySession(await api.setTheme(themeId));
     } catch (error) {
+      applyTheme(store.get().session.theme); // rollback on failure
       setError(error);
     }
   };
