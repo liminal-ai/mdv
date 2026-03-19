@@ -5,6 +5,6 @@ export default defineConfig({
     globals: true,
     include: ['tests/**/*.test.ts'],
     environment: 'node',
-    environmentMatchGlobs: [['tests/client/**', 'jsdom']],
+    environmentMatchGlobs: [['**/tests/client/**/*.test.ts', 'jsdom']],
   },
 });
