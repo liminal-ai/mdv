@@ -8,7 +8,8 @@ export interface ClientError {
 export interface ContextMenuState {
   x: number;
   y: number;
-  targetPath?: string;
+  targetPath: string;
+  targetType: 'file' | 'directory';
 }
 
 export interface ClientState {

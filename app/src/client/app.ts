@@ -1,5 +1,6 @@
 import { ApiClient, ApiError } from './api.js';
 import { mountContentArea } from './components/content-area.js';
+import { mountContextMenu } from './components/context-menu.js';
 import { mountErrorNotification } from './components/error-notification.js';
 import { mountMenuBar } from './components/menu-bar.js';
 import { mountSidebar } from './components/sidebar.js';
@@ -242,6 +243,30 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
   mountContentArea(contentAreaHost, store, { onBrowse: browseForFolder });
   mountErrorNotification(errorHost, store, {
     onDismiss: () => store.update({ error: null }, ['error']),
+  });
+
+  const contextMenuHost = document.createElement('div');
+  contextMenuHost.id = 'context-menu-root';
+  document.body.append(contextMenuHost);
+
+  mountContextMenu(contextMenuHost, store, {
+    onCopyPath: async (path: string) => {
+      try {
+        await copyTextToClipboard(path, api);
+      } catch (error) {
+        setError(error);
+      }
+    },
+    onMakeRoot: async (path: string) => {
+      await switchRoot(path);
+    },
+    onSaveAsWorkspace: async (path: string) => {
+      try {
+        applySession(await api.addWorkspace(path));
+      } catch (error) {
+        setError(error);
+      }
+    },
   });
 
   const keyboardManager = new KeyboardManager(document);
