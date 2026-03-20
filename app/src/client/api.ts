@@ -29,7 +29,7 @@ export class ApiError extends Error {
 }
 
 export class ApiClient {
-  constructor(private readonly fetchImpl: typeof fetch = fetch) {}
+  constructor(private readonly fetchImpl: typeof fetch = fetch.bind(window)) {}
 
   async bootstrap(): Promise<AppBootstrapResponse> {
     return this.request('/api/session');
