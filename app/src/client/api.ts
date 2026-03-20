@@ -88,7 +88,22 @@ export class ApiClient {
   }
 
   async readFile(path: string): Promise<FileReadResponse> {
-    return this.request(`/api/file?path=${encodeURIComponent(path)}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+    try {
+      return await this.request(`/api/file?path=${encodeURIComponent(path)}`, {
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiError(0, 'READ_TIMEOUT', 'File read timed out');
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async pickFile(): Promise<FilePickerResponse> {
@@ -137,12 +152,14 @@ export class ApiClient {
     init: {
       method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
       body?: unknown;
+      signal?: AbortSignal;
     } = {},
   ): Promise<T> {
     const response = await this.fetchImpl(input, {
       method: init.method ?? 'GET',
       headers: init.body ? { 'content-type': 'application/json' } : undefined,
       body: init.body ? JSON.stringify(init.body) : undefined,
+      signal: init.signal,
     });
 
     const isJson = response.headers.get('content-type')?.includes('application/json') ?? false;

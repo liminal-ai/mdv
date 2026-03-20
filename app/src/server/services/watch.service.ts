@@ -1,10 +1,8 @@
-import { type FSWatcher, watch } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { watch as chokidarWatch, type FSWatcher } from 'chokidar';
 import type { WebSocket } from 'ws';
 import { ServerWsMessageSchema, type ServerWsMessage } from '../schemas/index.js';
 
 export const WATCH_DEBOUNCE_MS = 300;
-export const WATCH_RENAME_SETTLE_MS = 50;
 
 export class WatchService {
   private readonly watchers = new Map<string, FSWatcher>();
@@ -12,8 +10,6 @@ export class WatchService {
   private readonly subscribers = new Map<string, Set<WebSocket>>();
 
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
-
-  private readonly deletedPaths = new Set<string>();
 
   watch(filePath: string, ws: WebSocket): void {
     let subscribers = this.subscribers.get(filePath);
@@ -28,7 +24,7 @@ export class WatchService {
       return;
     }
 
-    void this.ensureWatcher(filePath);
+    this.createWatcher(filePath);
   }
 
   unwatch(filePath: string, ws: WebSocket): void {
@@ -44,7 +40,6 @@ export class WatchService {
     }
 
     this.subscribers.delete(filePath);
-    this.deletedPaths.delete(filePath);
     this.destroyWatcher(filePath);
   }
 
@@ -54,49 +49,38 @@ export class WatchService {
     }
   }
 
-  private async ensureWatcher(filePath: string): Promise<void> {
-    try {
-      await stat(filePath);
-    } catch {
-      if (!this.deletedPaths.has(filePath)) {
-        this.notifySubscribers(filePath, {
-          type: 'error',
-          message: `Unable to watch missing file: ${filePath}`,
-        });
-      }
-      return;
-    }
-
-    if (!this.subscribers.has(filePath) || this.watchers.has(filePath)) {
-      return;
-    }
-
-    this.createWatcher(filePath);
-
-    if (this.deletedPaths.delete(filePath)) {
-      this.notifySubscribers(filePath, {
-        type: 'file-change',
-        path: filePath,
-        event: 'created',
-      });
-    }
-  }
-
   private createWatcher(filePath: string): void {
     try {
-      const watcher = watch(filePath, (eventType) => {
-        if (eventType === 'rename') {
-          void this.handleRename(filePath);
-          return;
-        }
+      const watcher = chokidarWatch(filePath, {
+        persistent: true,
+        ignoreInitial: true,
+      });
 
+      watcher.on('change', () => {
         this.handleChange(filePath);
       });
 
+      watcher.on('unlink', () => {
+        this.notifySubscribers(filePath, {
+          type: 'file-change',
+          path: filePath,
+          event: 'deleted',
+        });
+      });
+
+      watcher.on('add', () => {
+        this.notifySubscribers(filePath, {
+          type: 'file-change',
+          path: filePath,
+          event: 'created',
+        });
+      });
+
       watcher.on('error', (error) => {
+        const message = error instanceof Error ? error.message : 'Unknown watch error';
         this.notifySubscribers(filePath, {
           type: 'error',
-          message: `Watch error on ${filePath}: ${error.message}`,
+          message: `Watch error on ${filePath}: ${message}`,
         });
       });
 
@@ -128,40 +112,12 @@ export class WatchService {
     this.debounceTimers.set(filePath, timer);
   }
 
-  private async handleRename(filePath: string): Promise<void> {
-    this.destroyWatcher(filePath);
-
-    await new Promise((resolve) => {
-      setTimeout(resolve, WATCH_RENAME_SETTLE_MS);
-    });
-
-    if (!this.subscribers.has(filePath)) {
-      return;
-    }
-
-    try {
-      await stat(filePath);
-    } catch {
-      this.deletedPaths.add(filePath);
-      this.notifySubscribers(filePath, {
-        type: 'file-change',
-        path: filePath,
-        event: 'deleted',
-      });
-      return;
-    }
-
-    if (!this.subscribers.has(filePath)) {
-      return;
-    }
-
-    this.createWatcher(filePath);
-    this.handleChange(filePath);
-  }
-
   private destroyWatcher(filePath: string): void {
-    this.watchers.get(filePath)?.close();
-    this.watchers.delete(filePath);
+    const watcher = this.watchers.get(filePath);
+    if (watcher) {
+      void watcher.close();
+      this.watchers.delete(filePath);
+    }
 
     const timer = this.debounceTimers.get(filePath);
     if (timer) {

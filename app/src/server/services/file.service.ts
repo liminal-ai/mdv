@@ -5,6 +5,7 @@ import {
   InvalidPathError,
   NotFileError,
   NotMarkdownError,
+  ReadTimeoutError,
 } from '../utils/errors.js';
 
 const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
@@ -40,7 +41,20 @@ export class FileService {
     }
 
     const canonicalPath = await fs.realpath(requestedPath);
-    const content = await fs.readFile(requestedPath, 'utf8');
+    let content: string;
+
+    try {
+      content = await fs.readFile(requestedPath, {
+        encoding: 'utf8',
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new ReadTimeoutError(requestedPath);
+      }
+
+      throw error;
+    }
 
     return {
       path: requestedPath,

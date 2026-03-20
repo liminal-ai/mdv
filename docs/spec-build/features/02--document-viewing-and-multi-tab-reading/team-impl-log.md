@@ -329,3 +329,116 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 The review phase caught meaningful issues on 6 of 8 stories, including one Critical security vulnerability (command injection in open-external). The multi-model verification process (Opus + Codex dual review) justified its cost on every story where it found something the implementer missed.
 
 **Next: Epic-level verification.**
+
+---
+
+## Epic-Level Verification
+
+### Phase 1: Four Parallel Reviews
+
+Four reviewers ran against the full codebase simultaneously:
+- **Opus** — most comprehensive structure, best AC/TC tables, missed the Critical security finding
+- **Sonnet** — best calibrated severity, found unique perf issues (content-area re-render, sequential tab restore), missed the Critical
+- **GPT-5.4** — found the most impactful unique issue: unquoted `<img src=...>` bypasses image blocking (AC-3.3). Also found Origin/CSRF concern. Less structured report.
+- **GPT-5.3-codex** — found TC-7.3b mismatch (auto-reload vs offer-to-reload) and traceability overclaims. Sparsest report.
+
+Key insight: Claude models excelled at systematic architectural review. GPT models excelled at literal spec-vs-code comparison, catching AC violations the Claude models missed. Multi-model diversity proved essential — no single model found everything.
+
+### Phase 2: Meta-Reports
+
+Each reviewer read all four reports and ranked them. Consensus: GPT-5.4 found the highest-severity unique issue, Opus had the best structure, Sonnet had the best calibration. No single report was sufficient alone.
+
+### Phase 3: Orchestrator Synthesis
+
+Categorized fix list:
+
+**Must-fix (1):** Unquoted img src bypass (security, AC-3.3)
+**Should-fix (5):** WebSocket Origin validation, 1-5MB large file confirmation, stale recent file cleanup, stale tree refresh, exec→execFile in file picker
+**Nice-to-have (6):** Read timeout, content-area re-render filtering, debounce docs, auto-reload vs offer-to-reload, menu bar at narrow widths, tab restore error surfacing
+
+### Phase 4: Fixes
+
+All 6 must-fix and should-fix items implemented by a Codex subagent (session `019d09e5-b270-7ed3-897e-4b7de0304dd0`). Verified: 312 tests passing. Committed as `f24aae2`.
+
+Codex evidence: `019d09e5-b270-7ed3-897e-4b7de0304dd0`
+
+---
+
+## Post-Verification: Follow-Up Item Identification
+
+After epic-level verification, the orchestrator compiled all deferred, accepted-risk, and nice-to-have items from every story review and the epic verification into a single list. The list was then filtered through two passes:
+
+### Pass 1: Remove items where fixing would make the app worse or add no improvement
+
+Items removed:
+- TC-7.3b auto-reload vs offer-to-reload — auto-reload is better UX than a confirmation dialog on every file change
+- Tab restore noisy errors — silent skip hides real information from the user
+- Tab restore sequential vs parallel — parallel introduces race conditions for imperceptible speed gain on localhost
+- Content-area re-render filtering / auto-scroll filtering / disambiguateDisplayNames — premature optimization, adds complexity for invisible gains at this scale
+- Client WsClient Zod validation — overhead for zero safety gain on messages from our own trusted server
+- Dual Escape handling — two handlers is more defensive than one
+- Symlink dedup loading flash — fixes make the UX worse (either latency or invisible loading)
+- Regression test for sync listener registration — test would be theater, no way to express the real concern
+- Case-sensitive URL scheme detection — handles a case that essentially never occurs
+
+### Pass 2: Separate by effort level
+
+**Remaining items were categorized:**
+
+**Moderate effort (addressed as hardening fixes):**
+- TC-9.3b read timeout — AbortSignal on server, AbortController on client, tests on both sides (~4 files)
+- Replace fs.watch with chokidar — WatchService rewrite, eliminates manual rename/deletion handling, net code reduction (~4 files)
+- Bulk action integration tests — exercise closeOtherTabs/closeTabsToRight through full app bootstrap (~1 file)
+
+**High effort (separate initiative):**
+- E2E test infrastructure (Playwright) — new framework, config, test directory, backfill JSDOM-untestable TCs. This is a project, not a task. Deferred.
+
+**Low effort items (addressed inline with moderate items or accepted):**
+- existsSync doesn't check isFile (extreme edge case, proxy catches it)
+- No stream error handler on createReadStream (microsecond race window)
+- Watch channel no markdown extension check (client restricts this)
+- Debounce docs 300ms vs 100ms
+- INVALID_PATH reused for mode validation
+- Default mode label hardcoded (Epic 5 concern)
+- Story 4 stale scope bullet
+
+### Orchestrator bias note
+
+The orchestrator's initial instinct was to defer all small items and only address the moderate-effort ones. This reflects a training-distribution bias toward not doing small items — treating them as not worth the overhead of tracking. In practice, if the items are genuinely small, it is faster and better to just do them rather than track or ignore them. Small items compound. Future follow-up passes should default to including small items in the fix batch rather than filtering them out.
+
+---
+
+## Process: Feature Follow-Up Work
+
+After epic-level verification identifies follow-up items, the process for addressing them is:
+
+### 1. Identify all follow-up items
+Compile every deferred, accepted-risk, and nice-to-have item from all story reviews and epic verification into a single list.
+
+### 2. Filter
+- Remove items where fixing would make the app worse or add no improvement
+- Separate E2E / infrastructure work (separate initiative) from code-level fixes
+- Do NOT filter out small items just because they're small — include them in the batch
+
+### 3. Implement as a normal story
+The follow-up batch is treated as its own story. A normal implementer teammate (Opus + Codex subagent) receives:
+- The epic (for full feature context)
+- The full tech design package (tech-design.md, tech-design-api.md, tech-design-ui.md)
+- The specific fix list with detailed instructions per item
+
+The implementer follows the normal story cycle: load codex-subagent, read artifacts sequentially with reflection, implement via Codex, self-review, report. The orchestrator runs verification (reviewer + Codex dual review) and final gate check before accepting.
+
+### 4. Sequential reading with reflection (CRITICAL)
+
+When handing off spec documents to implementation or review agents, do NOT list all files for parallel reading. Instead:
+
+1. **Specify an explicit read order based on information dependencies.** Documents that establish shared vocabulary and cross-cutting decisions go first. Domain-specific specs go after their prerequisites.
+2. **Group related reads** — e.g., a story and its corresponding tech design companion together.
+3. **Insert a reflection checkpoint after the critical spec documents and before implementation begins.** Tell the agent to stop, summarize its understanding of the key design decisions, and write that summary down before touching code.
+
+**Why this matters:** Transformers attend more strongly to content at the start and end of context than the middle ("lost in the middle" effect). When 5+ large documents load in parallel, the middle ones get weakest attention at the critical thinking step. Sequential reading with reflection mitigates this because:
+- The agent's own reflection becomes high-quality compressed context that persists and gets strong attention downstream
+- Each new document lands on a foundation the agent has already integrated, rather than requiring post-hoc reconstruction from a flat context dump
+- Cross-references between documents connect to the agent's own summary rather than requiring attention back to raw text thousands of tokens earlier
+
+The extra time to read serially and reflect on each file is very much worth it for the additional quality of context achieved. This applies to every agent dispatch — implementers, reviewers, and follow-up fixers alike.

@@ -40,8 +40,6 @@ const FALLBACK_THEMES: ThemeInfo[] = [
   { id: 'dark-cool', label: 'Dark Cool', variant: 'dark' },
 ];
 
-const DELETED_FILE_REWATCH_INTERVAL_MS = 2_000;
-const MAX_DELETED_FILE_REWATCH_ATTEMPTS = 5;
 const WS_DISCONNECTED_ERROR_CODE = 'WS_DISCONNECTED';
 const WS_SERVER_ERROR_CODE = 'WS_SERVER_ERROR';
 const LARGE_FILE_CONFIRM_MIN_BYTES = 1_048_576;
@@ -310,8 +308,6 @@ export async function bootstrapApp(
   };
 
   const store = new StateStore(initialState);
-  const deletedFileRewatchTimers = new Map<string, number>();
-
   const applySession = (
     session: ClientState['session'],
     options: { clearInvalidRoot?: boolean } = {},
@@ -363,20 +359,11 @@ export async function bootstrapApp(
     );
   };
 
-  const clearDeletedFileRetry = (path: string) => {
-    const timer = deletedFileRewatchTimers.get(path);
-    if (timer !== undefined) {
-      window.clearInterval(timer);
-      deletedFileRewatchTimers.delete(path);
-    }
-  };
-
   const watchPath = (path: string) => {
     wsClient?.send({ type: 'watch', path });
   };
 
   const unwatchPath = (path: string) => {
-    clearDeletedFileRetry(path);
     wsClient?.send({ type: 'unwatch', path });
   };
 
@@ -384,31 +371,6 @@ export async function bootstrapApp(
     for (const path of new Set(store.get().tabs.map((tab) => tab.path))) {
       watchPath(path);
     }
-  };
-
-  const scheduleDeletedFileRetry = (path: string) => {
-    if (!wsClient) {
-      return;
-    }
-
-    clearDeletedFileRetry(path);
-    let attempts = 0;
-
-    const timer = window.setInterval(() => {
-      if (!store.get().tabs.some((tab) => tab.path === path)) {
-        clearDeletedFileRetry(path);
-        return;
-      }
-
-      attempts += 1;
-      watchPath(path);
-
-      if (attempts >= MAX_DELETED_FILE_REWATCH_ATTEMPTS) {
-        clearDeletedFileRetry(path);
-      }
-    }, DELETED_FILE_REWATCH_INTERVAL_MS);
-
-    deletedFileRewatchTimers.set(path, timer);
   };
 
   const updateTabsState = (
@@ -708,7 +670,6 @@ export async function bootstrapApp(
       ),
       state.activeTabId,
     );
-    scheduleDeletedFileRetry(path);
   };
 
   const refreshWatchedFile = async (path: string) => {
@@ -728,8 +689,6 @@ export async function bootstrapApp(
       if (!latestTab) {
         return;
       }
-
-      clearDeletedFileRetry(path);
 
       const nextTabs = disambiguateDisplayNames(
         latestState.tabs.map((tab) =>

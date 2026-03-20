@@ -1,56 +1,23 @@
 import { EventEmitter } from 'node:events';
-import type { Stats } from 'node:fs';
-import { watch } from 'node:fs';
-import { stat } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('node:fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs')>();
+vi.mock('chokidar', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('chokidar')>();
   return {
     ...actual,
     watch: vi.fn(),
   };
 });
 
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs/promises')>();
-  return {
-    ...actual,
-    stat: vi.fn(),
-  };
-});
-
+import { watch as chokidarWatch } from 'chokidar';
 import { buildApp } from '../../../src/server/app.js';
-import {
-  WATCH_DEBOUNCE_MS,
-  WATCH_RENAME_SETTLE_MS,
-  WatchService,
-} from '../../../src/server/services/watch.service.js';
+import { WATCH_DEBOUNCE_MS, WatchService } from '../../../src/server/services/watch.service.js';
 
 const FILE_A = '/tmp/watch-a.md';
 const FILE_B = '/tmp/watch-b.md';
 
-class MockFsWatcher extends EventEmitter {
-  readonly close = vi.fn();
-
-  constructor(
-    private readonly callback: (
-      eventType: 'change' | 'rename',
-      filename?: string | Buffer | null,
-    ) => void,
-  ) {
-    super();
-  }
-
-  emitFsEvent(eventType: 'change' | 'rename'): void {
-    this.callback(eventType, null);
-  }
-}
-
-function makeFileStat(): Stats {
-  return {
-    isFile: () => true,
-  } as Stats;
+class MockChokidarWatcher extends EventEmitter {
+  readonly close = vi.fn().mockResolvedValue(undefined);
 }
 
 function createSocketDouble() {
@@ -88,22 +55,19 @@ async function nextSocketClose(socket: {
 }
 
 describe('websocket routes and watch service', () => {
-  const watchersByPath = new Map<string, MockFsWatcher[]>();
+  const watchersByPath = new Map<string, MockChokidarWatcher[]>();
 
   beforeEach(() => {
     vi.clearAllMocks();
     watchersByPath.clear();
-    vi.mocked(stat).mockResolvedValue(makeFileStat());
-    vi.mocked(watch).mockImplementation(((
-      filePath: string,
-      callback: Parameters<typeof watch>[1],
-    ) => {
-      const watcher = new MockFsWatcher(callback);
-      const watchers = watchersByPath.get(filePath) ?? [];
+    vi.mocked(chokidarWatch).mockImplementation(((filePath) => {
+      const watcher = new MockChokidarWatcher();
+      const watchedPath = Array.isArray(filePath) ? filePath[0] : filePath;
+      const watchers = watchersByPath.get(watchedPath) ?? [];
       watchers.push(watcher);
-      watchersByPath.set(filePath, watchers);
+      watchersByPath.set(watchedPath, watchers);
       return watcher as never;
-    }) as typeof watch);
+    }) as typeof chokidarWatch);
   });
 
   afterEach(() => {
@@ -119,7 +83,10 @@ describe('websocket routes and watch service', () => {
     socket.send(JSON.stringify({ type: 'watch', path: FILE_A }));
     await waitForTick();
 
-    expect(watch).toHaveBeenCalledWith(FILE_A, expect.any(Function));
+    expect(chokidarWatch).toHaveBeenCalledWith(FILE_A, {
+      persistent: true,
+      ignoreInitial: true,
+    });
 
     socket.close();
     await app.close();
@@ -149,7 +116,7 @@ describe('websocket routes and watch service', () => {
     service.watch(FILE_A, socket as never);
     await vi.runAllTimersAsync();
 
-    watchersByPath.get(FILE_A)?.[0]?.emitFsEvent('change');
+    watchersByPath.get(FILE_A)?.[0]?.emit('change');
     await vi.advanceTimersByTimeAsync(WATCH_DEBOUNCE_MS);
 
     expect(parseSentMessages(socket)).toEqual([
@@ -171,7 +138,7 @@ describe('websocket routes and watch service', () => {
 
     const watcher = watchersByPath.get(FILE_A)?.[0];
     for (let index = 0; index < 5; index += 1) {
-      watcher?.emitFsEvent('change');
+      watcher?.emit('change');
       await vi.advanceTimersByTimeAsync(WATCH_DEBOUNCE_MS - 1);
     }
 
@@ -188,18 +155,13 @@ describe('websocket routes and watch service', () => {
     ]);
   });
 
-  it('TC-7.3a: Rename with a missing file sends a deleted notification', async () => {
-    vi.useFakeTimers();
+  it('TC-7.3a: Rename with a missing file sends a deleted notification', () => {
     const service = new WatchService();
     const socket = createSocketDouble();
 
     service.watch(FILE_A, socket as never);
-    await vi.runAllTimersAsync();
-    vi.mocked(stat).mockRejectedValueOnce(Object.assign(new Error('Missing'), { code: 'ENOENT' }));
 
-    watchersByPath.get(FILE_A)?.[0]?.emitFsEvent('rename');
-    await vi.advanceTimersByTimeAsync(WATCH_RENAME_SETTLE_MS);
-    await vi.runAllTimersAsync();
+    watchersByPath.get(FILE_A)?.[0]?.emit('unlink');
 
     expect(parseSentMessages(socket)).toEqual([
       {
@@ -210,22 +172,15 @@ describe('websocket routes and watch service', () => {
     ]);
   });
 
-  it('TC-7.3b: Re-watching a restored file sends a created notification', async () => {
-    vi.useFakeTimers();
+  it('TC-7.3b: Re-watching a restored file sends a created notification', () => {
     const service = new WatchService();
     const socket = createSocketDouble();
 
     service.watch(FILE_A, socket as never);
-    await vi.runAllTimersAsync();
-    vi.mocked(stat).mockRejectedValueOnce(Object.assign(new Error('Missing'), { code: 'ENOENT' }));
 
-    watchersByPath.get(FILE_A)?.[0]?.emitFsEvent('rename');
-    await vi.advanceTimersByTimeAsync(WATCH_RENAME_SETTLE_MS);
-    await vi.runAllTimersAsync();
-
-    vi.mocked(stat).mockResolvedValueOnce(makeFileStat());
-    service.watch(FILE_A, socket as never);
-    await vi.runAllTimersAsync();
+    const watcher = watchersByPath.get(FILE_A)?.[0];
+    watcher?.emit('unlink');
+    watcher?.emit('add');
 
     expect(parseSentMessages(socket)).toEqual([
       {
@@ -239,7 +194,7 @@ describe('websocket routes and watch service', () => {
         event: 'created',
       },
     ]);
-    expect(watch).toHaveBeenCalledTimes(2);
+    expect(chokidarWatch).toHaveBeenCalledTimes(1);
   });
 
   it('TC-7.4a: Twenty simultaneous watched files each create a watcher', async () => {
@@ -251,7 +206,7 @@ describe('websocket routes and watch service', () => {
 
     await waitForTick();
 
-    expect(watch).toHaveBeenCalledTimes(20);
+    expect(chokidarWatch).toHaveBeenCalledTimes(20);
   });
 
   it('Non-TC: Invalid WebSocket messages receive an error response', async () => {
@@ -316,7 +271,10 @@ describe('websocket routes and watch service', () => {
     socket.send(JSON.stringify({ type: 'watch', path: FILE_A }));
     await waitForTick();
 
-    expect(watch).toHaveBeenCalledWith(FILE_A, expect.any(Function));
+    expect(chokidarWatch).toHaveBeenCalledWith(FILE_A, {
+      persistent: true,
+      ignoreInitial: true,
+    });
 
     socket.close();
     await app.close();
@@ -344,11 +302,10 @@ describe('websocket routes and watch service', () => {
     service.watch(FILE_A, socket as never);
     await vi.runAllTimersAsync();
 
-    watchersByPath.get(FILE_A)?.[0]?.emitFsEvent('rename');
-    await vi.advanceTimersByTimeAsync(WATCH_RENAME_SETTLE_MS + WATCH_DEBOUNCE_MS);
+    watchersByPath.get(FILE_A)?.[0]?.emit('change');
+    await vi.advanceTimersByTimeAsync(WATCH_DEBOUNCE_MS);
 
-    expect(watch).toHaveBeenCalledTimes(2);
-    expect(watchersByPath.get(FILE_A)?.[0]?.close).toHaveBeenCalledTimes(1);
+    expect(chokidarWatch).toHaveBeenCalledTimes(1);
     expect(parseSentMessages(socket)).toEqual([
       {
         type: 'file-change',
@@ -356,5 +313,31 @@ describe('websocket routes and watch service', () => {
         event: 'modified',
       },
     ]);
+  });
+
+  it('Non-TC: File recreation via chokidar add event keeps the watcher alive', () => {
+    const service = new WatchService();
+    const socket = createSocketDouble();
+
+    service.watch(FILE_A, socket as never);
+
+    const watcher = watchersByPath.get(FILE_A)?.[0];
+    watcher?.emit('unlink');
+    watcher?.emit('add');
+
+    expect(parseSentMessages(socket)).toEqual([
+      {
+        type: 'file-change',
+        path: FILE_A,
+        event: 'deleted',
+      },
+      {
+        type: 'file-change',
+        path: FILE_A,
+        event: 'created',
+      },
+    ]);
+    expect(watcher?.close).not.toHaveBeenCalled();
+    expect(chokidarWatch).toHaveBeenCalledTimes(1);
   });
 });

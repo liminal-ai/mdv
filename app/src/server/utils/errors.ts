@@ -6,6 +6,7 @@ export const ErrorCode = {
   FILE_NOT_FOUND: 'FILE_NOT_FOUND',
   FILE_TOO_LARGE: 'FILE_TOO_LARGE',
   NOT_MARKDOWN: 'NOT_MARKDOWN',
+  READ_TIMEOUT: 'READ_TIMEOUT',
   READ_ERROR: 'READ_ERROR',
   SCAN_ERROR: 'SCAN_ERROR',
   INVALID_THEME: 'INVALID_THEME',
@@ -67,6 +68,16 @@ export class UnsupportedFormatError extends Error {
   constructor(path: string, ext: string) {
     super(`Unsupported image format (${ext}): ${path}`);
     this.name = 'UnsupportedFormatError';
+  }
+}
+
+export class ReadTimeoutError extends Error {
+  readonly path: string;
+
+  constructor(path: string) {
+    super(`File read timed out after 10 seconds: ${path}`);
+    this.name = 'ReadTimeoutError';
+    this.path = path;
   }
 }
 

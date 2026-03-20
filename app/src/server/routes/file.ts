@@ -15,6 +15,7 @@ import {
   InvalidPathError,
   NotFileError,
   NotMarkdownError,
+  ReadTimeoutError,
   isNotFoundError,
   isPermissionError,
   toApiError,
@@ -60,6 +61,7 @@ export async function fileRoutes(app: FastifyInstance) {
           404: ErrorResponseSchema,
           413: ErrorResponseSchema,
           415: ErrorResponseSchema,
+          504: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
       },
@@ -110,6 +112,10 @@ export async function fileRoutes(app: FastifyInstance) {
           return reply
             .code(404)
             .send(toApiError(ErrorCode.FILE_NOT_FOUND, 'The requested file no longer exists.'));
+        }
+
+        if (error instanceof ReadTimeoutError) {
+          return reply.code(504).send(toApiError(ErrorCode.READ_TIMEOUT, error.message));
         }
 
         return reply

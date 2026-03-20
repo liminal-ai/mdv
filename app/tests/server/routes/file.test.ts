@@ -245,6 +245,52 @@ describe('file routes', () => {
     await app.close();
   });
 
+  it('TC-9.3b: returns 504 with READ_TIMEOUT when file read hangs', async () => {
+    vi.mocked(fs.stat).mockResolvedValue(makeFileStat());
+    vi.mocked(fs.realpath).mockResolvedValue(basicFileResponse.canonicalPath);
+    vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => {
+      const controller = new AbortController();
+      queueMicrotask(() => controller.abort());
+      return controller.signal;
+    });
+    vi.mocked(fs.readFile).mockImplementation(((_path, options) => {
+      return new Promise((_resolve, reject) => {
+        if (typeof options !== 'object' || options === null || !('signal' in options)) {
+          reject(new Error('Expected readFile to receive an abort signal.'));
+          return;
+        }
+
+        options.signal.addEventListener(
+          'abort',
+          () => {
+            reject(Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' }));
+          },
+          { once: true },
+        );
+      });
+    }) as never);
+    const app = await buildApp();
+
+    try {
+      const responsePromise = app.inject({
+        method: 'GET',
+        url: `/api/file?path=${encodeURIComponent(basicFileResponse.path)}`,
+      });
+
+      const response = await responsePromise;
+
+      expect(response.statusCode).toBe(504);
+      expect(response.json()).toEqual({
+        error: {
+          code: 'READ_TIMEOUT',
+          message: `File read timed out after 10 seconds: ${basicFileResponse.path}`,
+        },
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
   it('Non-TC: Non-absolute path rejected', async () => {
     const app = await buildApp();
 
