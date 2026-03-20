@@ -49,7 +49,6 @@ describe('content area', () => {
     });
 
     expect(document.querySelector('.markdown-body')?.innerHTML).toContain('<h1>README</h1>');
-    expect(document.body.textContent).toContain('10 bytes');
   });
 
   it('shows a loading state while the active tab is fetching', () => {
@@ -101,21 +100,6 @@ describe('content area', () => {
 
     expect(document.body.textContent).toContain('Failed to refresh file');
     expect(document.querySelector('.markdown-body')).toBeNull();
-  });
-
-  it('shows warning count when the active tab has warnings', () => {
-    renderContentArea({
-      tabs: [
-        {
-          ...singleTab,
-          warnings: [{ type: 'missing-image', source: './img.png', message: 'Missing image' }],
-        },
-      ],
-      activeTabId: singleTab.id,
-      contentToolbarVisible: true,
-    });
-
-    expect(document.body.textContent).toContain('Warnings: 1');
   });
 
   it('renders recent files and opens them from the empty state', () => {

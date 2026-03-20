@@ -201,3 +201,26 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 **Observations:** Codex found a genuine security-relevant bug — the IMG regex didn't handle whitespace around `=` in raw HTML img tags, which could bypass remote image blocking. This is exactly the value of multi-model verification: the implementer's Codex self-review didn't catch it, but the reviewer's fresh Codex did. The query/hash stripping fix was also a real correctness bug. Both stories so far have had the review phase catch meaningful issues.
 
 **Test baseline for Story 4:** 217 tests. Story 4 specifies ~17 TCs. Expected total after Story 4: ~234.
+
+### Story 4: Tab Management — ACCEPTED
+
+**Codex evidence:**
+- Implementation: `019d0921-c3fe-7cf1-a004-62aaef105d22`
+- Review: `019d0935-023b-7dc0-ad9a-0c50cd1aec08`
+
+**Findings and dispositions:**
+- Content area blanket re-render → `accepted-risk` (Epic 1 pattern)
+- Dual Escape handling → `accepted-risk` (harmless)
+- Symlink dedup loading flash → `accepted-risk` (by design per tech design two-phase dedup)
+- Bulk action integration test gap → `defer` (future test enrichment)
+- Auto-scroll too aggressive → `defer` (cosmetic)
+- Session restore error surfacing → `defer` (acceptable UX trade-off)
+- Story file stale scope bullet → `defer` (documentation only)
+
+**Gate:** `npm run verify` — 247 tests passing, format/lint/typecheck clean
+**Commit:** `a4fc081`
+**Open risks:** none
+
+**Observations:** First story where the reviewer found no fixes needed. All findings were Minor severity. The implementation was well-structured with good race condition handling in openFile and clean pure-function disambiguation. The self-review loop caught the significant issues (TC coverage gaps, accessibility nesting problem) before the reviewer even saw it. Pattern holding: self-review is catching the obvious stuff, reviewer is validating rather than finding new issues on cleaner stories.
+
+**Test baseline for Story 5:** 247 tests. Story 5 specifies ~15 TCs. Expected total after Story 5: ~262.

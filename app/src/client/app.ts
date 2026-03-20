@@ -1,11 +1,16 @@
 import type { FileReadResponse, SessionState, ThemeInfo } from '../shared/types.js';
 import { ApiClient, ApiError } from './api.js';
 import { mountContentArea } from './components/content-area.js';
+import {
+  mountContentToolbar,
+  showEditModeComingSoonTooltip,
+} from './components/content-toolbar.js';
 import { mountContextMenu } from './components/context-menu.js';
 import { mountErrorNotification } from './components/error-notification.js';
 import { mountMenuBar } from './components/menu-bar.js';
 import { mountSidebar } from './components/sidebar.js';
 import { mountTabStrip } from './components/tab-strip.js';
+import { mountWarningPanel } from './components/warning-panel.js';
 import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { KeyboardManager } from './utils/keyboard.js';
@@ -406,6 +411,14 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     }
   };
 
+  const setDefaultMode = async (mode: ClientState['session']['defaultOpenMode']) => {
+    try {
+      applySession(await api.setDefaultMode(mode));
+    } catch (error) {
+      setError(error);
+    }
+  };
+
   const pinWorkspace = async () => {
     const root = store.get().session.lastRoot;
     if (!root) {
@@ -700,16 +713,25 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
 
   const menuBarHost = document.querySelector<HTMLElement>('#menu-bar');
   const sidebarHost = document.querySelector<HTMLElement>('#sidebar');
+  const workspaceHost = document.querySelector<HTMLElement>('#workspace');
   const tabStripHost = document.querySelector<HTMLElement>('#tab-strip');
   const contentAreaHost = document.querySelector<HTMLElement>('#content-area');
 
-  if (!menuBarHost || !sidebarHost || !tabStripHost || !contentAreaHost) {
+  if (!menuBarHost || !sidebarHost || !workspaceHost || !tabStripHost || !contentAreaHost) {
     throw new Error('App shell is missing required mount points.');
   }
+
+  const contentToolbarHost = document.createElement('div');
+  contentToolbarHost.id = 'content-toolbar';
+  workspaceHost.insertBefore(contentToolbarHost, contentAreaHost);
 
   const errorHost = document.createElement('div');
   errorHost.id = 'error-notification-root';
   document.body.append(errorHost);
+
+  const warningPanelHost = document.createElement('div');
+  warningPanelHost.id = 'warning-panel-root';
+  document.body.append(warningPanelHost);
 
   mountMenuBar(menuBarHost, store, {
     onOpenFile: pickAndOpenFile,
@@ -734,11 +756,15 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     onCloseTabsToRight: closeTabsToRight,
     onCopyTabPath: copyTabPath,
   });
+  mountContentToolbar(contentToolbarHost, store, {
+    onSetDefaultMode: setDefaultMode,
+  });
   mountContentArea(contentAreaHost, store, {
     onBrowse: browseForFolder,
     onOpenFile: pickAndOpenFile,
     onOpenRecentFile: openFile,
   });
+  mountWarningPanel(warningPanelHost, store);
   mountErrorNotification(errorHost, store, {
     onDismiss: () => store.update({ error: null }, ['error']),
   });
@@ -791,6 +817,17 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     description: 'Toggle Sidebar',
     action: () => {
       toggleSidebar();
+    },
+  });
+  keyboardManager.register({
+    key: 'm',
+    meta: true,
+    shift: true,
+    description: 'Toggle Edit Mode',
+    action: () => {
+      if (store.get().activeTabId) {
+        showEditModeComingSoonTooltip();
+      }
     },
   });
   keyboardManager.register({

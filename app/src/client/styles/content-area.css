@@ -140,10 +140,6 @@
   word-break: break-word;
 }
 
-.content-toolbar__meta {
-  color: var(--color-text-muted);
-}
-
 .content-area__loading,
 .content-area__error {
   display: grid;

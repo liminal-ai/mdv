@@ -26,6 +26,7 @@ async function renderApp(sessionOverrides: Partial<typeof emptySession> = {}) {
     addWorkspace: vi.fn(),
     removeWorkspace: vi.fn(),
     setTheme: vi.fn().mockResolvedValue(session),
+    setDefaultMode: vi.fn().mockResolvedValue(session),
     updateSidebar: vi.fn().mockResolvedValue(session),
     getTree: vi.fn().mockResolvedValue({ root: '/root', tree: [] }),
     browse: vi.fn().mockResolvedValue(null),
@@ -142,5 +143,19 @@ describe('epic 2 keyboard shortcuts', () => {
 
     expect(document.body.textContent).toContain('No documents open');
     expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('Cmd+Shift+M shows the edit mode coming soon tooltip for an open document', async () => {
+    await renderApp({
+      openTabs: ['/a.md'],
+      activeTab: '/a.md',
+    });
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'm', metaKey: true, shiftKey: true, bubbles: true }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.body.textContent).toContain('Edit mode coming soon');
   });
 });

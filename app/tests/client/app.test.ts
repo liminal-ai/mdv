@@ -47,6 +47,7 @@ describe('client bootstrap api injection', () => {
         workspaces: session.workspaces.filter((workspace) => workspace.path !== path),
       })),
       setTheme: vi.fn().mockResolvedValue(session),
+      setDefaultMode: vi.fn().mockResolvedValue(session),
       updateSidebar: vi.fn().mockImplementation(async (workspacesCollapsed: boolean) => ({
         ...session,
         sidebarState: { workspacesCollapsed },

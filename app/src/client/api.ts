@@ -63,6 +63,13 @@ export class ApiClient {
     });
   }
 
+  async setDefaultMode(mode: string): Promise<SessionState> {
+    return this.request('/api/session/default-mode', {
+      method: 'PUT',
+      body: { mode },
+    });
+  }
+
   async updateSidebar(workspacesCollapsed: boolean): Promise<SessionState> {
     return this.request('/api/session/sidebar', {
       method: 'PUT',

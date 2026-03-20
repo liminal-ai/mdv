@@ -62,7 +62,7 @@ a {
 
 #workspace {
   display: grid;
-  grid-template-rows: 3rem minmax(0, 1fr);
+  grid-template-rows: 3rem auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
 }

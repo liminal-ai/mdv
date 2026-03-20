@@ -1,52 +1,9 @@
-import type { StateStore, TabState } from '../state.js';
+import type { StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
 
 function fileName(filePath: string): string {
   const segments = filePath.split('/').filter(Boolean);
   return segments.at(-1) ?? filePath;
-}
-
-function renderToolbar(tab: TabState): HTMLElement {
-  return createElement('div', {
-    className: 'content-toolbar',
-    children: [
-      createElement('div', {
-        className: 'content-toolbar__left',
-        children: [
-          createElement('div', {
-            className: 'mode-toggle',
-            children: [
-              createElement('button', {
-                className: 'mode-toggle--active',
-                text: 'Render',
-                attrs: { type: 'button' },
-              }),
-              createElement('button', {
-                className: 'mode-toggle--disabled',
-                text: 'Edit',
-                attrs: { type: 'button', disabled: true, 'aria-disabled': 'true' },
-              }),
-            ],
-          }),
-          createElement('span', {
-            className: 'content-toolbar__meta',
-            text: `${Math.max(tab.size, 0)} bytes`,
-          }),
-        ],
-      }),
-      createElement('div', {
-        className: 'content-toolbar__right',
-        children: tab.warnings.length
-          ? [
-              createElement('span', {
-                className: 'warning-count',
-                text: `Warnings: ${tab.warnings.length}`,
-              }),
-            ]
-          : [],
-      }),
-    ],
-  });
 }
 
 export interface ContentAreaActions {
@@ -214,7 +171,6 @@ export function mountContentArea(
       createElement('section', {
         className: 'content-area__view',
         children: [
-          renderToolbar(activeTab),
           createElement('div', {
             className: 'content-area__body',
             children: bodyChildren,
