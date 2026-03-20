@@ -18,10 +18,7 @@ describe('client bootstrap api injection', () => {
     delete window.__MDV_DISABLE_AUTO_BOOTSTRAP__;
   });
 
-  async function renderApp(
-    session = emptySession,
-    apiOverrides: Record<string, unknown> = {},
-  ) {
+  async function renderApp(session = emptySession, apiOverrides: Record<string, unknown> = {}) {
     const api = {
       bootstrap: vi.fn().mockResolvedValue({
         session,

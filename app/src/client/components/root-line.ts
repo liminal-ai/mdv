@@ -47,9 +47,7 @@ export function mountRootLine(
           createElement('span', {
             className: pathClassName,
             text: hasRoot ? shortenRootPath(root) : 'No folder selected',
-            attrs: hasRoot
-              ? { title: invalidRoot ? `${root} (Directory not found)` : root }
-              : {},
+            attrs: hasRoot ? { title: invalidRoot ? `${root} (Directory not found)` : root } : {},
           }),
           createElement('div', {
             className: 'root-line__actions',

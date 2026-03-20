@@ -1,4 +1,10 @@
-import type { ErrorCode, SessionState, ThemeInfo, TreeNode } from '../shared/types.js';
+import type {
+  ErrorCode,
+  RenderWarning,
+  SessionState,
+  ThemeInfo,
+  TreeNode,
+} from '../shared/types.js';
 
 export interface ClientError {
   code: ErrorCode | string;
@@ -10,6 +16,33 @@ export interface ContextMenuState {
   y: number;
   targetPath: string;
   targetType: 'file' | 'directory';
+}
+
+export interface TabState {
+  id: string;
+  path: string;
+  canonicalPath: string;
+  filename: string;
+  html: string;
+  content: string;
+  warnings: RenderWarning[];
+  scrollPosition: number;
+  loading: boolean;
+  modifiedAt: string;
+  size: number;
+  status: 'ok' | 'deleted' | 'error';
+  errorMessage?: string;
+}
+
+export interface TabContextMenuState {
+  x: number;
+  y: number;
+  tabId: string;
+  items: Array<{
+    id: string;
+    label: string;
+    disabled?: boolean;
+  }>;
 }
 
 export interface ClientState {

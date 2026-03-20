@@ -8,9 +8,11 @@ import {
   RemoveRecentFileRequestSchema,
   RemoveWorkspaceRequestSchema,
   SessionStateSchema,
+  SetDefaultModeRequestSchema,
   SetRootRequestSchema,
   SetThemeRequestSchema,
   TouchRecentFileRequestSchema,
+  UpdateTabsRequestSchema,
   UpdateSidebarRequestSchema,
 } from '../schemas/index.js';
 import { SessionService } from '../services/session.service.js';
@@ -57,9 +59,7 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
     },
     async (request, reply) => {
       if (request.validationError) {
-        return reply
-          .code(400)
-          .send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
       }
 
       const { root } = request.body;
@@ -112,9 +112,7 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
     },
     async (request, reply) => {
       if (request.validationError) {
-        return reply
-          .code(400)
-          .send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
       }
 
       const { path } = request.body;
@@ -179,6 +177,42 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
 
       return sessionService.setTheme(theme);
     },
+  );
+
+  typedApp.put(
+    '/api/session/default-mode',
+    {
+      schema: {
+        body: SetDefaultModeRequestSchema,
+        response: {
+          200: SessionStateSchema,
+          501: ErrorResponseSchema,
+        },
+      },
+    },
+    async (_request, reply) =>
+      reply
+        .code(501)
+        .send(
+          toApiError('NOT_IMPLEMENTED', 'PUT /api/session/default-mode is not implemented yet.'),
+        ),
+  );
+
+  typedApp.put(
+    '/api/session/tabs',
+    {
+      schema: {
+        body: UpdateTabsRequestSchema,
+        response: {
+          200: SessionStateSchema,
+          501: ErrorResponseSchema,
+        },
+      },
+    },
+    async (_request, reply) =>
+      reply
+        .code(501)
+        .send(toApiError('NOT_IMPLEMENTED', 'PUT /api/session/tabs is not implemented yet.')),
   );
 
   typedApp.put(

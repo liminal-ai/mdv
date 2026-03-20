@@ -22,6 +22,9 @@ const FALLBACK_SESSION: SessionState = {
   recentFiles: [],
   theme: 'light-default',
   sidebarState: { workspacesCollapsed: false },
+  defaultOpenMode: 'render',
+  openTabs: [],
+  activeTab: null,
 };
 
 const FALLBACK_THEMES: ThemeInfo[] = [

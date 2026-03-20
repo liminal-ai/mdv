@@ -6,6 +6,9 @@ export const emptySession: SessionState = {
   recentFiles: [],
   theme: 'light-default',
   sidebarState: { workspacesCollapsed: false },
+  defaultOpenMode: 'render',
+  openTabs: [],
+  activeTab: null,
 };
 
 export const populatedSession: SessionState = {
@@ -18,6 +21,9 @@ export const populatedSession: SessionState = {
   recentFiles: [{ path: '/Users/leemoore/code/README.md', openedAt: '2026-03-19T00:00:00Z' }],
   theme: 'dark-default',
   sidebarState: { workspacesCollapsed: false },
+  defaultOpenMode: 'render',
+  openTabs: ['/Users/leemoore/code/README.md', '/Users/leemoore/code/liminal/ARCHITECTURE.md'],
+  activeTab: '/Users/leemoore/code/README.md',
 };
 
 export const corruptedSessionJson = '{ "workspaces": [, invalid }';

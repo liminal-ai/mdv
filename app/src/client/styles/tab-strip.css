@@ -17,3 +17,58 @@
   color: var(--color-text-secondary);
   font-size: 0.88rem;
 }
+
+.tab {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab:hover {
+  background: var(--color-bg-hover);
+}
+
+.tab--active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent);
+}
+
+.tab__close {
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0.8em;
+  transition: opacity 0.1s;
+}
+
+.tab:hover .tab__close,
+.tab--active .tab__close {
+  opacity: 1;
+}
+
+.tab--loading .tab__spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tab-strip__count {
+  flex-shrink: 0;
+  padding: 0 8px;
+  color: var(--color-text-muted);
+  font-size: 0.8em;
+}

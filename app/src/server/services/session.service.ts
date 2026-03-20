@@ -14,6 +14,9 @@ function getDefaultSession(): SessionState {
     recentFiles: [],
     theme: 'light-default',
     sidebarState: { workspacesCollapsed: false },
+    defaultOpenMode: 'render',
+    openTabs: [],
+    activeTab: null,
   };
 }
 
