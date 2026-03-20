@@ -7,6 +7,7 @@ import { createElement } from '../utils/dom.js';
 export interface SidebarActions
   extends RootLineActions, Omit<WorkspacesActions, 'onToggleCollapsed'> {
   onToggleWorkspacesCollapsed: () => void;
+  onOpenFile: (path: string) => void | Promise<void>;
 }
 
 export function mountSidebar(
@@ -115,8 +116,8 @@ export function mountSidebar(
     onExpandAll: () => expandAllBtn.click(),
     onCollapseAll: () => collapseAllBtn.click(),
     onToggleDir,
-    onSelectFile: () => {
-      // File opening is Epic 2 — no-op for now
+    onSelectFile: (path) => {
+      void actions.onOpenFile(path);
     },
   });
 

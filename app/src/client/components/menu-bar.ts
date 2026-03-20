@@ -12,6 +12,7 @@ interface MenuItem {
 }
 
 export interface MenuBarActions {
+  onOpenFile: () => void | Promise<void>;
   onBrowse: () => void | Promise<void>;
   onToggleSidebar: () => void | Promise<void>;
   onSetTheme: (themeId: string) => void | Promise<void>;
@@ -27,7 +28,7 @@ function getMenuItems(
 ): MenuItem[] {
   if (menuId === 'file') {
     return [
-      { label: 'Open File', shortcut: 'Cmd+O', disabled: true },
+      { label: 'Open File', shortcut: 'Cmd+O', action: actions.onOpenFile },
       { label: 'Open Folder', shortcut: 'Cmd+Shift+O', action: actions.onBrowse },
     ];
   }
@@ -180,6 +181,7 @@ export function mountMenuBar(
   const render = () => {
     const state = store.get();
     const activeMenuId = state.activeMenuId as MenuId | null;
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
     const menuButtons = MENU_ORDER.map((menuId) => {
       const label = menuId[0].toUpperCase() + menuId.slice(1);
       return createElement('div', {
@@ -216,9 +218,13 @@ export function mountMenuBar(
       text: 'File',
       attrs: {
         type: 'button',
-        disabled: true,
-        title: 'Open File — available when file opening is supported',
+        title: 'Open File (Cmd+O)',
         'aria-label': 'Open File',
+      },
+      on: {
+        click: () => {
+          void actions.onOpenFile();
+        },
       },
     });
     const openFolderQuickAction = createElement('button', {
@@ -254,6 +260,13 @@ export function mountMenuBar(
             className: 'menu-bar__menus',
             attrs: { 'aria-label': 'Application menu' },
             children: menuButtons,
+          }),
+          createElement('div', {
+            className: 'menu-bar__status',
+            text: activeTab?.path ?? '',
+            attrs: {
+              title: activeTab?.path ?? '',
+            },
           }),
           createElement('div', {
             className: 'menu-bar__quick-actions',

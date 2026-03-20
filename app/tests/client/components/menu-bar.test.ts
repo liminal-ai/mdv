@@ -8,6 +8,7 @@ function renderMenuBar(overrides = {}) {
   document.body.innerHTML = '<header id="menu-bar"></header>';
   const store = createStore(overrides);
   const actions = {
+    onOpenFile: vi.fn(),
     onBrowse: vi.fn(),
     onToggleSidebar: vi.fn(() => {
       const state = store.get();
@@ -83,8 +84,17 @@ describe('menu bar', () => {
       '[aria-label="Open Folder"]',
     );
 
-    expect(openFileButton?.title).toBe('Open File — available when file opening is supported');
+    expect(openFileButton?.title).toBe('Open File (Cmd+O)');
     expect(openFolderButton?.title).toBe('Open Folder (Cmd+Shift+O)');
+  });
+
+  it('Open File menu action triggers the file picker callback', () => {
+    const { actions } = renderMenuBar();
+
+    getButtonByText('File').click();
+    getButtonByText('Open File').click();
+
+    expect(actions.onOpenFile).toHaveBeenCalledTimes(1);
   });
 
   it('TC-2.2b: Open Folder icon click triggers browse', () => {
@@ -95,12 +105,12 @@ describe('menu bar', () => {
     expect(actions.onBrowse).toHaveBeenCalledTimes(1);
   });
 
-  it('TC-2.2c: Open File icon is disabled', () => {
-    renderMenuBar();
+  it('Open File icon click triggers the file picker callback', () => {
+    const { actions } = renderMenuBar();
 
-    expect(document.querySelector<HTMLButtonElement>('[aria-label="Open File"]')?.disabled).toBe(
-      true,
-    );
+    document.querySelector<HTMLButtonElement>('[aria-label="Open File"]')?.click();
+
+    expect(actions.onOpenFile).toHaveBeenCalledTimes(1);
   });
 
   it('TC-9.1b: File menu Open Folder triggers browse', () => {

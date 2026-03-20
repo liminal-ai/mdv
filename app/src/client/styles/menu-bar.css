@@ -12,7 +12,7 @@
 
 .menu-bar__shell {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 1rem;
   width: 100%;
@@ -120,6 +120,15 @@
   gap: 0.4rem;
 }
 
+.menu-bar__status {
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .menu-bar__icon-button {
   min-width: 3.2rem;
   padding: 0.55rem 0.75rem;
@@ -133,6 +142,10 @@
   }
 
   .menu-bar__brand-copy {
+    display: none;
+  }
+
+  .menu-bar__status {
     display: none;
   }
 

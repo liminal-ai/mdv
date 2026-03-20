@@ -1,4 +1,10 @@
-import type { AppBootstrapResponse, FileTreeResponse, SessionState } from '../shared/types.js';
+import type {
+  AppBootstrapResponse,
+  FilePickerResponse,
+  FileReadResponse,
+  FileTreeResponse,
+  SessionState,
+} from '../shared/types.js';
 
 type BrowseResponse = {
   path: string;
@@ -74,10 +80,41 @@ export class ApiClient {
     });
   }
 
+  async readFile(path: string): Promise<FileReadResponse> {
+    return this.request(`/api/file?path=${encodeURIComponent(path)}`);
+  }
+
+  async pickFile(): Promise<FilePickerResponse> {
+    return this.request('/api/file/pick', {
+      method: 'POST',
+    });
+  }
+
   async copyToClipboard(text: string): Promise<void> {
     await this.request('/api/clipboard', {
       method: 'POST',
       body: { text },
+    });
+  }
+
+  async updateTabs(openTabs: string[], activeTab: string | null): Promise<SessionState> {
+    return this.request('/api/session/tabs', {
+      method: 'PUT',
+      body: { openTabs, activeTab },
+    });
+  }
+
+  async touchRecentFile(path: string): Promise<SessionState> {
+    return this.request('/api/session/recent-files', {
+      method: 'POST',
+      body: { path },
+    });
+  }
+
+  async removeRecentFile(path: string): Promise<SessionState> {
+    return this.request('/api/session/recent-files', {
+      method: 'DELETE',
+      body: { path },
     });
   }
 

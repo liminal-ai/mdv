@@ -1,15 +1,27 @@
 #content-area {
-  padding: 1.5rem;
+  min-height: 0;
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
+}
+
+.content-area__view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.content-area__body {
+  min-height: 0;
   overflow: auto;
+  padding: 1.5rem;
 }
 
 .content-area__empty-state {
   display: grid;
   gap: 1rem;
   max-width: 46rem;
-  margin: 0 auto;
+  margin: 1.5rem auto;
   padding: clamp(1rem, 4vw, 3rem);
   background: color-mix(in srgb, var(--color-bg-secondary) 78%, transparent);
   border: 1px solid var(--color-border-light);
@@ -95,12 +107,26 @@
 }
 
 .content-area__recent-item {
+  list-style: none;
+}
+
+.content-area__recent-button {
   display: grid;
   gap: 0.16rem;
+  width: 100%;
   padding: 0.8rem 0.9rem;
+  text-align: left;
   background: color-mix(in srgb, var(--color-bg-primary) 68%, transparent);
   border: 1px solid var(--color-border-light);
   border-radius: 0.95rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+.content-area__recent-button:hover,
+.content-area__recent-button:focus-visible {
+  background: var(--color-bg-hover);
+  outline: none;
 }
 
 .content-area__recent-name {
@@ -112,6 +138,47 @@
   color: var(--color-text-muted);
   font-size: 0.84rem;
   word-break: break-word;
+}
+
+.content-toolbar__meta {
+  color: var(--color-text-muted);
+}
+
+.content-area__loading,
+.content-area__error {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  min-height: 14rem;
+  padding: 2rem 1rem;
+  align-content: center;
+  color: var(--color-text-secondary);
+}
+
+.content-area__spinner {
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 3px solid color-mix(in srgb, var(--color-text-muted) 65%, transparent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: content-spin 0.75s linear infinite;
+}
+
+.content-area__deleted {
+  display: grid;
+  gap: 1rem;
+}
+
+.content-area__deleted-banner {
+  padding: 0.85rem 1rem;
+  color: color-mix(in srgb, var(--color-warning) 78%, var(--color-text-primary));
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 24%, transparent);
+  border-radius: 0.9rem;
+}
+
+.markdown-body--muted {
+  opacity: 0.72;
 }
 
 #error-notification-root {
@@ -152,12 +219,19 @@
   cursor: pointer;
 }
 
+@keyframes content-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 720px) {
-  #content-area {
+  .content-area__body {
     padding: 1rem;
   }
 
   .content-area__empty-state {
+    margin: 1rem;
     padding: 1.2rem;
   }
 

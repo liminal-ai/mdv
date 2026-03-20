@@ -1,4 +1,4 @@
-import type { StateStore } from '../state.js';
+import type { StateStore, TabState } from '../state.js';
 import { createElement } from '../utils/dom.js';
 
 function fileName(filePath: string): string {
@@ -6,8 +6,53 @@ function fileName(filePath: string): string {
   return segments.at(-1) ?? filePath;
 }
 
+function renderToolbar(tab: TabState): HTMLElement {
+  return createElement('div', {
+    className: 'content-toolbar',
+    children: [
+      createElement('div', {
+        className: 'content-toolbar__left',
+        children: [
+          createElement('div', {
+            className: 'mode-toggle',
+            children: [
+              createElement('button', {
+                className: 'mode-toggle--active',
+                text: 'Render',
+                attrs: { type: 'button' },
+              }),
+              createElement('button', {
+                className: 'mode-toggle--disabled',
+                text: 'Edit',
+                attrs: { type: 'button', disabled: true, 'aria-disabled': 'true' },
+              }),
+            ],
+          }),
+          createElement('span', {
+            className: 'content-toolbar__meta',
+            text: `${Math.max(tab.size, 0)} bytes`,
+          }),
+        ],
+      }),
+      createElement('div', {
+        className: 'content-toolbar__right',
+        children: tab.warnings.length
+          ? [
+              createElement('span', {
+                className: 'warning-count',
+                text: `Warnings: ${tab.warnings.length}`,
+              }),
+            ]
+          : [],
+      }),
+    ],
+  });
+}
+
 export interface ContentAreaActions {
   onBrowse: () => void | Promise<void>;
+  onOpenFile: () => void | Promise<void>;
+  onOpenRecentFile?: (path: string) => void | Promise<void>;
 }
 
 export function mountContentArea(
@@ -15,7 +60,7 @@ export function mountContentArea(
   store: StateStore,
   actions: ContentAreaActions,
 ): () => void {
-  const render = () => {
+  const renderEmptyState = () => {
     const { session } = store.get();
     const recentFiles =
       session.recentFiles.length > 0
@@ -25,13 +70,24 @@ export function mountContentArea(
               createElement('li', {
                 className: 'content-area__recent-item',
                 children: [
-                  createElement('span', {
-                    className: 'content-area__recent-name',
-                    text: fileName(recentFile.path),
-                  }),
-                  createElement('span', {
-                    className: 'content-area__recent-path',
-                    text: recentFile.path,
+                  createElement('button', {
+                    className: 'content-area__recent-button',
+                    attrs: { type: 'button' },
+                    on: {
+                      click: () => {
+                        void actions.onOpenRecentFile?.(recentFile.path);
+                      },
+                    },
+                    children: [
+                      createElement('span', {
+                        className: 'content-area__recent-name',
+                        text: fileName(recentFile.path),
+                      }),
+                      createElement('span', {
+                        className: 'content-area__recent-path',
+                        text: recentFile.path,
+                      }),
+                    ],
                   }),
                 ],
               }),
@@ -55,7 +111,12 @@ export function mountContentArea(
     const openFileButton = createElement('button', {
       className: 'content-area__button',
       text: 'Open File',
-      attrs: { type: 'button', disabled: true },
+      attrs: { type: 'button' },
+      on: {
+        click: () => {
+          void actions.onOpenFile();
+        },
+      },
     });
 
     container.replaceChildren(
@@ -65,11 +126,11 @@ export function mountContentArea(
           createElement('p', { className: 'content-area__eyebrow', text: 'MD Viewer' }),
           createElement('h1', {
             className: 'content-area__title',
-            text: 'Open a folder to begin.',
+            text: 'Open a markdown file to begin.',
           }),
           createElement('p', {
             className: 'content-area__copy',
-            text: 'Bring a Markdown workspace into focus and keep recent files close at hand.',
+            text: 'Keep related docs open in tabs and jump back into recent reading quickly.',
           }),
           createElement('div', {
             className: 'content-area__actions',
@@ -88,6 +149,86 @@ export function mountContentArea(
         ],
       }),
     );
+  };
+
+  const render = () => {
+    const state = store.get();
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+
+    if (!activeTab) {
+      renderEmptyState();
+      return;
+    }
+
+    const bodyChildren: Array<Node | null> = [];
+
+    if (activeTab.loading) {
+      bodyChildren.push(
+        createElement('div', {
+          className: 'content-area__loading',
+          children: [
+            createElement('div', {
+              className: 'content-area__spinner',
+              attrs: { 'aria-hidden': 'true' },
+            }),
+            createElement('p', {
+              className: 'content-area__loading-copy',
+              text: `Loading ${activeTab.filename}...`,
+            }),
+          ],
+        }),
+      );
+    } else if (activeTab.status === 'deleted') {
+      bodyChildren.push(
+        createElement('div', {
+          className: 'content-area__deleted',
+          children: [
+            createElement('div', {
+              className: 'content-area__deleted-banner',
+              text: 'File not found. Showing the last known rendered content.',
+            }),
+            createElement('article', {
+              className: 'markdown-body markdown-body--muted',
+              attrs: { 'aria-label': activeTab.filename },
+            }),
+          ],
+        }),
+      );
+    } else if (activeTab.status === 'error') {
+      bodyChildren.push(
+        createElement('div', {
+          className: 'content-area__error',
+          text: activeTab.errorMessage ?? 'Failed to load this document.',
+        }),
+      );
+    } else {
+      bodyChildren.push(
+        createElement('article', {
+          className: 'markdown-body',
+          attrs: { 'aria-label': activeTab.filename },
+        }),
+      );
+    }
+
+    container.replaceChildren(
+      createElement('section', {
+        className: 'content-area__view',
+        children: [
+          renderToolbar(activeTab),
+          createElement('div', {
+            className: 'content-area__body',
+            children: bodyChildren,
+          }),
+        ],
+      }),
+    );
+
+    if (!activeTab.loading && activeTab.status !== 'error') {
+      const markdownBody = container.querySelector<HTMLElement>('.markdown-body');
+      if (markdownBody) {
+        markdownBody.innerHTML = activeTab.html;
+      }
+    }
   };
 
   render();

@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../src/client/api.js';
+import { basicFileResponse } from '../fixtures/file-responses.js';
 import { emptySession, populatedSession } from '../fixtures/session.js';
 
 const availableThemes = [
@@ -55,7 +56,24 @@ describe('client bootstrap api injection', () => {
         tree: [],
       })),
       browse: vi.fn().mockResolvedValue(null),
+      pickFile: vi.fn().mockResolvedValue(null),
+      readFile: vi.fn().mockImplementation(async (path: string) => ({
+        ...basicFileResponse,
+        path,
+        canonicalPath: path,
+        filename: path.split('/').filter(Boolean).at(-1) ?? path,
+        html: `<h1>${path}</h1>`,
+      })),
       copyToClipboard: vi.fn().mockResolvedValue(undefined),
+      updateTabs: vi
+        .fn()
+        .mockImplementation(async (openTabs: string[], activeTab: string | null) => ({
+          ...session,
+          openTabs,
+          activeTab,
+        })),
+      touchRecentFile: vi.fn().mockResolvedValue(session),
+      removeRecentFile: vi.fn().mockResolvedValue(session),
       ...apiOverrides,
     };
 
@@ -171,6 +189,8 @@ describe('client bootstrap api injection', () => {
     const session = {
       ...populatedSession,
       recentFiles: [],
+      openTabs: [],
+      activeTab: null,
     };
     await renderApp(session);
 
@@ -216,6 +236,70 @@ describe('client bootstrap api injection', () => {
 
     expect(document.querySelector('[role="alert"]')).toBeTruthy();
     expect(document.body.textContent).toContain('You do not have access to this folder.');
+  });
+
+  it('reuses the existing tab when two opened paths resolve to the same canonical file', async () => {
+    await renderApp(
+      {
+        ...emptySession,
+        lastRoot: '/root',
+      },
+      {
+        getTree: vi.fn().mockResolvedValue({
+          root: '/root',
+          tree: [
+            { name: 'readme-a.md', path: '/root/docs/readme-a.md', type: 'file' as const },
+            { name: 'readme-b.md', path: '/root/specs/readme-b.md', type: 'file' as const },
+          ],
+        }),
+        readFile: vi.fn().mockImplementation(async (path: string) => ({
+          ...basicFileResponse,
+          path,
+          canonicalPath: '/real/readme.md',
+          filename: path.split('/').filter(Boolean).at(-1) ?? path,
+          html: `<h1>${path}</h1>`,
+        })),
+      },
+    );
+
+    const fileRows = Array.from(document.querySelectorAll<HTMLElement>('[data-type="file"]'));
+    fileRows[0]?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelectorAll('.tab')).toHaveLength(1);
+
+    fileRows[1]?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelectorAll('.tab')).toHaveLength(1);
+    expect(document.querySelector('.tab--active')?.getAttribute('title')).toBe(
+      '/root/docs/readme-a.md',
+    );
+  });
+
+  it('walks up parent directories until duplicate filenames are unique', async () => {
+    await renderApp(
+      {
+        ...emptySession,
+        openTabs: ['/root/one/team/readme.md', '/root/two/team/readme.md'],
+        activeTab: '/root/two/team/readme.md',
+      },
+      {
+        readFile: vi.fn().mockImplementation(async (path: string) => ({
+          ...basicFileResponse,
+          path,
+          canonicalPath: path,
+          filename: 'readme.md',
+          html: `<h1>${path}</h1>`,
+        })),
+      },
+    );
+
+    const labels = Array.from(document.querySelectorAll('.tab__label')).map(
+      (element) => element.textContent,
+    );
+
+    expect(labels).toEqual(['one/team/readme.md', 'two/team/readme.md']);
   });
 
   it('renders fallback shell when bootstrap fails', async () => {

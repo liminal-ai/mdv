@@ -18,6 +18,10 @@ export function createClientState(overrides: Partial<ClientState> = {}): ClientS
     sidebarVisible: true,
     expandedDirsByRoot: {},
     error: null,
+    tabs: [],
+    activeTabId: null,
+    tabContextMenu: null,
+    contentToolbarVisible: false,
     ...overrides,
   };
 }

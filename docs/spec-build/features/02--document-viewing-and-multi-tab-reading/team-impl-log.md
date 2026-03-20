@@ -179,3 +179,25 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 **Observations:** Reviewer caught a meaningful gap — session routes lacked `attachValidation` and the error envelope, meaning validation errors returned Fastify's default format instead of the app's normalized shape. This is the kind of consistency issue that Codex spec-compliance review is designed to catch. The `activeTab` consistency check was also a good find — could have led to impossible persisted state.
 
 **Test baseline for Story 2:** 187 tests. Story 2 specifies ~24 TCs. Expected total after Story 2: ~211.
+
+### Story 2: Markdown Rendering — ACCEPTED
+
+**Codex evidence:**
+- Implementation: `019d090c-1b0b-70c1-900e-fed1e27917ef`
+- Review: `019d0917-70df-74b1-800f-b88bf379bf55`
+- Fixes: `019d091c-106c-7ad0-a89f-a3ca2d2a8747`
+
+**Findings and dispositions:**
+- IMG regex whitespace bypass (security-relevant) → `fixed`
+- Query/hash stripping incomplete for existsSync + proxy URL → `fixed`
+- Visual TC assertions (wide tables, scrolling) → `accepted-risk` (client/E2E responsibility)
+- tabindex="-1" test coupling → `accepted-risk` (pinned deps)
+- Duplicate/Unicode slug edge cases → `accepted-risk` (github-slugger tested upstream)
+
+**Gate:** `npm run verify` — 217 tests passing, format/lint/typecheck clean
+**Commit:** `2766a11`
+**Open risks:** none
+
+**Observations:** Codex found a genuine security-relevant bug — the IMG regex didn't handle whitespace around `=` in raw HTML img tags, which could bypass remote image blocking. This is exactly the value of multi-model verification: the implementer's Codex self-review didn't catch it, but the reviewer's fresh Codex did. The query/hash stripping fix was also a real correctness bug. Both stories so far have had the review phase catch meaningful issues.
+
+**Test baseline for Story 4:** 217 tests. Story 4 specifies ~17 TCs. Expected total after Story 4: ~234.

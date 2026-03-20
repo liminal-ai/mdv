@@ -56,6 +56,10 @@ export interface ClientState {
   sidebarVisible: boolean;
   expandedDirsByRoot: Record<string, string[]>;
   error: ClientError | null;
+  tabs: TabState[];
+  activeTabId: string | null;
+  tabContextMenu: TabContextMenuState | null;
+  contentToolbarVisible: boolean;
 }
 
 type StateListener = (state: ClientState, changed: Array<keyof ClientState>) => void;
