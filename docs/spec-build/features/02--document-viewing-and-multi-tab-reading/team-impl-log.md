@@ -224,3 +224,24 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 **Observations:** First story where the reviewer found no fixes needed. All findings were Minor severity. The implementation was well-structured with good race condition handling in openFile and clean pure-function disambiguation. The self-review loop caught the significant issues (TC coverage gaps, accessibility nesting problem) before the reviewer even saw it. Pattern holding: self-review is catching the obvious stuff, reviewer is validating rather than finding new issues on cleaner stories.
 
 **Test baseline for Story 5:** 247 tests. Story 5 specifies ~15 TCs. Expected total after Story 5: ~262.
+
+### Story 5: Content Toolbar — ACCEPTED
+
+**Codex evidence:**
+- Implementation: `019d093e-e476-7120-b089-b72c1b3c3816`
+- Review: `019d094a-6bbd-7bc2-8af9-892d28dd99da`
+
+**Findings and dispositions:**
+- Left-truncation CSS missing for file path display → `fixed` (tech design explicitly specifies rtl truncation)
+- Warning panel toggle glitch (close/reopen race) → `fixed`
+- Dead CSS (.content-toolbar__meta) → `fixed`
+- Default mode label hardcoded to 'Render' → `accepted-risk` (only valid value in Epic 2, YAGNI)
+- TC traceability nits (unlabeled tests) → `accepted-risk` (coverage present, labeling cosmetic)
+
+**Gate:** `npm run verify` — 263 tests passing, format/lint/typecheck clean
+**Commit:** `ab1962f`
+**Open risks:** none
+
+**Observations:** Both reviewers independently found the left-truncation CSS gap — a tech design requirement that the implementer missed. This is a good example of the review catching a spec-compliance issue that wouldn't show up in tests but affects real user experience. The warning panel toggle glitch was also a genuine interaction bug. Pattern continuing: review phase adds real value on every story.
+
+**Test baseline for Story 3:** 263 tests. Story 3 specifies ~12 TCs. Expected total after Story 3: ~275.
