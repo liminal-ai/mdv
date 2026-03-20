@@ -98,6 +98,23 @@ export class SessionService {
     });
   }
 
+  async setDefaultMode(mode: SessionState['defaultOpenMode']): Promise<SessionState> {
+    return this.mutate((session) => {
+      session.defaultOpenMode = mode;
+    });
+  }
+
+  async updateTabs(openTabs: string[], activeTab: string | null): Promise<SessionState> {
+    return this.mutate((session) => {
+      if (activeTab !== null && !openTabs.includes(activeTab)) {
+        activeTab = openTabs.length > 0 ? openTabs[0] : null;
+      }
+
+      session.openTabs = [...openTabs];
+      session.activeTab = activeTab;
+    });
+  }
+
   async updateSidebar(workspacesCollapsed: boolean): Promise<SessionState> {
     return this.mutate((session) => {
       session.sidebarState = { workspacesCollapsed };

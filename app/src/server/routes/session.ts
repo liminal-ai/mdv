@@ -182,37 +182,45 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
   typedApp.put(
     '/api/session/default-mode',
     {
+      attachValidation: true,
       schema: {
         body: SetDefaultModeRequestSchema,
         response: {
           200: SessionStateSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) =>
-      reply
-        .code(501)
-        .send(
-          toApiError('NOT_IMPLEMENTED', 'PUT /api/session/default-mode is not implemented yet.'),
-        ),
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Invalid mode value'));
+      }
+
+      const { mode } = request.body;
+      return sessionService.setDefaultMode(mode);
+    },
   );
 
   typedApp.put(
     '/api/session/tabs',
     {
+      attachValidation: true,
       schema: {
         body: UpdateTabsRequestSchema,
         response: {
           200: SessionStateSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) =>
-      reply
-        .code(501)
-        .send(toApiError('NOT_IMPLEMENTED', 'PUT /api/session/tabs is not implemented yet.')),
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Invalid tab data'));
+      }
+
+      const { openTabs, activeTab } = request.body;
+      return sessionService.updateTabs(openTabs, activeTab);
+    },
   );
 
   typedApp.put(
@@ -234,14 +242,20 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
   typedApp.post(
     '/api/session/recent-files',
     {
+      attachValidation: true,
       schema: {
         body: TouchRecentFileRequestSchema,
         response: {
           200: SessionStateSchema,
+          400: ErrorResponseSchema,
         },
       },
     },
-    async (request) => {
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+      }
+
       const { path } = request.body;
       return sessionService.touchRecentFile(path);
     },
@@ -250,14 +264,20 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
   typedApp.delete(
     '/api/session/recent-files',
     {
+      attachValidation: true,
       schema: {
         body: RemoveRecentFileRequestSchema,
         response: {
           200: SessionStateSchema,
+          400: ErrorResponseSchema,
         },
       },
     },
-    async (request) => {
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+      }
+
       const { path } = request.body;
       return sessionService.removeRecentFile(path);
     },

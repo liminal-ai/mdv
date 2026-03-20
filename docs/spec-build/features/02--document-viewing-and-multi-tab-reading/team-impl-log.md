@@ -131,4 +131,26 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 
 ## Story Cycles
 
-(entries added per story)
+### Story 0: Foundation — ACCEPTED
+
+**Codex evidence:**
+- Implementation: `019d08df-2019-79e1-892e-ade1f19c9fd8`
+- Review: `019d08eb-fddf-7c92-8a18-9ab84831c732`
+- Fixes: `019d08f0-f03d-7c32-86f5-1ac2613e6b4e`
+
+**Findings and dispositions:**
+- Tab fixture canonicalPath duplication → `fixed`
+- Missing binaryMarkdown fixture → `fixed`
+- deletedFileState type confusion → `fixed`
+- Missing ErrorResponse type export → `fixed`
+- ClientState tab extensions → `defer` (Story 4 scope)
+- InvalidPathError class → `defer` (Story 1 scope, Zod covers it)
+- Story text /api/file/watch vs /ws → `accepted-risk` (doc mismatch only, code follows tech design)
+
+**Gate:** `npm run verify` — 164 tests passing, format/lint/typecheck clean
+**Commit:** `3d8dad3`
+**Open risks:** none
+
+**Observations:** Both implementer and reviewer followed the Codex subagent process correctly. Sequential reading + reflection checkpoint worked — both agents produced detailed, spec-aware reports. The reviewer's note about FileChangeEventSchema lacking a `type` field (added by ServerWsMessageSchema wrapper) is worth flagging to Story 7's implementer.
+
+**Test baseline for Story 1:** 164 tests. Story 1 specifies ~19 TCs. Expected total after Story 1: ~183.

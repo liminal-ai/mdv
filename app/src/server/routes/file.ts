@@ -1,3 +1,4 @@
+import { exec } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
@@ -6,24 +7,108 @@ import {
   FileReadRequestSchema,
   FileReadResponseSchema,
 } from '../schemas/index.js';
-import { toApiError } from '../utils/errors.js';
+import { FileService } from '../services/file.service.js';
+import {
+  ErrorCode,
+  FileTooLargeError,
+  InvalidPathError,
+  NotFileError,
+  NotMarkdownError,
+  isNotFoundError,
+  isPermissionError,
+  toApiError,
+} from '../utils/errors.js';
+
+const FILE_PICKER_COMMAND =
+  'osascript -e \'POSIX path of (choose file of type {"md", "markdown"} with prompt "Open Markdown File")\'';
+const FILE_PICKER_TIMEOUT_MS = 60_000;
+
+function execCommand(command: string): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    exec(command, { timeout: FILE_PICKER_TIMEOUT_MS }, (error, stdout, stderr) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve({ stdout, stderr });
+    });
+  });
+}
 
 export async function fileRoutes(app: FastifyInstance) {
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
+  const fileService = new FileService();
 
   typedApp.get(
     '/api/file',
     {
+      attachValidation: true,
       schema: {
         querystring: FileReadRequestSchema,
         response: {
           200: FileReadResponseSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
+          403: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          413: ErrorResponseSchema,
+          415: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) =>
-      reply.code(501).send(toApiError('NOT_IMPLEMENTED', 'GET /api/file is not implemented yet.')),
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+      }
+
+      try {
+        const file = await fileService.readFile(request.query.path);
+        return {
+          path: file.path,
+          canonicalPath: file.canonicalPath,
+          filename: file.filename,
+          content: file.content,
+          html: '',
+          warnings: [],
+          modifiedAt: file.modifiedAt.toISOString(),
+          size: file.size,
+        };
+      } catch (error) {
+        if (error instanceof InvalidPathError || error instanceof NotFileError) {
+          return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, error.message));
+        }
+
+        if (error instanceof NotMarkdownError) {
+          return reply.code(415).send(toApiError(ErrorCode.NOT_MARKDOWN, error.message));
+        }
+
+        if (error instanceof FileTooLargeError) {
+          return reply.code(413).send(toApiError(ErrorCode.FILE_TOO_LARGE, error.message));
+        }
+
+        if (isPermissionError(error)) {
+          return reply
+            .code(403)
+            .send(
+              toApiError(
+                ErrorCode.PERMISSION_DENIED,
+                'You do not have permission to read this file.',
+              ),
+            );
+        }
+
+        if (isNotFoundError(error)) {
+          return reply
+            .code(404)
+            .send(toApiError(ErrorCode.FILE_NOT_FOUND, 'The requested file no longer exists.'));
+        }
+
+        return reply
+          .code(500)
+          .send(toApiError(ErrorCode.READ_ERROR, 'Failed to read the requested file.'));
+      }
+    },
   );
 
   typedApp.post(
@@ -32,13 +117,23 @@ export async function fileRoutes(app: FastifyInstance) {
       schema: {
         response: {
           200: FilePickerResponseSchema,
-          501: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) =>
-      reply
-        .code(501)
-        .send(toApiError('NOT_IMPLEMENTED', 'POST /api/file/pick is not implemented yet.')),
+    async (_request, reply) => {
+      try {
+        const { stdout } = await execCommand(FILE_PICKER_COMMAND);
+        return { path: stdout.trim() };
+      } catch (error) {
+        if (Number((error as { code?: number | string } | undefined)?.code) === 1) {
+          return null;
+        }
+
+        return reply
+          .code(500)
+          .send(toApiError(ErrorCode.READ_ERROR, 'Failed to open the file picker.'));
+      }
+    },
   );
 }

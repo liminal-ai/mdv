@@ -27,6 +27,13 @@ export interface ApiError {
   message: string;
 }
 
+export class InvalidPathError extends Error {
+  constructor(path: string) {
+    super(`Path must be absolute: ${path}`);
+    this.name = 'InvalidPathError';
+  }
+}
+
 export class NotMarkdownError extends Error {
   constructor(path: string, ext: string) {
     super(`Not a markdown file (${ext}): ${path}`);
