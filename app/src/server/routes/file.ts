@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
@@ -21,19 +21,24 @@ import {
 } from '../utils/errors.js';
 
 const FILE_PICKER_COMMAND =
-  'osascript -e \'POSIX path of (choose file of type {"md", "markdown"} with prompt "Open Markdown File")\'';
+  'POSIX path of (choose file of type {"md", "markdown"} with prompt "Open Markdown File")';
 const FILE_PICKER_TIMEOUT_MS = 60_000;
 
-function execCommand(command: string): Promise<{ stdout: string; stderr: string }> {
+function execOsascript(command: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    exec(command, { timeout: FILE_PICKER_TIMEOUT_MS }, (error, stdout, stderr) => {
-      if (error) {
-        reject(error);
-        return;
-      }
+    execFile(
+      'osascript',
+      ['-e', command],
+      { timeout: FILE_PICKER_TIMEOUT_MS },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+          return;
+        }
 
-      resolve({ stdout, stderr });
-    });
+        resolve({ stdout, stderr });
+      },
+    );
   });
 }
 
@@ -126,7 +131,7 @@ export async function fileRoutes(app: FastifyInstance) {
     },
     async (_request, reply) => {
       try {
-        const { stdout } = await execCommand(FILE_PICKER_COMMAND);
+        const { stdout } = await execOsascript(FILE_PICKER_COMMAND);
         return { path: stdout.trim() };
       } catch (error) {
         if (Number((error as { code?: number | string } | undefined)?.code) === 1) {

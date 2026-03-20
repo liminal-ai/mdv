@@ -465,6 +465,30 @@ describe('file render route', () => {
     );
   });
 
+  it('Non-TC: processes raw html img tags that use unquoted src attributes', async () => {
+    await withRenderedFile(
+      '<img src=./local.png alt="Local raw">\n<img src=https://example.com/evil.png alt="Remote raw">',
+      ({ body, document }) => {
+        expect(document.querySelector('img')?.getAttribute('src')).toBe(
+          '/api/image?path=%2FUsers%2Fleemoore%2Fcode%2Fproject%2Fdocs%2Flocal.png',
+        );
+        expect(document.querySelector('.image-placeholder')?.getAttribute('data-type')).toBe(
+          'remote-blocked',
+        );
+        expect(body.warnings).toEqual([
+          {
+            type: 'remote-image-blocked',
+            source: 'https://example.com/evil.png',
+            message: 'Remote image blocked: https://example.com/evil.png',
+          },
+        ]);
+      },
+      {
+        existingPaths: ['/Users/leemoore/code/project/docs/local.png'],
+      },
+    );
+  });
+
   it('Non-TC: rewrites image references with query strings using the underlying file path', async () => {
     await withRenderedFile(
       '![Diagram](./diagram.png?v=1#section)',

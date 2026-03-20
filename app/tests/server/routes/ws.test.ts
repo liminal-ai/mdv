@@ -77,6 +77,16 @@ async function nextSocketMessage(socket: {
   });
 }
 
+async function nextSocketClose(socket: {
+  once: (event: 'close', listener: (code: number, reason: Buffer) => void) => void;
+}) {
+  return new Promise<{ code: number; reason: string }>((resolve) => {
+    socket.once('close', (code, reason) => {
+      resolve({ code, reason: reason.toString() });
+    });
+  });
+}
+
 describe('websocket routes and watch service', () => {
   const watchersByPath = new Map<string, MockFsWatcher[]>();
 
@@ -256,6 +266,57 @@ describe('websocket routes and watch service', () => {
       type: 'error',
       message: 'Invalid message format',
     });
+
+    socket.close();
+    await app.close();
+  });
+
+  it('Non-TC: rejects websocket connections from non-localhost origins', async () => {
+    const app = await buildApp();
+    await app.ready();
+    let socketClosePromise: Promise<{ code: number; reason: string }> | null = null;
+    let socketMessagePromise: Promise<Record<string, unknown>> | null = null;
+
+    await app.injectWS(
+      '/ws',
+      {
+        headers: {
+          origin: 'http://evil.example.com',
+        },
+      },
+      {
+        onInit(socket) {
+          socketMessagePromise = nextSocketMessage(socket);
+          socketClosePromise = nextSocketClose(socket);
+        },
+      },
+    );
+
+    await expect(socketMessagePromise).resolves.toEqual({
+      type: 'error',
+      message: 'WebSocket origin not allowed',
+    });
+    await expect(socketClosePromise).resolves.toEqual({
+      code: 1008,
+      reason: 'Origin not allowed',
+    });
+
+    await app.close();
+  });
+
+  it('Non-TC: allows websocket connections from localhost origins', async () => {
+    const app = await buildApp();
+    await app.ready();
+    const socket = await app.injectWS('/ws', {
+      headers: {
+        origin: 'http://localhost:5173',
+      },
+    });
+
+    socket.send(JSON.stringify({ type: 'watch', path: FILE_A }));
+    await waitForTick();
+
+    expect(watch).toHaveBeenCalledWith(FILE_A, expect.any(Function));
 
     socket.close();
     await app.close();

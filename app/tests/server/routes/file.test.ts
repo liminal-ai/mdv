@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,7 +18,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
   return {
     ...actual,
-    exec: vi.fn(),
+    execFile: vi.fn(),
   };
 });
 
@@ -31,7 +31,7 @@ import {
 import { emptyMarkdown } from '../../fixtures/markdown-samples.js';
 
 const FILE_PICKER_COMMAND =
-  'osascript -e \'POSIX path of (choose file of type {"md", "markdown"} with prompt "Open Markdown File")\'';
+  'POSIX path of (choose file of type {"md", "markdown"} with prompt "Open Markdown File")';
 const FILE_PICKER_TIMEOUT_MS = 60_000;
 
 function makeFileStat(
@@ -45,18 +45,20 @@ function makeFileStat(
 }
 
 function mockExecResult(result: { stdout?: string; error?: Error & { code?: number } }) {
-  vi.mocked(exec).mockImplementationOnce(((
-    command: string,
+  vi.mocked(execFile).mockImplementationOnce(((
+    file: string,
+    args: readonly string[],
     optionsOrCallback?:
       | { timeout: number }
       | ((error: Error | null, stdout: string, stderr: string) => void),
     callback?: (error: Error | null, stdout: string, stderr: string) => void,
   ) => {
-    expect(command).toBe(FILE_PICKER_COMMAND);
+    expect(file).toBe('osascript');
+    expect(args).toEqual(['-e', FILE_PICKER_COMMAND]);
     expect(optionsOrCallback).toEqual({ timeout: FILE_PICKER_TIMEOUT_MS });
     callback?.(result.error ?? null, result.stdout ?? '', '');
     return {} as ChildProcess;
-  }) as unknown as typeof exec);
+  }) as unknown as typeof execFile);
 }
 
 describe('file routes', () => {

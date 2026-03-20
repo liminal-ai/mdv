@@ -403,6 +403,80 @@ describe('client bootstrap api injection', () => {
     }
   });
 
+  it('prompts before opening files between 1 MB and 5 MB and removes the loading tab on cancel', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    try {
+      const api = await renderApp(
+        {
+          ...emptySession,
+          lastRoot: '/root',
+        },
+        {
+          getTree: vi.fn().mockResolvedValue({
+            root: '/root',
+            tree: [{ name: 'large.md', path: '/root/large.md', type: 'file' as const }],
+          }),
+          readFile: vi.fn().mockResolvedValue({
+            ...basicFileResponse,
+            path: '/root/large.md',
+            canonicalPath: '/root/large.md',
+            filename: 'large.md',
+            html: '<h1>large</h1>',
+            size: 1_572_864,
+          }),
+        },
+      );
+
+      document.querySelector<HTMLElement>('[data-type="file"]')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(confirmSpy).toHaveBeenCalledWith('This file is 1.5 MB. Open anyway?');
+      expect(api.touchRecentFile).not.toHaveBeenCalled();
+      expect(document.querySelectorAll('.tab')).toHaveLength(0);
+      expect(document.querySelector('.tab--loading')).toBeNull();
+      expect(document.body.textContent).toContain('No documents open');
+    } finally {
+      confirmSpy.mockRestore();
+    }
+  });
+
+  it('removes stale recent files and refreshes the tree when an opened file returns 404', async () => {
+    const api = await renderApp(
+      {
+        ...emptySession,
+        lastRoot: '/root',
+      },
+      {
+        getTree: vi
+          .fn()
+          .mockResolvedValueOnce({
+            root: '/root',
+            tree: [{ name: 'missing.md', path: '/root/missing.md', type: 'file' as const }],
+          })
+          .mockResolvedValueOnce({
+            root: '/root',
+            tree: [],
+          }),
+        readFile: vi
+          .fn()
+          .mockRejectedValue(
+            new ApiError(404, 'FILE_NOT_FOUND', 'The requested file no longer exists.'),
+          ),
+      },
+    );
+
+    document.querySelector<HTMLElement>('[data-type="file"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api.removeRecentFile).toHaveBeenCalledWith('/root/missing.md');
+    expect(api.getTree).toHaveBeenNthCalledWith(1, '/root');
+    expect(api.getTree).toHaveBeenNthCalledWith(2, '/root');
+    expect(document.querySelector('[role="alert"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('The requested file no longer exists.');
+  });
+
   it('renders fallback shell when bootstrap fails', async () => {
     await renderApp(emptySession, {
       bootstrap: vi.fn().mockRejectedValue(new Error('Bootstrap failed')),

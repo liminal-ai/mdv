@@ -44,6 +44,8 @@ const DELETED_FILE_REWATCH_INTERVAL_MS = 2_000;
 const MAX_DELETED_FILE_REWATCH_ATTEMPTS = 5;
 const WS_DISCONNECTED_ERROR_CODE = 'WS_DISCONNECTED';
 const WS_SERVER_ERROR_CODE = 'WS_SERVER_ERROR';
+const LARGE_FILE_CONFIRM_MIN_BYTES = 1_048_576;
+const LARGE_FILE_CONFIRM_MAX_BYTES = 5_242_880;
 
 let tabSequence = 0;
 
@@ -86,6 +88,10 @@ function applyTheme(themeId: string, options: { persist?: boolean } = {}): void 
 function fileName(filePath: string): string {
   const parts = filePath.split('/').filter(Boolean);
   return parts.at(-1) ?? filePath;
+}
+
+function formatMegabytes(size: number): string {
+  return (size / LARGE_FILE_CONFIRM_MIN_BYTES).toFixed(1);
 }
 
 function createTabId(): string {
@@ -790,8 +796,38 @@ export async function bootstrapApp(
     updateTabsState(nextTabs, loadingTab.id, { closeContextMenu: true });
     restoreScrollPosition(0);
 
+    const removeLoadingTab = () => {
+      const currentState = store.get();
+      if (!currentState.tabs.some((tab) => tab.id === loadingTab.id)) {
+        return;
+      }
+
+      const remainingTabs = disambiguateDisplayNames(
+        currentState.tabs.filter((tab) => tab.id !== loadingTab.id),
+      );
+      const fallbackActiveTabId =
+        remainingTabs.find((tab) => tab.id === previousActiveTabId)?.id ??
+        remainingTabs.at(-1)?.id ??
+        null;
+
+      updateTabsState(remainingTabs, fallbackActiveTabId, { closeContextMenu: true });
+      restoreScrollPosition(
+        remainingTabs.find((tab) => tab.id === fallbackActiveTabId)?.scrollPosition ?? 0,
+      );
+    };
+
     try {
       const response = await api.readFile(path);
+
+      if (
+        response.size >= LARGE_FILE_CONFIRM_MIN_BYTES &&
+        response.size <= LARGE_FILE_CONFIRM_MAX_BYTES &&
+        !window.confirm(`This file is ${formatMegabytes(response.size)} MB. Open anyway?`)
+      ) {
+        removeLoadingTab();
+        return;
+      }
+
       const currentState = store.get();
       if (!currentState.tabs.some((tab) => tab.id === loadingTab.id)) {
         return;
@@ -836,22 +872,15 @@ export async function bootstrapApp(
       await touchRecentFile(response.path);
       await syncTabsToSession();
     } catch (error) {
-      const currentState = store.get();
-      if (currentState.tabs.some((tab) => tab.id === loadingTab.id)) {
-        const remainingTabs = disambiguateDisplayNames(
-          currentState.tabs.filter((tab) => tab.id !== loadingTab.id),
-        );
-        const fallbackActiveTabId =
-          remainingTabs.find((tab) => tab.id === previousActiveTabId)?.id ??
-          remainingTabs.at(-1)?.id ??
-          null;
-
-        updateTabsState(remainingTabs, fallbackActiveTabId, { closeContextMenu: true });
-        restoreScrollPosition(
-          remainingTabs.find((tab) => tab.id === fallbackActiveTabId)?.scrollPosition ?? 0,
-        );
+      if (error instanceof ApiError && error.status === 404) {
+        void api.removeRecentFile(path);
+        void (async () => {
+          await refreshTree();
+          setError(error);
+        })();
       }
 
+      removeLoadingTab();
       setError(error);
     }
   }

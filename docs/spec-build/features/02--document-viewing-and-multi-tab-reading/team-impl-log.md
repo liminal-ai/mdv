@@ -287,3 +287,45 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 **Observations:** The review phase caught a genuine command injection vulnerability. `exec()` with `JSON.stringify()` does not escape `$()` or backticks inside bash double-quoted strings. Both the Opus reviewer and Codex independently flagged it. This is the highest-severity find of the entire epic and validates the multi-model review requirement. The fix (execFile with array args, no shell) is the correct mitigation.
 
 **Test baseline for Story 7:** 292 tests. Story 7 specifies ~8 TCs. Expected total after Story 7: ~300.
+
+### Story 7: File Watching — ACCEPTED (FINAL STORY)
+
+**Codex evidence:**
+- Implementation: `019d097c-8f36-7622-875b-234ab0190f3e`
+- Review: `019d09cc-6d65-7032-9b8c-95d120055897`
+
+**Process deviation:** Implementer's Codex self-review loop did not complete (process stalled on cat pipe). Reviewer was flagged for extra scrutiny to compensate.
+
+**Findings and dispositions:**
+- handleRename/disconnect race condition (stale deletedPaths entries) → `fixed`
+- Debounce 300ms vs tech design's 100ms → `accepted-risk` (300ms better for real-world, update tech design)
+- No regression test for sync listener registration → `accepted-risk` (current code correct, awkward to express as test)
+- TC-7.2c ratio-based scroll untested → `accepted-risk` (JSDOM limitation, simple arithmetic)
+- Path validation on watch channel → `accepted-risk` (consistent with app security model)
+
+**Gate:** `npm run verify` — 307 tests passing, format/lint/typecheck clean
+**Commit:** `1514e29`
+**Open risks:** none
+
+**Observations:** The missing self-review loop was correctly handled — the reviewer was flagged for extra scrutiny and caught the handleRename race condition that a normal self-review would have found. This validates the process: when one layer is degraded, compensate at the next layer rather than skipping verification entirely.
+
+---
+
+## All Stories Complete
+
+| Story | Tests | Commit | Codex Sessions | Key Review Finds |
+|-------|-------|--------|---------------|-----------------|
+| 0 Foundation | 164 | 3d8dad3 | 3 | Fixture issues |
+| 1 File Read API | 187 | 25a7d29 | 3 | attachValidation gap, activeTab consistency |
+| 2 Markdown Rendering | 217 | 2766a11 | 3 | IMG regex security bug, query/hash stripping |
+| 4 Tab Management | 247 | a4fc081 | 2 | Clean — no fixes needed |
+| 5 Content Toolbar | 263 | ab1962f | 2 | Left-truncation CSS, toggle glitch |
+| 3 Image Handling | 277 | 993b7f3 | 2 | Clean — all accept-risk |
+| 6 Relative Links | 292 | e2ecfaf | 3 | **Command injection** (Critical) |
+| 7 File Watching | 307 | 1514e29 | 2 | handleRename race condition |
+
+**Total: 307 tests, 8 stories, 20 Codex sessions, 0 regressions.**
+
+The review phase caught meaningful issues on 6 of 8 stories, including one Critical security vulnerability (command injection in open-external). The multi-model verification process (Opus + Codex dual review) justified its cost on every story where it found something the implementer missed.
+
+**Next: Epic-level verification.**

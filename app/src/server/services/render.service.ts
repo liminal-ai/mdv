@@ -7,7 +7,7 @@ import markdownItAnchor from 'markdown-it-anchor';
 import markdownItTaskLists from 'markdown-it-task-lists';
 import type { RenderWarning } from '../schemas/index.js';
 
-const IMG_TAG_RE = /<img\s+([^>]*?)src\s*=\s*(["'])(.*?)\2([^>]*?)>/gi;
+const IMG_TAG_RE = /<img\s+([^>]*?)src\s*=\s*(?:(["'])(.*?)\2|([^>\s]+))([^>]*?)>/gi;
 const MERMAID_RE = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/gi;
 
 const SUPPORTED_IMAGE_EXTENSIONS = new Set([
@@ -63,7 +63,16 @@ function processImages(html: string, documentDir: string): RenderResult {
 
   const processedHtml = html.replace(
     IMG_TAG_RE,
-    (_match, pre: string, _quote: string, src: string, post: string) => {
+    (
+      _match,
+      pre: string,
+      _quote: string | undefined,
+      quotedSrc: string | undefined,
+      unquotedSrc: string | undefined,
+      post: string,
+    ) => {
+      const src = quotedSrc ?? unquotedSrc ?? '';
+
       if (src.startsWith('http://') || src.startsWith('https://')) {
         warnings.push({
           type: 'remote-image-blocked',
