@@ -265,3 +265,25 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 **Observations:** Second story in a row where the review found no fixes needed — all findings were accept-risk. The implementation quality is trending upward as stories build on well-tested foundations. Story 2's render pipeline handled the heavy lifting; Story 3 just added the proxy endpoint and wired client warnings (already built in Story 5). Clean layering.
 
 **Test baseline for Story 6:** 277 tests. Story 6 specifies ~6 TCs. Expected total after Story 6: ~283.
+
+### Story 6: Relative Link Navigation — ACCEPTED
+
+**Codex evidence:**
+- Implementation: `019d0964-462f-7f73-a672-3b483e3235d5`
+- Review: `019d0970-e993-7163-b961-bd3906ff40f4`
+- Fixes: `019d0975-64e4-79a1-8cb8-ee0cf89cf037`
+
+**Findings and dispositions:**
+- **CRITICAL: Command injection in open-external route** → `fixed` (exec → execFile, metacharacter regression test added)
+- TC-5.1b scroll verification gap → `accepted-risk` (JSDOM scroll unreliable, contract boundary tested)
+- TC-5.2b no explicit test → `accepted-risk` (tests default markdown-it behavior)
+- Modifier-key test gap → `accepted-risk` (standard pattern, low regression risk)
+- Non-markdown integration test gap → `accepted-risk` (both ends unit-tested)
+
+**Gate:** `npm run verify` — 292 tests passing, format/lint/typecheck clean
+**Commit:** `e2ecfaf`
+**Open risks:** none
+
+**Observations:** The review phase caught a genuine command injection vulnerability. `exec()` with `JSON.stringify()` does not escape `$()` or backticks inside bash double-quoted strings. Both the Opus reviewer and Codex independently flagged it. This is the highest-severity find of the entire epic and validates the multi-model review requirement. The fix (execFile with array args, no shell) is the correct mitigation.
+
+**Test baseline for Story 7:** 292 tests. Story 7 specifies ~8 TCs. Expected total after Story 7: ~300.

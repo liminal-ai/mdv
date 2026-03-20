@@ -14,6 +14,7 @@ import { mountWarningPanel } from './components/warning-panel.js';
 import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { KeyboardManager } from './utils/keyboard.js';
+import { WsClient } from './utils/ws.js';
 
 declare global {
   interface Window {
@@ -39,7 +40,17 @@ const FALLBACK_THEMES: ThemeInfo[] = [
   { id: 'dark-cool', label: 'Dark Cool', variant: 'dark' },
 ];
 
+const DELETED_FILE_REWATCH_INTERVAL_MS = 2_000;
+const MAX_DELETED_FILE_REWATCH_ATTEMPTS = 5;
+const WS_DISCONNECTED_ERROR_CODE = 'WS_DISCONNECTED';
+const WS_SERVER_ERROR_CODE = 'WS_SERVER_ERROR';
+
 let tabSequence = 0;
+
+interface ScrollSnapshot {
+  offset: number;
+  ratio: number;
+}
 
 function createFallbackBootstrap(): Pick<ClientState, 'session' | 'availableThemes'> {
   return {
@@ -190,6 +201,39 @@ function restoreScrollPosition(scrollPosition: number): void {
   queueMicrotask(applyScroll);
 }
 
+function captureScrollSnapshot(): ScrollSnapshot {
+  const body = getContentBody();
+  if (!body) {
+    return { offset: 0, ratio: 0 };
+  }
+
+  const scrollableHeight = Math.max(body.scrollHeight - body.clientHeight, 0);
+  return {
+    offset: body.scrollTop,
+    ratio: scrollableHeight > 0 ? body.scrollTop / scrollableHeight : 0,
+  };
+}
+
+function restoreScrollSnapshot(snapshot: ScrollSnapshot): void {
+  const applyScroll = () => {
+    const body = getContentBody();
+    if (!body) {
+      return;
+    }
+
+    const scrollableHeight = Math.max(body.scrollHeight - body.clientHeight, 0);
+    body.scrollTop =
+      scrollableHeight > 0 ? Math.round(scrollableHeight * snapshot.ratio) : snapshot.offset;
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(applyScroll);
+    return;
+  }
+
+  queueMicrotask(applyScroll);
+}
+
 function scrollToHeading(anchor: string): void {
   const scroll = () => {
     document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth' });
@@ -217,7 +261,10 @@ function getErrorMessage(error: unknown): { code: string; message: string } {
   };
 }
 
-export async function bootstrapApp(api = new ApiClient()): Promise<void> {
+export async function bootstrapApp(
+  api = new ApiClient(),
+  wsClient: WsClient | null = shouldAutoBootstrap() ? new WsClient() : null,
+): Promise<void> {
   const cachedTheme = readCachedTheme();
   let bootstrap = createFallbackBootstrap();
   let bootstrapError: unknown = null;
@@ -257,6 +304,7 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
   };
 
   const store = new StateStore(initialState);
+  const deletedFileRewatchTimers = new Map<string, number>();
 
   const applySession = (
     session: ClientState['session'],
@@ -293,6 +341,10 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     store.update({ error: getErrorMessage(error) }, ['error']);
   };
 
+  const setClientError = (code: string, message: string) => {
+    store.update({ error: { code, message } }, ['error']);
+  };
+
   const setInvalidRoot = (error: unknown) => {
     store.update(
       {
@@ -303,6 +355,54 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       },
       ['invalidRoot', 'tree', 'treeLoading', 'error'],
     );
+  };
+
+  const clearDeletedFileRetry = (path: string) => {
+    const timer = deletedFileRewatchTimers.get(path);
+    if (timer !== undefined) {
+      window.clearInterval(timer);
+      deletedFileRewatchTimers.delete(path);
+    }
+  };
+
+  const watchPath = (path: string) => {
+    wsClient?.send({ type: 'watch', path });
+  };
+
+  const unwatchPath = (path: string) => {
+    clearDeletedFileRetry(path);
+    wsClient?.send({ type: 'unwatch', path });
+  };
+
+  const rewatchAllOpenTabs = () => {
+    for (const path of new Set(store.get().tabs.map((tab) => tab.path))) {
+      watchPath(path);
+    }
+  };
+
+  const scheduleDeletedFileRetry = (path: string) => {
+    if (!wsClient) {
+      return;
+    }
+
+    clearDeletedFileRetry(path);
+    let attempts = 0;
+
+    const timer = window.setInterval(() => {
+      if (!store.get().tabs.some((tab) => tab.path === path)) {
+        clearDeletedFileRetry(path);
+        return;
+      }
+
+      attempts += 1;
+      watchPath(path);
+
+      if (attempts >= MAX_DELETED_FILE_REWATCH_ATTEMPTS) {
+        clearDeletedFileRetry(path);
+      }
+    }, DELETED_FILE_REWATCH_INTERVAL_MS);
+
+    deletedFileRewatchTimers.set(path, timer);
   };
 
   const updateTabsState = (
@@ -512,6 +612,11 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       return;
     }
 
+    const closingTab = state.tabs[tabIndex] ?? null;
+    if (closingTab) {
+      unwatchPath(closingTab.path);
+    }
+
     const nextTabsWithScroll = saveScrollPosition(state.tabs, state.activeTabId);
     const remainingTabs = disambiguateDisplayNames(
       nextTabsWithScroll.filter((tab) => tab.id !== tabId),
@@ -540,6 +645,12 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       return;
     }
 
+    for (const tab of tabsWithScroll) {
+      if (tab.id !== tabId) {
+        unwatchPath(tab.path);
+      }
+    }
+
     updateTabsState(disambiguateDisplayNames([targetTab]), tabId, { closeContextMenu: true });
     restoreScrollPosition(targetTab.scrollPosition);
     await syncTabsToSession();
@@ -553,6 +664,9 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     }
 
     const tabsWithScroll = saveScrollPosition(state.tabs, state.activeTabId);
+    for (const tab of tabsWithScroll.slice(targetIndex + 1)) {
+      unwatchPath(tab.path);
+    }
     const remainingTabs = disambiguateDisplayNames(tabsWithScroll.slice(0, targetIndex + 1));
     const targetTab = remainingTabs.find((tab) => tab.id === tabId) ?? null;
 
@@ -570,6 +684,83 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     try {
       await copyTextToClipboard(tab.path, api);
     } catch (error) {
+      setError(error);
+    }
+  };
+
+  const markTabDeleted = (path: string) => {
+    const state = store.get();
+    if (!state.tabs.some((tab) => tab.path === path)) {
+      return;
+    }
+
+    updateTabsState(
+      state.tabs.map((tab) =>
+        tab.path === path
+          ? { ...tab, loading: false, status: 'deleted', errorMessage: undefined }
+          : tab,
+      ),
+      state.activeTabId,
+    );
+    scheduleDeletedFileRetry(path);
+  };
+
+  const refreshWatchedFile = async (path: string) => {
+    const state = store.get();
+    const targetTab = state.tabs.find((tab) => tab.path === path) ?? null;
+    if (!targetTab) {
+      return;
+    }
+
+    const isActiveTab = state.activeTabId === targetTab.id;
+    const scrollSnapshot = isActiveTab ? captureScrollSnapshot() : null;
+
+    try {
+      const response = await api.readFile(path);
+      const latestState = store.get();
+      const latestTab = latestState.tabs.find((tab) => tab.path === path) ?? null;
+      if (!latestTab) {
+        return;
+      }
+
+      clearDeletedFileRetry(path);
+
+      const nextTabs = disambiguateDisplayNames(
+        latestState.tabs.map((tab) =>
+          tab.path === path
+            ? { ...buildLoadedTab(response, tab), status: 'ok', errorMessage: undefined }
+            : tab,
+        ),
+      );
+
+      updateTabsState(nextTabs, latestState.activeTabId);
+      if (isActiveTab && scrollSnapshot) {
+        restoreScrollSnapshot(scrollSnapshot);
+      }
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'FILE_NOT_FOUND') {
+        markTabDeleted(path);
+        return;
+      }
+
+      const latestState = store.get();
+      if (!latestState.tabs.some((tab) => tab.path === path)) {
+        return;
+      }
+
+      updateTabsState(
+        latestState.tabs.map((tab) =>
+          tab.path === path
+            ? {
+                ...tab,
+                loading: false,
+                status: 'error',
+                errorMessage: getErrorMessage(error).message,
+              }
+            : tab,
+        ),
+        latestState.activeTabId,
+      );
       setError(error);
     }
   };
@@ -624,6 +815,7 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
         if (anchor) {
           scrollToHeading(anchor);
         }
+        watchPath(existingTab.path);
         await touchRecentFile(response.path);
         await syncTabsToSession();
         return;
@@ -640,6 +832,7 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       if (anchor) {
         scrollToHeading(anchor);
       }
+      watchPath(response.path);
       await touchRecentFile(response.path);
       await syncTabsToSession();
     } catch (error) {
@@ -727,6 +920,9 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
 
     updateTabsState(nextTabs, nextActiveTabId);
     restoreScrollPosition(0);
+    for (const tab of nextTabs) {
+      watchPath(tab.path);
+    }
 
     if (needsSync) {
       await syncTabsToSession();
@@ -817,6 +1013,33 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       }
     },
   });
+
+  if (wsClient) {
+    wsClient.on('open', () => {
+      if (store.get().error?.code === WS_DISCONNECTED_ERROR_CODE) {
+        store.update({ error: null }, ['error']);
+      }
+      rewatchAllOpenTabs();
+    });
+    wsClient.on('close', () => {
+      setClientError(
+        WS_DISCONNECTED_ERROR_CODE,
+        'Live reload disconnected. Reconnecting in 2 seconds.',
+      );
+    });
+    wsClient.on('error', (message) => {
+      setClientError(WS_SERVER_ERROR_CODE, message.message);
+    });
+    wsClient.on('file-change', (message) => {
+      if (message.event === 'deleted') {
+        markTabDeleted(message.path);
+        return;
+      }
+
+      void refreshWatchedFile(message.path);
+    });
+    wsClient.connect();
+  }
 
   const keyboardManager = new KeyboardManager(document);
   keyboardManager.register({
@@ -919,7 +1142,7 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
 }
 
 if (shouldAutoBootstrap()) {
-  void bootstrapApp().catch((error) => {
+  void bootstrapApp(new ApiClient(), new WsClient()).catch((error) => {
     console.error(error);
   });
 }

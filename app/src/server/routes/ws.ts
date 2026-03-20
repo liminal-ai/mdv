@@ -1,21 +1,39 @@
 import type { FastifyInstance } from 'fastify';
-import { ErrorResponseSchema } from '../schemas/index.js';
-import { toApiError } from '../utils/errors.js';
+import type { WebSocket } from 'ws';
+import { ClientWsMessageSchema, ServerWsMessageSchema } from '../schemas/index.js';
+import { WatchService } from '../services/watch.service.js';
 
 export async function wsRoutes(app: FastifyInstance) {
-  // Story 0 keeps WebSocket support as a placeholder until the plugin is added.
-  app.get(
-    '/ws',
-    {
-      schema: {
-        response: {
-          501: ErrorResponseSchema,
-        },
-      },
-    },
-    async (_request, reply) =>
-      reply
-        .code(501)
-        .send(toApiError('NOT_IMPLEMENTED', 'WebSocket support is not implemented yet.')),
-  );
+  const watchService = new WatchService();
+
+  app.get('/ws', { websocket: true }, (socket) => {
+    socket.on('message', (raw) => {
+      try {
+        const message = JSON.parse(raw.toString());
+        const parsed = ClientWsMessageSchema.parse(message);
+
+        switch (parsed.type) {
+          case 'watch':
+            watchService.watch(parsed.path, socket as WebSocket);
+            break;
+          case 'unwatch':
+            watchService.unwatch(parsed.path, socket as WebSocket);
+            break;
+        }
+      } catch {
+        socket.send(
+          JSON.stringify(
+            ServerWsMessageSchema.parse({
+              type: 'error',
+              message: 'Invalid message format',
+            }),
+          ),
+        );
+      }
+    });
+
+    socket.on('close', () => {
+      watchService.unwatchAll(socket as WebSocket);
+    });
+  });
 }

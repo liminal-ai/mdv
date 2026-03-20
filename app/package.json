@@ -25,6 +25,8 @@
   },
   "dependencies": {
     "@fastify/static": "^9.0.0",
+    "@fastify/websocket": "^11.2.0",
+    "@types/ws": "^8.18.1",
     "fastify": "^5.8.0",
     "fastify-type-provider-zod": "^6.0.0",
     "github-slugger": "^2.0.0",

@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import websocket from '@fastify/websocket';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { staticPlugin } from './plugins/static.js';
 import { browseRoutes } from './routes/browse.js';
@@ -25,6 +26,7 @@ export async function buildApp(opts?: AppOptions) {
   app.setSerializerCompiler(serializerCompiler);
 
   await app.register(staticPlugin);
+  await app.register(websocket);
   await app.register(sessionRoutes, {
     sessionService: opts?.sessionService,
     sessionDir: opts?.sessionDir,
