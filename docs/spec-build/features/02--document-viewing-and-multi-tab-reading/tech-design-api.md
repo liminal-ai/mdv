@@ -557,7 +557,7 @@ private handleChange(filePath: string): void {
       path: filePath,
       event: 'modified',
     });
-  }, 100);
+  }, 300);
 
   this.debounceTimers.set(filePath, timer);
 }

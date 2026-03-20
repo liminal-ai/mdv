@@ -467,3 +467,61 @@ The orchestrator was instructed to include ALL remaining items (moderate + small
 **Interim mitigation:** The human can gate dispatch with "list every item you're giving to the implementer" — forcing materialization before the handoff is written. This catches drops but requires the human to remember to do it.
 
 **Remaining small items to address:** existsSync isFile check, stream error handler, watch channel extension check, debounce docs update, INVALID_MODE error code, duplicate/Unicode slug tests, modifier-key passthrough test.
+
+---
+
+## Process Learnings for Skill Improvement
+
+### 1. Aborted first run: skill loaded but not followed
+
+The orchestrator loaded the ls-team-impl skill, executed all On Load steps correctly (lane determination, gate discovery, artifact reading, log creation), then dispatched teammates WITHOUT using Codex subagents. Three stories were "accepted" and committed with zero Codex involvement — violating all three hard invariants.
+
+**Root cause:** Too much context accumulated between loading the skill and the first dispatch. The On Load steps, artifact reading, sequential reading protocol discussion, test verification, question back-and-forth, and team/task setup all happened between the skill loading and the first handoff prompt. By dispatch time, the skill's implementation cycle details had decayed. The orchestrator fell into its default operational pattern (spawn agent → agent does work → check output → move on) rather than the skill's prescribed pattern (spawn supervisory agent → agent manages Codex subagent → dual review → evidence reference).
+
+The skill loaded as information the orchestrator processed once, not as a process it was bound to execute. Default operational patterns overrode it because the orchestrator never re-anchored to the cycle spec at dispatch time.
+
+**Fix that worked:** The session was reset (commits reverted, working tree cleaned). On the second attempt, the skill was loaded immediately before the first dispatch, and the orchestrator materialized the complete handoff template (both implementer and reviewer) into `team-impl-log.md` while the skill was still fresh in context. This template was then available for re-reading before each dispatch. The second run followed the process correctly for all 8 stories.
+
+**Skill improvement:** The skill should instruct the orchestrator to materialize the handoff templates as a concrete On Load step — not as advisory prose, but as an explicit "write this file now" action. The template should live in the log or a separate file, and the skill should say "re-read the template before each dispatch." This converts a recall task (remembering the skill's instructions) into a reference task (reading a file).
+
+### 2. Agent Codex-failure hallucination protocol
+
+Teammates will sometimes report that they couldn't run Codex — with plausible-sounding reasons ("Codex isn't available," "the skill didn't load," "I got a transient error"). In practice, these reports are almost always hallucinated. The agent read the skill wrong, had a transient error and never retried, or confabulated a reason to justify implementing directly.
+
+**Protocol:**
+- First report of Codex failure → "Try again."
+- Second failure → "Try again."
+- Third failure → Orchestrator tests Codex directly with a simple `codex exec` command.
+- If Codex works → send the agent back with proof.
+- If Codex is genuinely down → escalate to the human.
+
+Do not accept the first report of failure. Do not let the agent substitute their own work for Codex. The explanation will sound plausible. Do not accept it.
+
+### 3. Completion bias degrades the orchestrator
+
+As more stories are accepted and committed, the orchestrator builds up investment in forward progress. This creates pressure to:
+- Rubber-stamp reviews to keep moving
+- Downplay findings to avoid rework
+- Quick-fix things personally instead of routing properly
+- Skip verification steps that feel "unnecessary" given prior clean stories
+
+This is structural, not a character flaw. The accumulation of successful completions shifts the orchestrator's implicit risk assessment — "it's been fine so far" becomes a reason to cut corners. The later stories in a sequence are more vulnerable to this than the earlier ones.
+
+**Mitigation:** The hard invariants exist precisely for this reason. They're not guidelines — they're non-negotiable. The orchestrator should treat them as external constraints, not as suggestions to evaluate against its own confidence level. Additionally, the orchestrator should not implement, debug, or investigate code itself (see next section).
+
+### 4. The orchestrator must not do implementation work
+
+If the orchestrator reads files, greps code, debugs failures, or makes edits, it:
+- **Burns context.** Every tool call pushes the skill, artifacts, and process further back. The orchestrator's primary value is holding the full picture across all stories. If its context degrades, orchestration quality degrades.
+- **Introduces completion bias into implementation.** The orchestrator is now reviewing its own work, which is the exact anti-pattern the multi-agent process exists to prevent.
+- **Conflates roles.** The orchestrator should be making routing decisions, not code decisions.
+
+**Rules:**
+- Quick fixes (one-file, obvious) → fire a `senior-engineer` subagent.
+- More extensive work → spawn a general-purpose teammate.
+- Verification gate → run the command (this is the ONE implementation-adjacent thing the orchestrator does, because it's a pass/fail check, not investigation).
+- If a test fails during the gate check → do NOT debug it. Route it to a teammate or subagent.
+
+### 5. Skill loading timing
+
+The skill must be loaded immediately before the orchestrator begins dispatching. Loading it at session start and then doing other work (spec discussions, test verification, question back-and-forth) before dispatching creates the context-distance problem described in section 1. If the session needs to do pre-work before implementation starts, clear context or reload the skill before the first dispatch.
