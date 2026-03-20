@@ -19,7 +19,7 @@ describe('exportDocxFromHtml', () => {
       'Docx Test',
       '<h1>Docx Test</h1><p>Inline mermaid image:</p><p><img src="./assets/diagram-001.svg" alt="Mermaid diagram diagram-1"></p>',
       outputPath,
-      '/Users/leemoore/code/md-viewer',
+      path.resolve(__dirname, '..'),
       [
         {
           id: 'diagram-1',

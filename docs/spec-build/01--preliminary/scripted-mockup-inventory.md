@@ -11,6 +11,53 @@ This document lists the recommended mockup surfaces to create before formal epic
 - prefer realistic content density
 - make space, hierarchy, and interaction choices visible
 
+## UX Observations From Current Prototype
+
+These observations are based on hands-on use of the Electron prototype and should directly inform mockup design decisions.
+
+### Top Bar / Toolbar
+
+- Current buttons (Open Markdown, Open Folder, Reload, Save, Save As, Export PDF, Export DOCX, Export HTML Folder) are too large and wordy. They dominate the top of the window.
+- Replace with compact icon buttons with tooltips, or consolidate into a small menu bar with dropdown menus (File, Export, View style).
+- The full file path bar below the toolbar wastes an entire horizontal row for rarely-glanced info. Consider: tooltip on tab, subtle breadcrumb, hover reveal, or status bar placement.
+
+### Sidebar: Saved Roots / "PINNED" Section
+
+- The concept is very useful — quick-access bookmarks to filesystem roots the user works in regularly.
+- "PINNED" is not the best label. These are saved root paths / workspace roots. Consider: "Workspaces", "Saved Roots", "Bases", or similar.
+- "Unpin Root" button is probably unnecessary since each entry already has an x button for removal.
+- Discoverability of how to pin/save a root is not obvious. Current flow: when viewing an unpinned root, a "Pin" option appears. Not terrible but could be more intuitive. Right-clicking a directory in the tree and seeing "Save as Workspace" / "Set as Root" would help.
+- The x buttons on each entry for removal are clear and fine.
+- Section should be collapsible with a disclosure triangle in the header row.
+
+### Sidebar: ROOT Section
+
+- The concept is very useful — shows where you currently are in the filesystem, critical when the tree only shows markdown files.
+- Current presentation (ROOT label + Refresh button + full path) takes too much vertical space and feels clunky.
+- Could be a single compact row: small label + truncated path + refresh icon.
+- **Important**: be careful not to lose the "where am I" and "reload" affordances when refining this. The information is high value even if the chrome is heavy.
+- Section should be collapsible with a disclosure triangle in the header row.
+
+### Sidebar: File Tree
+
+- Works well. Markdown-only filtering is a real strength.
+- Right-click context menu needed:
+  - On files: "Copy Path"
+  - On directories: "Copy Path", "Make Root" / "Make Base Path"
+- The FILES section header could also be collapsible.
+
+### Render / Edit Mode Toggle
+
+- The Render/Edit tab toggle works as a concept.
+- Rendered view looks clean — tables render well, headings are clear.
+- Edit view shows raw markdown in monospace. Functional.
+
+### General Sidebar Notes
+
+- The sidebar bones are right: saved roots + current root + filtered tree.
+- The chrome around each section is too heavy — too many labels, buttons, and separators competing for space.
+- Refinement should compress the chrome while preserving the information and affordances.
+
 ## Recommended Mockup Pages
 
 ### 1. App Launch / Empty Workspace
@@ -30,15 +77,17 @@ Why:
 
 Show:
 
-- toolbar
-- folder tree
+- compact toolbar (icon buttons with tooltips, or small menu bar with dropdowns)
+- folder tree with collapsible saved-roots and current-root sections
 - tab strip
 - rendered document pane
 - warnings/status area
+- right-click context menus on tree items (copy path on files and directories, make root on directories)
 
 Why:
 
 - defines the core product shape
+- must demonstrate compressed sidebar chrome vs current prototype
 
 ### 3. Main Workspace / Edit Mode
 
@@ -73,13 +122,17 @@ Show:
 
 - nested folders
 - expanded/collapsed states
-- pinned roots
+- saved roots section (collapsible, with x-to-remove on each entry)
+- current root section (collapsible, compact: label + truncated path + refresh icon)
 - active root indication
 - very long file/folder names
+- right-click context menu on a directory showing "Copy Path" and "Make Root" / "Make Base Path"
+- right-click context menu on a file showing "Copy Path"
 
 Why:
 
 - the directory browser is a core part of the local-first story
+- context menus are a key usability addition identified from prototype use
 
 ### 6. Warnings / Degraded Render State
 

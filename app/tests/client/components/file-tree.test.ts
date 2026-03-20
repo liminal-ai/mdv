@@ -223,6 +223,12 @@ describe('file tree', () => {
     expect(onToggleDir.mock.calls.length + onSelectFile.mock.calls.length).toBeGreaterThan(0);
   });
 
+  it('Tree container is tabbable for keyboard users', () => {
+    renderTree();
+
+    expect(document.querySelector<HTMLElement>('#tree')?.tabIndex).toBe(0);
+  });
+
   it('Shows empty state when no tree loaded', () => {
     renderTree({
       tree: [],

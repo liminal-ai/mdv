@@ -17,6 +17,7 @@ export interface ClientState {
   availableThemes: ThemeInfo[];
   tree: TreeNode[];
   treeLoading: boolean;
+  invalidRoot: boolean;
   activeMenuId: string | null;
   contextMenu: ContextMenuState | null;
   sidebarVisible: boolean;

@@ -28,17 +28,28 @@ export function mountRootLine(
   actions: RootLineActions,
 ): () => void {
   const render = () => {
-    const root = store.get().session.lastRoot;
+    const state = store.get();
+    const root = state.session.lastRoot;
     const hasRoot = root !== null;
+    const invalidRoot = hasRoot && state.invalidRoot;
+    const pathClassName = [
+      'root-line__path',
+      !hasRoot ? 'root-line__path--placeholder' : null,
+      invalidRoot ? 'root-line__path--invalid' : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     container.replaceChildren(
       createElement('div', {
-        className: 'root-line',
+        className: invalidRoot ? 'root-line root-line--invalid' : 'root-line',
         children: [
           createElement('span', {
-            className: hasRoot ? 'root-line__path' : 'root-line__path root-line__path--placeholder',
+            className: pathClassName,
             text: hasRoot ? shortenRootPath(root) : 'No folder selected',
-            attrs: hasRoot ? { title: root } : {},
+            attrs: hasRoot
+              ? { title: invalidRoot ? `${root} (Directory not found)` : root }
+              : {},
           }),
           createElement('div', {
             className: 'root-line__actions',
@@ -55,7 +66,7 @@ export function mountRootLine(
                   click: actions.onBrowse,
                 },
               }),
-              hasRoot
+              hasRoot && !invalidRoot
                 ? createElement('button', {
                     className: 'root-line__pin',
                     text: '📌',
@@ -71,7 +82,9 @@ export function mountRootLine(
                 : null,
               hasRoot
                 ? createElement('button', {
-                    className: 'root-line__copy',
+                    className: invalidRoot
+                      ? 'root-line__copy root-line__copy--visible'
+                      : 'root-line__copy',
                     text: '📋',
                     attrs: {
                       type: 'button',
@@ -83,7 +96,7 @@ export function mountRootLine(
                     },
                   })
                 : null,
-              hasRoot
+              hasRoot && !invalidRoot
                 ? createElement('button', {
                     className: 'root-line__refresh',
                     text: '↻',

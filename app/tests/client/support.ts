@@ -12,6 +12,7 @@ export function createClientState(overrides: Partial<ClientState> = {}): ClientS
     ],
     tree: [],
     treeLoading: false,
+    invalidRoot: false,
     activeMenuId: null,
     contextMenu: null,
     sidebarVisible: true,

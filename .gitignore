@@ -1,6 +1,11 @@
 node_modules/
 dist/
 out/
+first-pass-poc/node_modules/
+first-pass-poc/dist/
+first-pass-poc/out/
+app/node_modules/
+app/dist/
 .DS_Store
 npm-debug.log*
 yarn-debug.log*

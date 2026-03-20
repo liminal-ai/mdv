@@ -26,7 +26,7 @@ export async function treeRoutes(app: FastifyInstance) {
       if (!root.startsWith('/')) {
         return reply
           .code(400)
-          .send(toApiError(ErrorCode.INVALID_ROOT, 'Root path must be absolute.'));
+          .send(toApiError(ErrorCode.INVALID_PATH, 'Root path must be absolute.'));
       }
 
       try {

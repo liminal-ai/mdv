@@ -279,7 +279,7 @@ describe('tree routes', () => {
     expect(names).not.toContain('broken-link.md');
   });
 
-  it('Non-absolute root rejected with 400 INVALID_ROOT', async () => {
+  it('Non-absolute root rejected with 400 INVALID_PATH', async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);
     const app = await buildApp({ sessionDir });
@@ -292,7 +292,7 @@ describe('tree routes', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({
       error: {
-        code: 'INVALID_ROOT',
+        code: 'INVALID_PATH',
         message: 'Root path must be absolute.',
       },
     });

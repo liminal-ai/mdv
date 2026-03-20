@@ -109,6 +109,8 @@ export function mountFileTree(
 ): () => void {
   let focusedIndex = -1;
 
+  container.tabIndex = 0;
+
   const handleKeydown = (event: KeyboardEvent) => {
     const state = store.get();
     const root = state.session.lastRoot;

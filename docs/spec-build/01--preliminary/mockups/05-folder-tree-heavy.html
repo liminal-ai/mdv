@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD Viewer — Folder Tree Heavy Workspace</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    color: #1d1d1f;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── CSS Variables ── */
+  :root {
+    --sidebar-width: 280px;
+    --menubar-h: 30px;
+    --tabstrip-h: 33px;
+    --border: #d1d1d6;
+    --bg-chrome: #f5f5f7;
+    --bg-sidebar: #f9f9fb;
+    --bg-hover: #e8e8ed;
+    --bg-active: #d4d4dc;
+    --accent: #0066cc;
+    --accent-light: #e8f0fe;
+    --text-secondary: #6e6e73;
+    --text-tertiary: #aeaeb2;
+    --warning-bg: #fff8e6;
+    --warning-border: #f0c800;
+  }
+
+  /* ── Menu Bar ── */
+  .menubar {
+    height: var(--menubar-h);
+    background: var(--bg-chrome);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 2px;
+    flex-shrink: 0;
+    -webkit-app-region: drag;
+  }
+  .menu-item {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: default;
+    -webkit-app-region: no-drag;
+    position: relative;
+  }
+  .menu-item:hover { background: var(--bg-hover); }
+  .menu-item.active { background: var(--bg-active); }
+  .menubar-spacer { flex: 1; }
+  .menubar-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+    margin: 0 4px;
+    -webkit-app-region: no-drag;
+  }
+  .toolbar-btn {
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: default;
+    -webkit-app-region: no-drag;
+    color: var(--text-secondary);
+    position: relative;
+  }
+  .toolbar-btn:hover { background: var(--bg-hover); color: #1d1d1f; }
+  .toolbar-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    background: #1d1d1f;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 50;
+    margin-top: 4px;
+    pointer-events: none;
+  }
+  .menubar-status {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding-right: 4px;
+    -webkit-app-region: no-drag;
+    cursor: default;
+  }
+  .menubar-status:hover { color: var(--text-tertiary); }
+
+  /* ── Dropdown menus ── */
+  .dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    padding: 4px 0;
+    z-index: 100;
+  }
+  .menu-item.open .dropdown { display: block; }
+  .dropdown-item {
+    padding: 5px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: default;
+    font-size: 13px;
+  }
+  .dropdown-item:hover { background: var(--accent); color: #fff; }
+  .dropdown-item:hover .shortcut { color: rgba(255,255,255,.7); }
+  .shortcut { font-size: 12px; color: var(--text-tertiary); margin-left: 24px; }
+  .dropdown-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+
+  /* ── Tab Strip ── */
+  .tabstrip {
+    height: var(--tabstrip-h);
+    background: var(--bg-chrome);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    padding: 0 8px;
+    gap: 1px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .tabstrip::-webkit-scrollbar { display: none; }
+  .tab {
+    height: 28px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 6px 6px 0 0;
+    cursor: default;
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    max-width: 180px;
+    border: 1px solid transparent;
+    border-bottom: none;
+    flex-shrink: 0;
+  }
+  .tab:hover { background: var(--bg-hover); }
+  .tab.active {
+    background: #fff;
+    color: #1d1d1f;
+    border-color: var(--border);
+  }
+  .tab-close {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    opacity: 0;
+  }
+  .tab:hover .tab-close, .tab.active .tab-close { opacity: 1; }
+  .tab-close:hover { background: var(--bg-active); color: #1d1d1f; }
+  .tab-dirty {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Main Layout ── */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: 180px;
+    max-width: 400px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .sidebar-section {
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-section.collapsed .sidebar-section-body { display: none; }
+  .sidebar-section-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-secondary);
+    cursor: default;
+    user-select: none;
+    border-bottom: 1px solid #ebebed;
+  }
+  .sidebar-section-header:hover { background: var(--bg-hover); }
+  .disclosure {
+    width: 12px;
+    font-size: 9px;
+    margin-right: 4px;
+    transition: transform .15s;
+    color: var(--text-tertiary);
+  }
+  .sidebar-section.collapsed .disclosure { transform: rotate(-90deg); }
+  .sidebar-section-body {
+    overflow-y: auto;
+    flex-shrink: 1;
+  }
+
+  /* ── Saved Roots ── */
+  .saved-root {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px 4px 26px;
+    font-size: 12px;
+    cursor: default;
+    gap: 4px;
+  }
+  .saved-root:hover { background: var(--bg-hover); }
+  .saved-root.active { color: var(--accent); font-weight: 500; }
+  .saved-root-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .saved-root-path {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100px;
+  }
+  .saved-root-x {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    padding: 0 2px;
+    border-radius: 2px;
+    opacity: 0;
+    flex-shrink: 0;
+  }
+  .saved-root:hover .saved-root-x { opacity: 1; }
+  .saved-root-x:hover { background: var(--bg-active); color: #1d1d1f; }
+
+  /* ── Root Line (single row, not collapsible) ── */
+  .root-line {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    gap: 4px;
+    border-bottom: 1px solid #ebebed;
+    font-size: 11px;
+  }
+  .root-line-path {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .root-line-action {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    cursor: default;
+    padding: 1px 3px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    opacity: .6;
+  }
+  .root-line:hover .root-line-action { opacity: 1; }
+  .root-line-action:hover { background: var(--bg-active); color: var(--text-secondary); }
+  .root-line-browse { opacity: .8; }
+  .root-line-browse:hover { opacity: 1; }
+
+  /* ── Files Header (not collapsible) ── */
+  .files-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 1px solid #ebebed;
+  }
+  .files-header-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .files-header-action {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    cursor: default;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 4px;
+  }
+  .files-header-action:hover { background: var(--bg-active); color: var(--text-secondary); }
+
+  /* ── File Tree ── */
+  .file-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2px 0;
+  }
+  .tree-node {
+    display: flex;
+    align-items: center;
+    padding: 3px 10px;
+    cursor: default;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .tree-node:hover { background: var(--bg-hover); }
+  .tree-node.active { background: var(--accent-light); color: var(--accent); }
+  .tree-icon {
+    width: 16px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .tree-dir-icon { color: var(--text-secondary); }
+  .tree-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tree-indent { display: inline-block; flex-shrink: 0; }
+
+  /* Dimmed directories (no markdown descendants) */
+  .tree-node.dimmed {
+    opacity: .45;
+  }
+
+  /* ── File count badge ── */
+  .tree-count {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    margin-left: 6px;
+    flex-shrink: 0;
+  }
+
+  /* ── Resize Handle ── */
+  .resize-handle {
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .resize-handle:hover { background: var(--accent); opacity: .3; }
+
+  /* ── Content Area ── */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .content-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 4px 16px;
+    gap: 2px;
+    border-bottom: 1px solid #ebebed;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    padding: 3px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: default;
+    color: var(--text-secondary);
+  }
+  .mode-btn:hover { background: var(--bg-hover); }
+  .mode-btn.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .content-spacer { flex: 1; }
+  .default-mode-picker {
+    font-size: 11px; color: var(--text-tertiary); margin-left: 10px;
+    display: flex; align-items: center; gap: 3px; cursor: default; position: relative;
+  }
+  .default-mode-label { white-space: nowrap; }
+  .default-mode-select { color: var(--text-secondary); padding: 1px 4px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+  .default-mode-select:hover { background: var(--bg-hover); color: #1d1d1f; }
+  .default-mode-dropdown {
+    display: none; position: absolute; top: 100%; left: 0; margin-top: 4px;
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12); padding: 3px 0; z-index: 100; min-width: 90px;
+  }
+  .default-mode-picker.open .default-mode-dropdown { display: block; }
+  .default-mode-option { padding: 4px 10px; font-size: 12px; cursor: default; }
+  .default-mode-option:hover { background: var(--accent); color: #fff; }
+  .default-mode-option.current { font-weight: 500; }
+  .content-export {
+    font-size: 12px; color: var(--text-secondary); cursor: default;
+    padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);
+    position: relative; margin-right: 8px;
+  }
+  .content-export:hover { background: var(--bg-hover); color: #1d1d1f; }
+  .content-export .export-dropdown {
+    display: none; position: absolute; top: 100%; right: 0; margin-top: 4px;
+    min-width: 150px; background: #fff; border: 1px solid var(--border);
+    border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.12); padding: 4px 0; z-index: 100;
+  }
+  .content-export.open .export-dropdown { display: block; }
+  .export-dropdown-item { padding: 5px 12px; font-size: 13px; cursor: default; }
+  .export-dropdown-item:hover { background: var(--accent); color: #fff; }
+  .content-status {
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  /* ── Rendered Markdown ── */
+  .rendered {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 48px 64px;
+    max-width: 900px;
+    line-height: 1.6;
+  }
+  .rendered h1 { font-size: 28px; font-weight: 700; margin: 0 0 16px; line-height: 1.2; }
+  .rendered h2 { font-size: 21px; font-weight: 600; margin: 32px 0 12px; line-height: 1.3; border-bottom: 1px solid #ebebed; padding-bottom: 6px; }
+  .rendered h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; }
+  .rendered p { margin: 0 0 12px; font-size: 14px; }
+  .rendered ul, .rendered ol { margin: 0 0 12px; padding-left: 24px; font-size: 14px; }
+  .rendered li { margin: 2px 0; }
+  .rendered code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 12.5px;
+    background: #f0f0f2;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .rendered pre {
+    background: #1d1d1f;
+    color: #f0f0f2;
+    padding: 14px 16px;
+    border-radius: 6px;
+    margin: 0 0 16px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .rendered pre code { background: none; padding: 0; color: inherit; }
+  .rendered table {
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 13px;
+    width: 100%;
+  }
+  .rendered th, .rendered td {
+    border: 1px solid var(--border);
+    padding: 7px 12px;
+    text-align: left;
+  }
+  .rendered th { background: var(--bg-chrome); font-weight: 600; font-size: 12px; }
+  .rendered blockquote {
+    border-left: 3px solid var(--border);
+    padding: 2px 0 2px 16px;
+    margin: 0 0 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  /* ── Context Menu ── */
+  .context-menu {
+    display: none;
+    position: fixed;
+    min-width: 160px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    padding: 4px 0;
+    z-index: 200;
+    font-size: 13px;
+  }
+  .context-menu.visible { display: block; }
+  .context-menu-item {
+    padding: 5px 12px;
+    cursor: default;
+  }
+  .context-menu-item:hover { background: var(--accent); color: #fff; }
+  .context-menu-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+</style>
+</head>
+<body>
+
+<!-- ── Menu Bar ── -->
+<div class="menubar">
+  <div class="menu-item" data-menu="file">
+    File
+    <div class="dropdown">
+      <div class="dropdown-item">Open File... <span class="shortcut">&#8984;O</span></div>
+      <div class="dropdown-item">Open Folder... <span class="shortcut">&#8984;&#8679;O</span></div>
+      <div class="dropdown-sep"></div>
+      <div class="dropdown-item">Save <span class="shortcut">&#8984;S</span></div>
+      <div class="dropdown-item">Save As... <span class="shortcut">&#8984;&#8679;S</span></div>
+      <div class="dropdown-sep"></div>
+      <div class="dropdown-item">Reload from Disk <span class="shortcut">&#8984;R</span></div>
+      <div class="dropdown-item">Close Tab <span class="shortcut">&#8984;W</span></div>
+    </div>
+  </div>
+  <div class="menu-item" data-menu="export">
+    Export
+    <div class="dropdown">
+      <div class="dropdown-item">Export PDF...</div>
+      <div class="dropdown-item">Export DOCX...</div>
+      <div class="dropdown-item">Export HTML...</div>
+    </div>
+  </div>
+  <div class="menu-item" data-menu="view">
+    View
+    <div class="dropdown">
+      <div class="dropdown-item">Toggle Sidebar <span class="shortcut">&#8984;\</span></div>
+      <div class="dropdown-sep"></div>
+      <div class="dropdown-item">Reading Mode <span class="shortcut">&#8984;1</span></div>
+      <div class="dropdown-item">Edit Mode <span class="shortcut">&#8984;2</span></div>
+      <div class="dropdown-sep"></div>
+      <div class="dropdown-item">Next Tab <span class="shortcut">&#8984;&#8679;]</span></div>
+      <div class="dropdown-item">Previous Tab <span class="shortcut">&#8984;&#8679;[</span></div>
+    </div>
+  </div>
+  <div class="menubar-sep"></div>
+  <span class="toolbar-btn" title="Open File (&#8984;O)">&#128194;</span>
+  <span class="toolbar-btn" title="Save (&#8984;S)">&#128190;</span>
+  <span class="toolbar-btn" title="Reload (&#8984;R)">&#8635;</span>
+  <div class="menubar-spacer"></div>
+  <div class="menubar-status" title="/Users/leemoore/code/acme-platform/services/auth-service/docs/authentication-flow-overview.md">authentication-flow-overview.md &mdash; auth-service/docs</div>
+</div>
+
+<!-- ── Tab Strip ── -->
+<div class="tabstrip">
+  <div class="tab active">
+    <span class="tab-name">authentication-flow-overview.md</span>
+    <span class="tab-close">&times;</span>
+  </div>
+  <div class="tab">
+    <span class="tab-name">deployment-runbook.md</span>
+    <span class="tab-close">&times;</span>
+  </div>
+  <div class="tab">
+    <span class="tab-dirty"></span>
+    <span class="tab-name">incident-response-procedures-and-escalation-matrix.md</span>
+    <span class="tab-close">&times;</span>
+  </div>
+  <div class="tab">
+    <span class="tab-name">CONTRIBUTING.md</span>
+    <span class="tab-close">&times;</span>
+  </div>
+</div>
+
+<!-- ── Main Layout ── -->
+<div class="main">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Saved Roots (collapsible) -->
+    <div class="sidebar-section" id="sec-roots">
+      <div class="sidebar-section-header" onclick="toggleSection('sec-roots')">
+        <span class="disclosure">&#9660;</span> Workspaces
+      </div>
+      <div class="sidebar-section-body">
+        <div class="saved-root active" title="/Users/leemoore/code/acme-platform">
+          <span class="saved-root-label">acme-platform</span>
+          <span class="saved-root-path">~/code/acme-platform</span>
+          <span class="saved-root-x">&times;</span>
+        </div>
+        <div class="saved-root" title="/Users/leemoore/code/design-system">
+          <span class="saved-root-label">design-system-docs</span>
+          <span class="saved-root-path">~/code/design-system</span>
+          <span class="saved-root-x">&times;</span>
+        </div>
+        <div class="saved-root" title="/Users/leemoore/code/iac-monorepo">
+          <span class="saved-root-label">infrastructure-as-code</span>
+          <span class="saved-root-path">~/code/iac-monorepo</span>
+          <span class="saved-root-x">&times;</span>
+        </div>
+        <div class="saved-root" title="/Users/leemoore/code/mobile-client">
+          <span class="saved-root-label">mobile-client</span>
+          <span class="saved-root-path">~/code/mobile-client</span>
+          <span class="saved-root-x">&times;</span>
+        </div>
+        <div class="saved-root" title="/Users/leemoore/code/data-pipeline">
+          <span class="saved-root-label">data-pipeline-v2</span>
+          <span class="saved-root-path">~/code/data-pipeline</span>
+          <span class="saved-root-x">&times;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current Root (single line, not collapsible) -->
+    <div class="root-line">
+      <span class="root-line-action root-line-browse" title="Choose a different folder">📁</span>
+      <span class="root-line-path" title="/Users/leemoore/code/acme-platform">~/code/acme-platform</span>
+      <span class="root-line-action" title="Save as Workspace">&#128204;</span>
+      <span class="root-line-action" title="Copy Path">&#9098;</span>
+      <span class="root-line-action" title="Refresh">&#8635;</span>
+    </div>
+
+    <!-- Files Header (not collapsible) with Expand/Collapse All -->
+    <div class="files-header">
+      <span class="files-header-label">Files</span>
+      <span class="files-header-action" id="btn-expand-all" title="Expand all directories with markdown files">&#8862; Expand All</span>
+      <span class="files-header-action" id="btn-collapse-all" title="Collapse all directories">&#8863; Collapse All</span>
+    </div>
+
+    <!-- File Tree — deep nested, expand-all applied, markdown-only filtering -->
+    <div class="file-tree">
+
+      <!-- ── docs/ (expanded, has many .md descendants) ── -->
+      <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+        <span class="tree-icon tree-dir-icon">&#9660;</span>
+        <span class="tree-name">docs</span>
+        <span class="tree-count">14</span>
+      </div>
+
+        <!-- docs/architecture/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">architecture</span>
+        </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">platform-architecture-overview-and-service-boundaries.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">data-model.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">cross-service-communication-patterns.md</span>
+          </div>
+
+        <!-- docs/adrs/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">adrs</span>
+        </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">ADR-001-use-event-sourcing-for-audit-trail.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">ADR-002-graphql-federation.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">ADR-003-postgres-over-dynamodb-for-transactional-data.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">ADR-004-adopt-opentelemetry.md</span>
+          </div>
+
+        <!-- docs/onboarding/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">onboarding</span>
+        </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">new-engineer-setup-guide.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">local-development-environment-configuration-and-troubleshooting.md</span>
+          </div>
+
+        <!-- docs/runbooks/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">runbooks</span>
+        </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">deployment-runbook.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">incident-response-procedures-and-escalation-matrix.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">database-failover-playbook.md</span>
+          </div>
+
+      <!-- ── services/ (expanded, has .md descendants across children) ── -->
+      <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+        <span class="tree-icon tree-dir-icon">&#9660;</span>
+        <span class="tree-name">services</span>
+        <span class="tree-count">11</span>
+      </div>
+
+        <!-- services/auth-service/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">auth-service</span>
+        </div>
+
+          <!-- services/auth-service/docs/ (expanded) -->
+          <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon tree-dir-icon">&#9660;</span>
+            <span class="tree-name">docs</span>
+          </div>
+            <div class="tree-node active" oncontextmenu="showCtx(event,'file')">
+              <span class="tree-indent" style="width:48px"></span>
+              <span class="tree-icon">&#9671;</span>
+              <span class="tree-name">authentication-flow-overview.md</span>
+            </div>
+            <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+              <span class="tree-indent" style="width:48px"></span>
+              <span class="tree-icon">&#9671;</span>
+              <span class="tree-name">oauth2-provider-integration-guide-and-configuration-reference.md</span>
+            </div>
+            <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+              <span class="tree-indent" style="width:48px"></span>
+              <span class="tree-icon">&#9671;</span>
+              <span class="tree-name">token-rotation-strategy.md</span>
+            </div>
+
+          <!-- services/auth-service/README.md -->
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">README.md</span>
+          </div>
+
+        <!-- services/payments/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">payments</span>
+        </div>
+
+          <!-- services/payments/docs/ (expanded) -->
+          <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon tree-dir-icon">&#9660;</span>
+            <span class="tree-name">docs</span>
+          </div>
+            <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+              <span class="tree-indent" style="width:48px"></span>
+              <span class="tree-icon">&#9671;</span>
+              <span class="tree-name">payment-processing-lifecycle.md</span>
+            </div>
+            <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+              <span class="tree-indent" style="width:48px"></span>
+              <span class="tree-icon">&#9671;</span>
+              <span class="tree-name">stripe-webhook-handling-and-idempotency-requirements.md</span>
+            </div>
+
+          <!-- services/payments/README.md -->
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">README.md</span>
+          </div>
+
+        <!-- services/notifications/ (collapsed — has .md but user collapsed it) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9654;</span>
+          <span class="tree-name">notifications</span>
+          <span class="tree-count">3</span>
+        </div>
+
+        <!-- services/api-gateway/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">api-gateway</span>
+        </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">rate-limiting-configuration-and-throttling-policies.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">README.md</span>
+          </div>
+
+      <!-- ── packages/ (expanded, has some .md) ── -->
+      <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+        <span class="tree-icon tree-dir-icon">&#9660;</span>
+        <span class="tree-name">packages</span>
+        <span class="tree-count">3</span>
+      </div>
+
+        <!-- packages/shared-utils/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">shared-utils</span>
+        </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">README.md</span>
+          </div>
+
+        <!-- packages/ui-components/ (expanded) -->
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:16px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">ui-components</span>
+        </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">component-library-usage-guide-and-storybook-conventions.md</span>
+          </div>
+          <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+            <span class="tree-indent" style="width:32px"></span>
+            <span class="tree-icon">&#9671;</span>
+            <span class="tree-name">README.md</span>
+          </div>
+
+      <!-- ── infra/ (dimmed+collapsed, no .md descendants) ── -->
+      <div class="tree-node dimmed" oncontextmenu="showCtx(event,'dir')">
+        <span class="tree-icon tree-dir-icon">&#9654;</span>
+        <span class="tree-name">infra</span>
+      </div>
+
+      <!-- ── scripts/ (dimmed+collapsed, no .md descendants) ── -->
+      <div class="tree-node dimmed" oncontextmenu="showCtx(event,'dir')">
+        <span class="tree-icon tree-dir-icon">&#9654;</span>
+        <span class="tree-name">scripts</span>
+      </div>
+
+      <!-- ── .github/ (dimmed+collapsed, no .md descendants) ── -->
+      <div class="tree-node dimmed" oncontextmenu="showCtx(event,'dir')">
+        <span class="tree-icon tree-dir-icon">&#9654;</span>
+        <span class="tree-name">.github</span>
+      </div>
+
+      <!-- ── Root-level .md files ── -->
+      <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+        <span class="tree-icon">&#9671;</span>
+        <span class="tree-name">README.md</span>
+      </div>
+      <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+        <span class="tree-icon">&#9671;</span>
+        <span class="tree-name">CONTRIBUTING.md</span>
+      </div>
+      <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+        <span class="tree-icon">&#9671;</span>
+        <span class="tree-name">CHANGELOG.md</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="resize-handle"></div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="content-toolbar">
+      <div class="mode-btn active">Render</div>
+      <div class="mode-btn">Edit</div>
+      <div class="default-mode-picker" onclick="event.stopPropagation();this.classList.toggle('open')">
+        <span class="default-mode-label">Opens in:</span>
+        <span class="default-mode-select">Render ▾</span>
+        <div class="default-mode-dropdown">
+          <div class="default-mode-option current">Render</div>
+          <div class="default-mode-option">Edit</div>
+        </div>
+      </div>
+      <div class="content-spacer"></div>
+      <div class="content-export" onclick="event.stopPropagation();this.classList.toggle('open')">
+        Export ▾
+        <div class="export-dropdown">
+          <div class="export-dropdown-item">Export PDF…</div>
+          <div class="export-dropdown-item">Export DOCX…</div>
+          <div class="export-dropdown-item">Export HTML…</div>
+        </div>
+      </div>
+      <div class="content-status">31 files indexed</div>
+    </div>
+
+    <div class="rendered">
+      <h1>Authentication Flow Overview</h1>
+      <p>This document describes the authentication and authorization flows used by the <code>auth-service</code>, including OAuth2 provider integration, token lifecycle, and session management.</p>
+
+      <h2>Supported Flows</h2>
+      <ul>
+        <li><strong>Authorization Code + PKCE</strong> &mdash; primary flow for web and mobile clients</li>
+        <li><strong>Client Credentials</strong> &mdash; for service-to-service authentication</li>
+        <li><strong>Refresh Token Rotation</strong> &mdash; automatic rotation with reuse detection</li>
+      </ul>
+
+      <h2>Token Lifecycle</h2>
+      <p>Access tokens are short-lived JWTs (15 min TTL) signed with RS256. Refresh tokens are opaque, stored server-side, and rotated on every use. Reuse of a consumed refresh token triggers immediate revocation of the entire token family.</p>
+
+      <table>
+        <thead>
+          <tr><th>Token Type</th><th>Format</th><th>TTL</th><th>Storage</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Access Token</td><td>JWT (RS256)</td><td>15 min</td><td>Client only</td></tr>
+          <tr><td>Refresh Token</td><td>Opaque</td><td>30 days</td><td>Server (Redis)</td></tr>
+          <tr><td>ID Token</td><td>JWT (RS256)</td><td>1 hour</td><td>Client only</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Session Management</h2>
+      <p>Sessions are tracked per-device using a fingerprint derived from the User-Agent and a client-generated device ID. The session store supports:</p>
+      <ul>
+        <li>Concurrent session limits (configurable per tenant)</li>
+        <li>Remote session revocation via admin API</li>
+        <li>Idle timeout with sliding window renewal</li>
+      </ul>
+
+      <blockquote>
+        <p>See also: <code>oauth2-provider-integration-guide-and-configuration-reference.md</code> for provider-specific configuration, and <code>token-rotation-strategy.md</code> for the rotation algorithm details.</p>
+      </blockquote>
+
+      <h3>Related ADRs</h3>
+      <ul>
+        <li><code>ADR-001-use-event-sourcing-for-audit-trail.md</code> &mdash; auth events are sourced for compliance</li>
+        <li><code>ADR-004-adopt-opentelemetry.md</code> &mdash; all auth flows emit traces</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="ctx-menu">
+  <div class="context-menu-item" id="ctx-copy">Copy Path</div>
+  <div class="context-menu-sep ctx-dir-only"></div>
+  <div class="context-menu-item ctx-dir-only" id="ctx-makeroot">Make Root</div>
+  <div class="context-menu-item ctx-dir-only" id="ctx-saveworkspace">Save as Workspace</div>
+</div>
+
+<script>
+  // Dropdown menus
+  document.querySelectorAll('.menu-item[data-menu]').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var wasOpen = el.classList.contains('open');
+      closeAll();
+      if (!wasOpen) el.classList.add('open');
+    });
+  });
+  document.addEventListener('click', closeAll);
+  function closeAll() {
+    document.querySelectorAll('.menu-item').forEach(function(m) { m.classList.remove('open'); });
+    document.getElementById('ctx-menu').classList.remove('visible');
+  }
+
+  // Section collapse
+  function toggleSection(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  }
+
+  // Context menu
+  function showCtx(e, type) {
+    e.preventDefault();
+    e.stopPropagation();
+    var menu = document.getElementById('ctx-menu');
+    menu.style.left = e.clientX + 'px';
+    menu.style.top = e.clientY + 'px';
+    menu.classList.add('visible');
+    menu.querySelectorAll('.ctx-dir-only').forEach(function(el) {
+      el.style.display = type === 'dir' ? '' : 'none';
+    });
+  }
+
+  // Tab switching mockup
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

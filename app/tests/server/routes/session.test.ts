@@ -258,6 +258,30 @@ describe('session routes', () => {
     await app.close();
   });
 
+  it('PUT /api/session/root rejects file paths with 400 INVALID_PATH', async () => {
+    const sessionDir = await createTempDir();
+    tempDirs.push(sessionDir);
+    const filePath = path.join(sessionDir, 'README.md');
+    await writeFile(filePath, '# not a directory\n', 'utf8');
+    const app = await buildApp({ sessionDir });
+
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/session/root',
+      payload: { root: filePath },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_PATH',
+        message: 'Path is not a directory',
+      },
+    });
+
+    await app.close();
+  });
+
   it('TC-3.4a: Remove workspace', async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);
@@ -365,6 +389,74 @@ describe('session routes', () => {
     expect(response.json().workspaces).toEqual([
       { path: workspace, label: 'workspace', addedAt: '2026-03-01T00:00:00.000Z' },
     ]);
+
+    await app.close();
+  });
+
+  it('POST /api/session/workspaces returns 404 when the path does not exist', async () => {
+    const sessionDir = await createTempDir();
+    tempDirs.push(sessionDir);
+    const app = await buildApp({ sessionDir });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/session/workspaces',
+      payload: { path: path.join(sessionDir, 'missing-workspace') },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'PATH_NOT_FOUND',
+        message: 'The selected folder no longer exists.',
+      },
+    });
+
+    await app.close();
+  });
+
+  it('POST /api/session/workspaces returns 400 INVALID_PATH for relative paths', async () => {
+    const sessionDir = await createTempDir();
+    tempDirs.push(sessionDir);
+    const app = await buildApp({ sessionDir });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/session/workspaces',
+      payload: { path: 'relative/path' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_PATH',
+        message: 'Path must be absolute',
+      },
+    });
+
+    await app.close();
+  });
+
+  it('POST /api/session/workspaces returns 400 when the path is a file', async () => {
+    const sessionDir = await createTempDir();
+    tempDirs.push(sessionDir);
+    const filePath = path.join(sessionDir, 'workspace.md');
+    await writeFile(filePath, '# not a directory\n', 'utf8');
+    const app = await buildApp({ sessionDir });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/session/workspaces',
+      payload: { path: filePath },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_PATH',
+        message: 'Path is not a directory',
+      },
+    });
 
     await app.close();
   });
@@ -582,6 +674,12 @@ describe('session routes', () => {
     });
 
     expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_PATH',
+        message: 'Path must be absolute',
+      },
+    });
 
     await app.close();
   });

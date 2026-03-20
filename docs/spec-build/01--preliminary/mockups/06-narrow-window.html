@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MD Viewer — Narrow Window</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    color: #1d1d1f;
+    background: #c0c0c4;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 0;
+  }
+
+  /* ── Outer constraint to simulate a narrow window ── */
+  .window-frame {
+    width: 880px;
+    max-width: 100vw;
+    height: calc(100vh - 48px);
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,.25), 0 1px 3px rgba(0,0,0,.1);
+    position: relative;
+  }
+
+  /* ── CSS Variables ── */
+  :root {
+    --sidebar-width: 180px;
+    --menubar-h: 30px;
+    --tabstrip-h: 33px;
+    --border: #d1d1d6;
+    --bg-chrome: #f5f5f7;
+    --bg-sidebar: #f9f9fb;
+    --bg-hover: #e8e8ed;
+    --bg-active: #d4d4dc;
+    --accent: #0066cc;
+    --accent-light: #e8f0fe;
+    --text-secondary: #6e6e73;
+    --text-tertiary: #aeaeb2;
+    --warning-bg: #fff8e6;
+    --warning-border: #f0c800;
+  }
+
+  /* ── Menu Bar ── */
+  .menubar {
+    height: var(--menubar-h);
+    background: var(--bg-chrome);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    gap: 1px;
+    flex-shrink: 0;
+    -webkit-app-region: drag;
+  }
+  .menu-item {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: default;
+    -webkit-app-region: no-drag;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .menu-item:hover { background: var(--bg-hover); }
+  .menu-item.active { background: var(--bg-active); }
+  .menubar-spacer { flex: 1; min-width: 0; }
+  .menubar-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+    margin: 0 3px;
+    -webkit-app-region: no-drag;
+    flex-shrink: 0;
+  }
+  .toolbar-btn {
+    padding: 3px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: default;
+    -webkit-app-region: no-drag;
+    color: var(--text-secondary);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .toolbar-btn:hover { background: var(--bg-hover); color: #1d1d1f; }
+  .toolbar-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    background: #1d1d1f;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 50;
+    margin-top: 4px;
+    pointer-events: none;
+  }
+  .menubar-status {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding-right: 4px;
+    -webkit-app-region: no-drag;
+    cursor: default;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .menubar-status:hover { color: var(--text-tertiary); }
+
+  /* ── Narrow: truncate or hide status text ── */
+  .menubar-status .status-path {
+    display: none;
+  }
+
+  /* ── Dropdown menus ── */
+  .dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    padding: 4px 0;
+    z-index: 100;
+  }
+  .menu-item.open .dropdown { display: block; }
+  .dropdown-item {
+    padding: 5px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: default;
+    font-size: 13px;
+  }
+  .dropdown-item:hover { background: var(--accent); color: #fff; }
+  .dropdown-item:hover .shortcut { color: rgba(255,255,255,.7); }
+  .shortcut { font-size: 12px; color: var(--text-tertiary); margin-left: 24px; }
+  .dropdown-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+
+  /* ── Tab Strip ── */
+  .tabstrip {
+    height: var(--tabstrip-h);
+    background: var(--bg-chrome);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    padding: 0 6px;
+    gap: 1px;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+  .tabstrip::-webkit-scrollbar { display: none; }
+  .tab {
+    height: 28px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px 6px 0 0;
+    cursor: default;
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    max-width: 130px;
+    min-width: 60px;
+    border: 1px solid transparent;
+    border-bottom: none;
+    flex-shrink: 1;
+    overflow: hidden;
+  }
+  .tab:hover { background: var(--bg-hover); }
+  .tab.active {
+    background: #fff;
+    color: #1d1d1f;
+    border-color: var(--border);
+    flex-shrink: 0;
+  }
+  .tab-close {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    opacity: 0;
+    flex-shrink: 0;
+  }
+  .tab:hover .tab-close, .tab.active .tab-close { opacity: 1; }
+  .tab-close:hover { background: var(--bg-active); color: #1d1d1f; }
+  .tab-dirty {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  /* ── Main Layout ── */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: 0;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: width .2s ease, min-width .2s ease, border-width .2s ease, padding .2s ease;
+  }
+  .sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    border-right-width: 0;
+    overflow: hidden;
+  }
+  .sidebar.collapsed > * {
+    visibility: hidden;
+  }
+
+  .sidebar-section {
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-section.collapsed .sidebar-section-body { display: none; }
+  .sidebar-section-header {
+    display: flex;
+    align-items: center;
+    padding: 5px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-secondary);
+    cursor: default;
+    user-select: none;
+    border-bottom: 1px solid #ebebed;
+  }
+  .sidebar-section-header:hover { background: var(--bg-hover); }
+  .disclosure {
+    width: 12px;
+    font-size: 9px;
+    margin-right: 3px;
+    transition: transform .15s;
+    color: var(--text-tertiary);
+  }
+  .sidebar-section.collapsed .disclosure { transform: rotate(-90deg); }
+  .sidebar-section-body {
+    overflow-y: auto;
+    flex-shrink: 1;
+  }
+
+  /* ── Saved Roots ── */
+  .saved-root {
+    display: flex;
+    align-items: center;
+    padding: 3px 8px 3px 22px;
+    font-size: 11px;
+    cursor: default;
+    gap: 3px;
+  }
+  .saved-root:hover { background: var(--bg-hover); }
+  .saved-root.active { color: var(--accent); font-weight: 500; }
+  .saved-root-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .saved-root-path {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60px;
+  }
+  .saved-root-x {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    padding: 0 2px;
+    border-radius: 2px;
+    opacity: 0;
+    flex-shrink: 0;
+  }
+  .saved-root:hover .saved-root-x { opacity: 1; }
+  .saved-root-x:hover { background: var(--bg-active); color: #1d1d1f; }
+
+  /* ── Root Line ── */
+  .root-line {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    gap: 3px;
+    border-bottom: 1px solid #ebebed;
+    font-size: 11px;
+  }
+  .root-line-path {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 10px;
+  }
+  .root-line-action {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    cursor: default;
+    padding: 1px 2px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    opacity: .6;
+  }
+  .root-line:hover .root-line-action { opacity: 1; }
+  .root-line-action:hover { background: var(--bg-active); color: var(--text-secondary); }
+  .root-line-browse { opacity: .8; }
+  .root-line-browse:hover { opacity: 1; }
+
+  /* ── Files Header ── */
+  .files-header {
+    display: flex;
+    align-items: center;
+    padding: 5px 8px;
+    border-bottom: 1px solid #ebebed;
+  }
+  .files-header-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+  .files-header-action {
+    font-size: 9px;
+    color: var(--text-tertiary);
+    cursor: default;
+    padding: 1px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .files-header-action:hover { background: var(--bg-active); color: var(--text-secondary); }
+
+  /* ── File Tree ── */
+  .file-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2px 0;
+  }
+  .tree-node {
+    display: flex;
+    align-items: center;
+    padding: 2px 8px;
+    cursor: default;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .tree-node:hover { background: var(--bg-hover); }
+  .tree-node.active { background: var(--accent-light); color: var(--accent); }
+  .tree-icon {
+    width: 14px;
+    font-size: 9px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .tree-dir-icon { color: var(--text-secondary); }
+  .tree-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tree-indent { display: inline-block; flex-shrink: 0; }
+
+  /* ── Resize Handle ── */
+  .resize-handle {
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .resize-handle:hover { background: var(--accent); opacity: .3; }
+
+  /* ── Sidebar Toggle ── */
+  .sidebar-toggle {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: default;
+    font-size: 12px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    -webkit-app-region: no-drag;
+    user-select: none;
+    margin-right: 2px;
+  }
+  .sidebar-toggle:hover { background: var(--bg-hover); color: #1d1d1f; }
+  .sidebar-toggle::after {
+    content: "Toggle Sidebar";
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    background: #1d1d1f;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 50;
+    margin-top: 4px;
+    pointer-events: none;
+  }
+
+  /* ── Content Area ── */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .content-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 3px 12px;
+    gap: 2px;
+    border-bottom: 1px solid #ebebed;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: default;
+    color: var(--text-secondary);
+  }
+  .mode-btn:hover { background: var(--bg-hover); }
+  .mode-btn.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .content-spacer { flex: 1; }
+  .default-mode-picker {
+    font-size: 10px; color: var(--text-tertiary); margin-left: 6px;
+    display: flex; align-items: center; gap: 2px; cursor: default; position: relative;
+  }
+  .default-mode-label { white-space: nowrap; }
+  .default-mode-select { color: var(--text-secondary); padding: 1px 3px; border-radius: 3px; cursor: pointer; white-space: nowrap; }
+  .default-mode-select:hover { background: var(--bg-hover); color: #1d1d1f; }
+  .default-mode-dropdown {
+    display: none; position: absolute; top: 100%; left: 0; margin-top: 4px;
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12); padding: 3px 0; z-index: 100; min-width: 90px;
+  }
+  .default-mode-picker.open .default-mode-dropdown { display: block; }
+  .default-mode-option { padding: 4px 10px; font-size: 12px; cursor: default; }
+  .default-mode-option:hover { background: var(--accent); color: #fff; }
+  .default-mode-option.current { font-weight: 500; }
+  .content-export {
+    font-size: 11px; color: var(--text-secondary); cursor: default;
+    padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border);
+    position: relative; margin-right: 4px;
+  }
+  .content-export:hover { background: var(--bg-hover); color: #1d1d1f; }
+  .content-export .export-dropdown {
+    display: none; position: absolute; top: 100%; right: 0; margin-top: 4px;
+    min-width: 150px; background: #fff; border: 1px solid var(--border);
+    border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.12); padding: 4px 0; z-index: 100;
+  }
+  .content-export.open .export-dropdown { display: block; }
+  .export-dropdown-item { padding: 5px 12px; font-size: 13px; cursor: default; }
+  .export-dropdown-item:hover { background: var(--accent); color: #fff; }
+  .content-status {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Rendered Markdown (compressed for narrow) ── */
+  .rendered {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px 48px;
+    line-height: 1.6;
+  }
+  .rendered h1 { font-size: 24px; font-weight: 700; margin: 0 0 12px; line-height: 1.2; }
+  .rendered h2 { font-size: 18px; font-weight: 600; margin: 24px 0 10px; line-height: 1.3; border-bottom: 1px solid #ebebed; padding-bottom: 5px; }
+  .rendered h3 { font-size: 15px; font-weight: 600; margin: 18px 0 6px; }
+  .rendered p { margin: 0 0 10px; font-size: 14px; }
+  .rendered ul, .rendered ol { margin: 0 0 10px; padding-left: 20px; font-size: 14px; }
+  .rendered li { margin: 2px 0; }
+  .rendered code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px;
+    background: #f0f0f2;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .rendered pre {
+    background: #1d1d1f;
+    color: #f0f0f2;
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin: 0 0 12px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .rendered pre code { background: none; padding: 0; color: inherit; }
+  .rendered table {
+    border-collapse: collapse;
+    margin: 0 0 12px;
+    font-size: 12px;
+    width: 100%;
+  }
+  .rendered th, .rendered td {
+    border: 1px solid var(--border);
+    padding: 5px 8px;
+    text-align: left;
+  }
+  .rendered th { background: var(--bg-chrome); font-weight: 600; font-size: 11px; }
+  .rendered blockquote {
+    border-left: 3px solid var(--border);
+    padding: 2px 0 2px 12px;
+    margin: 0 0 10px;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+  .rendered .warning-inline {
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 11px;
+    color: #7a6500;
+    margin: 0 0 10px;
+  }
+  .rendered img {
+    max-width: 100%;
+    border-radius: 4px;
+    margin: 4px 0 10px;
+  }
+  .rendered .mermaid-block {
+    background: #fafafa;
+    border: 1px solid #ebebed;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 0 0 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  /* ── Context Menu ── */
+  .context-menu {
+    display: none;
+    position: fixed;
+    min-width: 160px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    padding: 4px 0;
+    z-index: 200;
+    font-size: 13px;
+  }
+  .context-menu.visible { display: block; }
+  .context-menu-item {
+    padding: 5px 12px;
+    cursor: default;
+  }
+  .context-menu-item:hover { background: var(--accent); color: #fff; }
+  .context-menu-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+
+  /* ── Mockup Annotation ── */
+  .mockup-annotation {
+    position: fixed;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.75);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 500;
+  }
+
+  /* ── State Label ── */
+  .state-label {
+    position: absolute;
+    top: -20px;
+    left: 0;
+    font-size: 11px;
+    color: #6e6e73;
+    font-weight: 600;
+    letter-spacing: .3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="window-frame">
+
+  <!-- ── Menu Bar ── -->
+  <div class="menubar">
+    <span class="sidebar-toggle" id="sidebar-toggle" title="Toggle Sidebar (Cmd+\)">&#9776;</span>
+    <div class="menu-item" data-menu="file">
+      File
+      <div class="dropdown">
+        <div class="dropdown-item">Open File... <span class="shortcut">&#8984;O</span></div>
+        <div class="dropdown-item">Open Folder... <span class="shortcut">&#8984;&#8679;O</span></div>
+        <div class="dropdown-sep"></div>
+        <div class="dropdown-item">Save <span class="shortcut">&#8984;S</span></div>
+        <div class="dropdown-item">Save As... <span class="shortcut">&#8984;&#8679;S</span></div>
+        <div class="dropdown-sep"></div>
+        <div class="dropdown-item">Reload from Disk <span class="shortcut">&#8984;R</span></div>
+        <div class="dropdown-item">Close Tab <span class="shortcut">&#8984;W</span></div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="export">
+      Export
+      <div class="dropdown">
+        <div class="dropdown-item">Export PDF...</div>
+        <div class="dropdown-item">Export DOCX...</div>
+        <div class="dropdown-item">Export HTML...</div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="view">
+      View
+      <div class="dropdown">
+        <div class="dropdown-item">Toggle Sidebar <span class="shortcut">&#8984;\</span></div>
+        <div class="dropdown-sep"></div>
+        <div class="dropdown-item">Reading Mode <span class="shortcut">&#8984;1</span></div>
+        <div class="dropdown-item">Edit Mode <span class="shortcut">&#8984;2</span></div>
+        <div class="dropdown-sep"></div>
+        <div class="dropdown-item">Next Tab <span class="shortcut">&#8984;&#8679;]</span></div>
+        <div class="dropdown-item">Previous Tab <span class="shortcut">&#8984;&#8679;[</span></div>
+      </div>
+    </div>
+    <div class="menubar-sep"></div>
+    <span class="toolbar-btn" title="Open File">&#128194;</span>
+    <span class="toolbar-btn" title="Save">&#128190;</span>
+    <span class="toolbar-btn" title="Reload">&circlearrowleft;</span>
+    <div class="menubar-spacer"></div>
+    <div class="menubar-status" title="/Users/leemoore/code/project-atlas/docs/architecture/system-design.md">system-design.md<span class="status-path"> &mdash; project-atlas/docs/architecture</span></div>
+  </div>
+
+  <!-- ── Tab Strip ── -->
+  <div class="tabstrip">
+    <div class="tab active">
+      <span class="tab-name">system-design.md</span>
+      <span class="tab-close">&times;</span>
+    </div>
+    <div class="tab">
+      <span class="tab-name">api-contracts.md</span>
+      <span class="tab-close">&times;</span>
+    </div>
+    <div class="tab">
+      <span class="tab-dirty"></span>
+      <span class="tab-name">sprint-plan.md</span>
+      <span class="tab-close">&times;</span>
+    </div>
+    <div class="tab">
+      <span class="tab-name">ADR-007-event-sourci...</span>
+      <span class="tab-close">&times;</span>
+    </div>
+    <div class="tab">
+      <span class="tab-name">epic-auth-migration.md</span>
+      <span class="tab-close">&times;</span>
+    </div>
+  </div>
+
+  <!-- ── Main Layout ── -->
+  <div class="main">
+
+    <!-- Sidebar (at minimum width, 180px) -->
+    <div class="sidebar" id="sidebar">
+
+      <!-- Workspaces (collapsed by default in narrow mode) -->
+      <div class="sidebar-section collapsed" id="sec-roots">
+        <div class="sidebar-section-header" onclick="toggleSection('sec-roots')">
+          <span class="disclosure">&#9660;</span> Workspaces
+        </div>
+        <div class="sidebar-section-body">
+          <div class="saved-root active" title="/Users/leemoore/code/project-atlas">
+            <span class="saved-root-label">project-atlas</span>
+            <span class="saved-root-path">~/code/pro...</span>
+            <span class="saved-root-x">&times;</span>
+          </div>
+          <div class="saved-root" title="/Users/leemoore/code/platform-docs">
+            <span class="saved-root-label">platform-docs</span>
+            <span class="saved-root-path">~/code/pla...</span>
+            <span class="saved-root-x">&times;</span>
+          </div>
+          <div class="saved-root" title="/Users/leemoore/code/liminal-engine">
+            <span class="saved-root-label">liminal-engine</span>
+            <span class="saved-root-path">~/code/lim...</span>
+            <span class="saved-root-x">&times;</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Root -->
+      <div class="root-line">
+        <span class="root-line-action root-line-browse" title="Choose a different folder">📁</span>
+        <span class="root-line-path" title="/Users/leemoore/code/project-atlas">~/code/project-atlas</span>
+        <span class="root-line-action" title="Save as Workspace">&#128204;</span>
+        <span class="root-line-action" title="Copy Path">&#9098;</span>
+        <span class="root-line-action" title="Refresh">&circlearrowleft;</span>
+      </div>
+
+      <!-- Files Header -->
+      <div class="files-header">
+        <span class="files-header-label">Files</span>
+        <span class="files-header-action" title="Expand all">&#8862; Expand</span>
+      </div>
+
+      <!-- File Tree -->
+      <div class="file-tree">
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">docs</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:14px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">architecture</span>
+        </div>
+        <div class="tree-node active" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-indent" style="width:28px"></span>
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">system-design.md</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-indent" style="width:28px"></span>
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">api-contracts.md</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-indent" style="width:28px"></span>
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">data-model.md</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:14px"></span>
+          <span class="tree-icon tree-dir-icon">&#9654;</span>
+          <span class="tree-name">adrs</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-indent" style="width:14px"></span>
+          <span class="tree-icon tree-dir-icon">&#9660;</span>
+          <span class="tree-name">specs</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-indent" style="width:28px"></span>
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">sprint-plan.md</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-indent" style="width:28px"></span>
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">prd-payments-v2.md</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-indent" style="width:28px"></span>
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">epic-auth-migration.md</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'dir')">
+          <span class="tree-icon tree-dir-icon">&#9654;</span>
+          <span class="tree-name">runbooks</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">README.md</span>
+        </div>
+        <div class="tree-node" oncontextmenu="showCtx(event,'file')">
+          <span class="tree-icon">&#9671;</span>
+          <span class="tree-name">CHANGELOG.md</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="resize-handle" id="resize-handle"></div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="content-toolbar">
+        <div class="mode-btn active">Render</div>
+        <div class="mode-btn">Edit</div>
+        <div class="default-mode-picker" onclick="event.stopPropagation();this.classList.toggle('open')">
+          <span class="default-mode-label">Opens in:</span>
+          <span class="default-mode-select">Render ▾</span>
+          <div class="default-mode-dropdown">
+            <div class="default-mode-option current">Render</div>
+            <div class="default-mode-option">Edit</div>
+          </div>
+        </div>
+        <div class="content-spacer"></div>
+        <div class="content-export" onclick="event.stopPropagation();this.classList.toggle('open')">
+          Export ▾
+          <div class="export-dropdown">
+            <div class="export-dropdown-item">Export PDF…</div>
+            <div class="export-dropdown-item">Export DOCX…</div>
+            <div class="export-dropdown-item">Export HTML…</div>
+          </div>
+        </div>
+        <div class="content-status">⚠ 1 warning</div>
+      </div>
+
+      <div class="rendered">
+        <h1>System Design Overview</h1>
+        <p>This document describes the high-level architecture of the Project Atlas platform, covering service boundaries, data flow, and key infrastructure decisions.</p>
+
+        <h2>Architecture Principles</h2>
+        <ul>
+          <li><strong>Service isolation</strong>: each domain owns its data store and exposes a contract-first API</li>
+          <li><strong>Event-driven communication</strong>: services communicate through events, not direct calls, except for synchronous query paths</li>
+          <li><strong>Observable by default</strong>: all services emit structured telemetry</li>
+          <li><strong>Gradual consistency</strong>: eventual consistency is the default; strong consistency is opt-in where business rules require it</li>
+        </ul>
+
+        <h2>Service Topology</h2>
+        <p>The platform consists of five core services and two supporting infrastructure layers:</p>
+
+        <div class="mermaid-block">
+          <div style="padding:12px 0;">
+            <svg width="100%" height="160" viewBox="0 0 440 160" preserveAspectRatio="xMidYMid meet">
+              <rect x="5" y="5" width="95" height="34" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.2"/>
+              <text x="52" y="27" text-anchor="middle" font-size="10" fill="#0066cc" font-weight="500">API Gateway</text>
+              <rect x="120" y="5" width="95" height="34" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.2"/>
+              <text x="167" y="27" text-anchor="middle" font-size="10" fill="#0066cc" font-weight="500">Auth Service</text>
+              <rect x="235" y="5" width="95" height="34" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.2"/>
+              <text x="282" y="27" text-anchor="middle" font-size="10" fill="#0066cc" font-weight="500">Payments</text>
+              <rect x="65" y="65" width="95" height="34" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.2"/>
+              <text x="112" y="87" text-anchor="middle" font-size="10" fill="#0066cc" font-weight="500">Policy Engine</text>
+              <rect x="200" y="65" width="95" height="34" rx="5" fill="#e8f0fe" stroke="#0066cc" stroke-width="1.2"/>
+              <text x="247" y="87" text-anchor="middle" font-size="10" fill="#0066cc" font-weight="500">Notifications</text>
+              <rect x="40" y="125" width="150" height="26" rx="4" fill="#f0f0f2" stroke="#d1d1d6"/>
+              <text x="115" y="142" text-anchor="middle" font-size="10" fill="#6e6e73">Event Bus (Kafka)</text>
+              <rect x="220" y="125" width="150" height="26" rx="4" fill="#f0f0f2" stroke="#d1d1d6"/>
+              <text x="295" y="142" text-anchor="middle" font-size="10" fill="#6e6e73">Observability Stack</text>
+              <line x1="52" y1="39" x2="112" y2="65" stroke="#d1d1d6" stroke-width="1"/>
+              <line x1="167" y1="39" x2="112" y2="65" stroke="#d1d1d6" stroke-width="1"/>
+              <line x1="282" y1="39" x2="247" y2="65" stroke="#d1d1d6" stroke-width="1"/>
+              <line x1="112" y1="99" x2="115" y2="125" stroke="#d1d1d6" stroke-width="1" stroke-dasharray="3"/>
+              <line x1="247" y1="99" x2="295" y2="125" stroke="#d1d1d6" stroke-width="1" stroke-dasharray="3"/>
+            </svg>
+          </div>
+          <div style="font-size:10px; color:#aeaeb2;">Mermaid diagram rendered</div>
+        </div>
+
+        <h2>Data Flow</h2>
+        <p>Inbound requests enter through the API Gateway, which handles rate limiting, authentication delegation, and request routing. The gateway is stateless and horizontally scalable.</p>
+
+        <h3>Request Path</h3>
+        <ol>
+          <li>Client sends request to API Gateway</li>
+          <li>Gateway validates token via Auth Service (cached, <code>TTL 5m</code>)</li>
+          <li>Request routes to target service based on path prefix</li>
+          <li>Target service processes and emits domain event</li>
+          <li>Event Bus distributes to subscribers</li>
+        </ol>
+
+        <h3>Key Contracts</h3>
+        <table>
+          <thead>
+            <tr><th>Service</th><th>Protocol</th><th>Contract</th><th>SLA</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>API Gateway</td><td>HTTP/2</td><td>OpenAPI 3.1</td><td>99.95%</td></tr>
+            <tr><td>Auth Service</td><td>gRPC</td><td>Protobuf</td><td>99.99%</td></tr>
+            <tr><td>Payments</td><td>HTTP/2</td><td>OpenAPI 3.1</td><td>99.95%</td></tr>
+            <tr><td>Policy Engine</td><td>gRPC</td><td>Protobuf</td><td>99.9%</td></tr>
+            <tr><td>Notifications</td><td>Async</td><td>Avro</td><td>Best-effort</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Infrastructure Decisions</h2>
+
+        <blockquote>
+          <p>ADR-007: We chose event sourcing for the Policy Engine domain because policy state changes must be auditable, replayable, and temporally queryable.</p>
+        </blockquote>
+
+        <div class="warning-inline">&#9888; Missing local image: <code>./diagrams/infra-topology.png</code></div>
+
+        <h3>Deployment Model</h3>
+        <p>All services deploy as containers on EKS. The CI/CD pipeline uses GitHub Actions with environment promotion gates:</p>
+        <pre><code>stages:
+  - build    # lint, test, container build
+  - staging  # deploy to staging, integration
+  - canary   # 5% traffic, monitor 15m
+  - prod     # full rollout w/ auto rollback</code></pre>
+
+        <p>Rollback is automatic if the error budget (measured by SLO burn rate) exceeds the threshold within the canary window.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Context Menu -->
+<div class="context-menu" id="ctx-menu">
+  <div class="context-menu-item" id="ctx-copy">Copy Path</div>
+  <div class="context-menu-sep ctx-dir-only"></div>
+  <div class="context-menu-item ctx-dir-only" id="ctx-makeroot">Make Root</div>
+  <div class="context-menu-item ctx-dir-only" id="ctx-saveworkspace">Save as Workspace</div>
+</div>
+
+<div class="mockup-annotation" id="annotation">Narrow window (880px) &mdash; sidebar at min width &mdash; click hamburger to toggle sidebar</div>
+
+<script>
+  // Dropdown menus
+  document.querySelectorAll('.menu-item[data-menu]').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var wasOpen = el.classList.contains('open');
+      closeAll();
+      if (!wasOpen) el.classList.add('open');
+    });
+  });
+  document.addEventListener('click', closeAll);
+  function closeAll() {
+    document.querySelectorAll('.menu-item').forEach(function(m) { m.classList.remove('open'); });
+    document.getElementById('ctx-menu').classList.remove('visible');
+  }
+
+  // Section collapse
+  function toggleSection(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  }
+
+  // Sidebar toggle
+  document.getElementById('sidebar-toggle').addEventListener('click', function(e) {
+    e.stopPropagation();
+    var sidebar = document.getElementById('sidebar');
+    var handle = document.getElementById('resize-handle');
+    var annotation = document.getElementById('annotation');
+    sidebar.classList.toggle('collapsed');
+    if (sidebar.classList.contains('collapsed')) {
+      handle.style.display = 'none';
+      annotation.textContent = 'Sidebar collapsed \u2014 full-width content area \u2014 click hamburger to restore';
+    } else {
+      handle.style.display = '';
+      annotation.textContent = 'Narrow window (880px) \u2014 sidebar at min width \u2014 click hamburger to toggle sidebar';
+    }
+  });
+
+  // Context menu
+  function showCtx(e, type) {
+    e.preventDefault();
+    e.stopPropagation();
+    var menu = document.getElementById('ctx-menu');
+    menu.style.left = e.clientX + 'px';
+    menu.style.top = e.clientY + 'px';
+    menu.classList.add('visible');
+    menu.querySelectorAll('.ctx-dir-only').forEach(function(el) {
+      el.style.display = type === 'dir' ? '' : 'none';
+    });
+  }
+
+  // Tab switching mockup
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

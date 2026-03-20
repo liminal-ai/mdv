@@ -10,7 +10,7 @@ describe('exportHtmlFolder', () => {
   it('writes document.html, diagram assets, and copied local images', async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mdv-test-'));
     const outputDir = path.join(tempRoot, 'export');
-    const baseDir = '/Users/leemoore/code/md-viewer';
+    const baseDir = path.resolve(__dirname, '..');
 
     const htmlBody = `
       <h1>Doc</h1>

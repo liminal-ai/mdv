@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { inlineImagesForPdf } from '../src/core/export/assets';
@@ -11,7 +13,7 @@ describe('inlineImagesForPdf', () => {
 
     const output = await inlineImagesForPdf(
       html,
-      '/Users/leemoore/code/md-viewer',
+      path.resolve(__dirname, '..'),
       [
         {
           id: 'diagram-1',

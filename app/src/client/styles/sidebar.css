@@ -101,6 +101,12 @@
   color: var(--color-text-muted);
 }
 
+.root-line__path--invalid {
+  color: var(--color-error);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
 .workspace-entry__remove,
 .root-line__actions button {
   display: inline-flex;
@@ -150,6 +156,12 @@
 .root-line:focus-within .root-line__pin,
 .root-line:focus-within .root-line__copy,
 .root-line:focus-within .root-line__refresh {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.root-line--invalid .root-line__copy,
+.root-line__copy--visible {
   opacity: 1;
   pointer-events: auto;
 }

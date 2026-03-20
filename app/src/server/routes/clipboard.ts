@@ -1,12 +1,13 @@
 import { exec } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
 import { ClipboardRequestSchema } from '../schemas/index.js';
 
 const ClipboardResponseSchema = z.object({ ok: z.literal(true) });
 
 export async function clipboardRoutes(app: FastifyInstance) {
-  app.post(
+  app.withTypeProvider<ZodTypeProvider>().post(
     '/api/clipboard',
     {
       schema: {
@@ -17,7 +18,7 @@ export async function clipboardRoutes(app: FastifyInstance) {
       },
     },
     async (request) => {
-      const { text } = ClipboardRequestSchema.parse(request.body);
+      const { text } = request.body;
 
       await new Promise<void>((resolve, reject) => {
         const proc = exec('pbcopy');

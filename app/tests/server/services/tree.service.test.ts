@@ -80,6 +80,6 @@ describe('tree service', () => {
     const elapsed = Date.now() - start;
 
     expect(tree).toHaveLength(200);
-    expect(elapsed).toBeLessThan(10000);
+    expect(elapsed).toBeLessThan(3000);
   });
 });

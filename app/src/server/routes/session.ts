@@ -1,5 +1,6 @@
 import { stat } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   AddWorkspaceRequestSchema,
   AppBootstrapResponseSchema,
@@ -23,8 +24,9 @@ export interface SessionRoutesOptions {
 
 export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOptions) {
   const sessionService = opts.sessionService ?? new SessionService(opts.sessionDir);
+  const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
-  app.get(
+  typedApp.get(
     '/api/session',
     {
       schema: {
@@ -39,23 +41,37 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
     }),
   );
 
-  app.put(
+  typedApp.put(
     '/api/session/root',
     {
+      attachValidation: true,
       schema: {
         body: SetRootRequestSchema,
         response: {
           200: SessionStateSchema,
+          400: ErrorResponseSchema,
           403: ErrorResponseSchema,
           404: ErrorResponseSchema,
         },
       },
     },
     async (request, reply) => {
-      const { root } = SetRootRequestSchema.parse(request.body);
+      if (request.validationError) {
+        return reply
+          .code(400)
+          .send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+      }
+
+      const { root } = request.body;
 
       try {
-        await stat(root);
+        const rootStat = await stat(root);
+
+        if (!rootStat.isDirectory()) {
+          return reply
+            .code(400)
+            .send(toApiError(ErrorCode.INVALID_PATH, 'Path is not a directory'));
+        }
       } catch (error) {
         if (isPermissionError(error)) {
           return reply
@@ -81,23 +97,51 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
     },
   );
 
-  app.post(
+  typedApp.post(
     '/api/session/workspaces',
     {
+      attachValidation: true,
       schema: {
         body: AddWorkspaceRequestSchema,
         response: {
           200: SessionStateSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
         },
       },
     },
-    async (request) => {
-      const { path } = AddWorkspaceRequestSchema.parse(request.body);
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply
+          .code(400)
+          .send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+      }
+
+      const { path } = request.body;
+
+      try {
+        const workspaceStat = await stat(path);
+
+        if (!workspaceStat.isDirectory()) {
+          return reply
+            .code(400)
+            .send(toApiError(ErrorCode.INVALID_PATH, 'Path is not a directory'));
+        }
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          return reply
+            .code(404)
+            .send(toApiError(ErrorCode.PATH_NOT_FOUND, 'The selected folder no longer exists.'));
+        }
+
+        throw error;
+      }
+
       return sessionService.addWorkspace(path);
     },
   );
 
-  app.delete(
+  typedApp.delete(
     '/api/session/workspaces',
     {
       schema: {
@@ -108,12 +152,12 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
       },
     },
     async (request) => {
-      const { path } = RemoveWorkspaceRequestSchema.parse(request.body);
+      const { path } = request.body;
       return sessionService.removeWorkspace(path);
     },
   );
 
-  app.put(
+  typedApp.put(
     '/api/session/theme',
     {
       schema: {
@@ -125,7 +169,7 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
       },
     },
     async (request, reply) => {
-      const { theme } = SetThemeRequestSchema.parse(request.body);
+      const { theme } = request.body;
 
       if (!themeRegistry.isValid(theme)) {
         return reply
@@ -137,7 +181,7 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
     },
   );
 
-  app.put(
+  typedApp.put(
     '/api/session/sidebar',
     {
       schema: {
@@ -148,12 +192,12 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
       },
     },
     async (request) => {
-      const { workspacesCollapsed } = UpdateSidebarRequestSchema.parse(request.body);
+      const { workspacesCollapsed } = request.body;
       return sessionService.updateSidebar(workspacesCollapsed);
     },
   );
 
-  app.post(
+  typedApp.post(
     '/api/session/recent-files',
     {
       schema: {
@@ -164,12 +208,12 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
       },
     },
     async (request) => {
-      const { path } = TouchRecentFileRequestSchema.parse(request.body);
+      const { path } = request.body;
       return sessionService.touchRecentFile(path);
     },
   );
 
-  app.delete(
+  typedApp.delete(
     '/api/session/recent-files',
     {
       schema: {
@@ -180,7 +224,7 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
       },
     },
     async (request) => {
-      const { path } = RemoveRecentFileRequestSchema.parse(request.body);
+      const { path } = request.body;
       return sessionService.removeRecentFile(path);
     },
   );

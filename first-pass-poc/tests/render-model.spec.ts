@@ -21,7 +21,7 @@ class FakeMermaidRenderer implements MermaidRenderer {
 
 describe('normalized markdown document model', () => {
   it('captures table metadata for wide tables', async () => {
-    const baseDir = '/Users/leemoore/code/md-viewer/fixtures';
+    const baseDir = path.resolve(__dirname, '..', 'fixtures');
     const markdown = await fs.readFile(path.join(baseDir, 'wide-table-sample.md'), 'utf8');
     const result = await renderMarkdown(
       {
@@ -41,7 +41,7 @@ describe('normalized markdown document model', () => {
   });
 
   it('normalizes local images and mermaid diagrams as figure blocks', async () => {
-    const baseDir = '/Users/leemoore/code/md-viewer/fixtures';
+    const baseDir = path.resolve(__dirname, '..', 'fixtures');
     const markdown = await fs.readFile(path.join(baseDir, 'image-heavy-sample.md'), 'utf8');
     const result = await renderMarkdown(
       {

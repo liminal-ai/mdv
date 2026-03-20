@@ -8,14 +8,57 @@ import { mountTabStrip } from './components/tab-strip.js';
 import { StateStore, type ClientState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { KeyboardManager } from './utils/keyboard.js';
+import type { SessionState, ThemeInfo } from '../shared/types.js';
 
-function applyTheme(themeId: string): void {
+declare global {
+  interface Window {
+    __MDV_DISABLE_AUTO_BOOTSTRAP__?: boolean;
+  }
+}
+
+const FALLBACK_SESSION: SessionState = {
+  workspaces: [],
+  lastRoot: null,
+  recentFiles: [],
+  theme: 'light-default',
+  sidebarState: { workspacesCollapsed: false },
+};
+
+const FALLBACK_THEMES: ThemeInfo[] = [
+  { id: 'light-default', label: 'Light Default', variant: 'light' },
+  { id: 'light-warm', label: 'Light Warm', variant: 'light' },
+  { id: 'dark-default', label: 'Dark Default', variant: 'dark' },
+  { id: 'dark-cool', label: 'Dark Cool', variant: 'dark' },
+];
+
+function createFallbackBootstrap(): Pick<ClientState, 'session' | 'availableThemes'> {
+  return {
+    session: structuredClone(FALLBACK_SESSION),
+    availableThemes: structuredClone(FALLBACK_THEMES),
+  };
+}
+
+function shouldAutoBootstrap(): boolean {
+  return typeof window !== 'undefined' && !window.__MDV_DISABLE_AUTO_BOOTSTRAP__;
+}
+
+function readCachedTheme(): string | null {
+  try {
+    return localStorage.getItem('mdv-theme');
+  } catch {
+    return null;
+  }
+}
+
+function applyTheme(themeId: string, options: { persist?: boolean } = {}): void {
   document.documentElement.dataset.theme = themeId;
 
-  try {
-    localStorage.setItem('mdv-theme', themeId);
-  } catch {
-    // Ignore storage failures in privacy-restricted environments.
+  if (options.persist !== false) {
+    try {
+      localStorage.setItem('mdv-theme', themeId);
+    } catch {
+      // Ignore storage failures in privacy-restricted environments.
+    }
   }
 }
 
@@ -34,14 +77,33 @@ function getErrorMessage(error: unknown): { code: string; message: string } {
 }
 
 export async function bootstrapApp(api = new ApiClient()): Promise<void> {
-  const bootstrap = await api.bootstrap();
-  applyTheme(bootstrap.session.theme);
+  const cachedTheme = readCachedTheme();
+  let bootstrap = createFallbackBootstrap();
+  let bootstrapError: unknown = null;
+
+  try {
+    bootstrap = await api.bootstrap();
+  } catch (error) {
+    bootstrapError = error;
+    if (cachedTheme) {
+      bootstrap = {
+        ...bootstrap,
+        session: {
+          ...bootstrap.session,
+          theme: cachedTheme,
+        },
+      };
+    }
+  }
+
+  applyTheme(bootstrap.session.theme, { persist: bootstrapError === null });
 
   const initialState: ClientState = {
     session: bootstrap.session,
     availableThemes: bootstrap.availableThemes,
     tree: [],
     treeLoading: false,
+    invalidRoot: false,
     activeMenuId: null,
     contextMenu: null,
     sidebarVisible: true,
@@ -51,14 +113,18 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
 
   const store = new StateStore(initialState);
 
-  const applySession = (session: ClientState['session']) => {
+  const applySession = (
+    session: ClientState['session'],
+    options: { clearInvalidRoot?: boolean } = {},
+  ) => {
     applyTheme(session.theme);
     store.update(
       {
         session,
+        ...(options.clearInvalidRoot ? { invalidRoot: false } : {}),
         error: null,
       },
-      ['session', 'error'],
+      options.clearInvalidRoot ? ['session', 'invalidRoot', 'error'] : ['session', 'error'],
     );
   };
 
@@ -67,9 +133,10 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       {
         tree,
         treeLoading: false,
+        invalidRoot: false,
         error: null,
       },
-      ['tree', 'treeLoading', 'error'],
+      ['tree', 'treeLoading', 'invalidRoot', 'error'],
     );
   };
 
@@ -81,30 +148,34 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     store.update({ error: getErrorMessage(error) }, ['error']);
   };
 
+  const setInvalidRoot = (error: unknown) => {
+    store.update(
+      {
+        invalidRoot: true,
+        tree: [],
+        treeLoading: false,
+        error: getErrorMessage(error),
+      },
+      ['invalidRoot', 'tree', 'treeLoading', 'error'],
+    );
+  };
+
   const switchRoot = async (path: string) => {
     setTreeLoading(true);
 
     try {
       const session = await api.setRoot(path);
+      applySession(session, { clearInvalidRoot: true });
 
       try {
         const treeResponse = await api.getTree(path);
-        applySession(session);
         applyTree(treeResponse.tree);
       } catch (error) {
         if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
-          applySession(session);
-          store.update(
-            {
-              treeLoading: false,
-              error: getErrorMessage(error),
-            },
-            ['treeLoading', 'error'],
-          );
+          setInvalidRoot(error);
           return;
         }
 
-        applySession(session);
         setTreeLoading(false);
         setError(error);
       }
@@ -185,16 +256,7 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
       applyTree(treeResponse.tree);
     } catch (error) {
       if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
-        const session = store.get().session;
-        store.update(
-          {
-            session: { ...session, lastRoot: null },
-            tree: [],
-            treeLoading: false,
-            error: getErrorMessage(error),
-          },
-          ['session', 'tree', 'treeLoading', 'error'],
-        );
+        setInvalidRoot(error);
         return;
       }
 
@@ -306,13 +368,23 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     try {
       const treeResponse = await api.getTree(bootstrap.session.lastRoot);
       applyTree(treeResponse.tree);
-    } catch {
-      setTreeLoading(false);
-      // Silently fail — root may no longer exist; user can refresh or browse
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
+        setInvalidRoot(error);
+      } else {
+        setTreeLoading(false);
+        setError(error);
+      }
     }
+  }
+
+  if (bootstrapError) {
+    setError(bootstrapError);
   }
 }
 
-void bootstrapApp().catch((error) => {
-  console.error(error);
-});
+if (shouldAutoBootstrap()) {
+  void bootstrapApp().catch((error) => {
+    console.error(error);
+  });
+}

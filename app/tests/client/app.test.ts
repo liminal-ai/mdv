@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../../src/client/api.js';
 import { emptySession, populatedSession } from '../fixtures/session.js';
 
 const availableThemes = [
@@ -10,17 +11,17 @@ const availableThemes = [
   { id: 'dark-cool', label: 'Dark Cool', variant: 'dark' as const },
 ];
 
-describe('client bootstrap api mocks', () => {
+describe('client bootstrap api injection', () => {
   afterEach(() => {
-    vi.resetModules();
-    vi.doUnmock('../../src/client/api.js');
     document.body.innerHTML = '';
     window.localStorage?.clear?.();
+    delete window.__MDV_DISABLE_AUTO_BOOTSTRAP__;
   });
 
-  async function renderApp(session = emptySession) {
-    vi.resetModules();
-
+  async function renderApp(
+    session = emptySession,
+    apiOverrides: Record<string, unknown> = {},
+  ) {
     const api = {
       bootstrap: vi.fn().mockResolvedValue({
         session,
@@ -58,31 +59,8 @@ describe('client bootstrap api mocks', () => {
       })),
       browse: vi.fn().mockResolvedValue(null),
       copyToClipboard: vi.fn().mockResolvedValue(undefined),
+      ...apiOverrides,
     };
-
-    vi.doMock('../../src/client/api.js', () => ({
-      ApiClient: class {
-        bootstrap = api.bootstrap;
-        setRoot = api.setRoot;
-        addWorkspace = api.addWorkspace;
-        removeWorkspace = api.removeWorkspace;
-        setTheme = api.setTheme;
-        updateSidebar = api.updateSidebar;
-        getTree = api.getTree;
-        browse = api.browse;
-        copyToClipboard = api.copyToClipboard;
-      },
-      ApiError: class extends Error {
-        constructor(
-          public readonly status: number,
-          public readonly code: string,
-          message: string,
-        ) {
-          super(message);
-          this.name = 'ApiError';
-        }
-      },
-    }));
 
     document.body.innerHTML = `
       <div id="app">
@@ -97,13 +75,15 @@ describe('client bootstrap api mocks', () => {
       </div>
     `;
 
-    await import('../../src/client/app.js');
+    window.__MDV_DISABLE_AUTO_BOOTSTRAP__ = true;
+    const { bootstrapApp } = await import('../../src/client/app.js');
+    await bootstrapApp(api as any);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     return api;
   }
 
-  it('bootstraps the shell with a mocked api module', async () => {
+  it('bootstraps the shell with an injected api', async () => {
     const api = await renderApp();
 
     expect(api.bootstrap).toHaveBeenCalledTimes(1);
@@ -203,8 +183,6 @@ describe('client bootstrap api mocks', () => {
   it('TC-10.1a: Permission denied error renders notification', async () => {
     const session = populatedSession;
     const api = await renderApp(session);
-
-    const { ApiError } = await import('../../src/client/api.js');
     api.getTree.mockRejectedValueOnce(new ApiError(403, 'PERMISSION_DENIED', 'Cannot read'));
 
     document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
@@ -217,8 +195,6 @@ describe('client bootstrap api mocks', () => {
   it('TC-10.2a: Deleted root on refresh shows error and clears tree', async () => {
     const session = populatedSession;
     const api = await renderApp(session);
-
-    const { ApiError } = await import('../../src/client/api.js');
     api.getTree.mockRejectedValueOnce(new ApiError(404, 'PATH_NOT_FOUND', 'Directory not found'));
 
     document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
@@ -226,5 +202,56 @@ describe('client bootstrap api mocks', () => {
 
     expect(document.querySelector('[role="alert"]')).toBeTruthy();
     expect(document.body.textContent).toContain('Directory not found');
+    expect(document.body.textContent).not.toContain('No folder selected');
+    expect(document.querySelector('.root-line__path--invalid')?.textContent).toBe('~/code');
+    expect(document.querySelector<HTMLButtonElement>('.root-line__copy--visible')).toBeTruthy();
+    expect(document.querySelector<HTMLButtonElement>('.root-line__refresh')).toBeNull();
+  });
+
+  it('surfaces bootstrap tree-load errors to the user', async () => {
+    await renderApp(populatedSession, {
+      getTree: vi
+        .fn()
+        .mockRejectedValue(
+          new ApiError(403, 'PERMISSION_DENIED', 'You do not have access to this folder.'),
+        ),
+    });
+
+    expect(document.querySelector('[role="alert"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('You do not have access to this folder.');
+  });
+
+  it('renders fallback shell when bootstrap fails', async () => {
+    await renderApp(emptySession, {
+      bootstrap: vi.fn().mockRejectedValue(new Error('Bootstrap failed')),
+    });
+
+    expect(document.body.textContent).toContain('MD Viewer');
+    expect(document.body.textContent).toContain('No documents open');
+    expect(document.querySelector('[role="alert"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('Bootstrap failed');
+  });
+
+  it('preserves cached theme when bootstrap fails', async () => {
+    const storage = {
+      getItem: vi.fn((key: string) => (key === 'mdv-theme' ? 'dark-cool' : null)),
+      setItem: vi.fn(),
+      clear: vi.fn(),
+      removeItem: vi.fn(),
+      key: vi.fn(),
+      length: 0,
+    };
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: storage,
+    });
+
+    await renderApp(emptySession, {
+      bootstrap: vi.fn().mockRejectedValue(new Error('Bootstrap failed')),
+    });
+
+    expect(storage.getItem('mdv-theme')).toBe('dark-cool');
+    expect(storage.setItem).not.toHaveBeenCalled();
+    expect(document.documentElement.dataset.theme).toBe('dark-cool');
   });
 });

@@ -1,12 +1,20 @@
+import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../../src/server/app.js';
 
-function makeMockProc(exitCode = 0) {
-  const proc = new EventEmitter() as EventEmitter & { stdin: { write: any; end: any } };
+type MockProc = EventEmitter & {
+  stdin: {
+    write: ReturnType<typeof vi.fn>;
+    end: ReturnType<typeof vi.fn>;
+  };
+};
+
+function makeMockProc(exitCode = 0): ChildProcess {
+  const proc = new EventEmitter() as MockProc;
   proc.stdin = { write: vi.fn(), end: vi.fn() };
   setTimeout(() => proc.emit('close', exitCode), 0);
-  return proc;
+  return proc as unknown as ChildProcess;
 }
 
 vi.mock('node:child_process', async (importOriginal) => {
@@ -36,7 +44,7 @@ describe('clipboard routes', () => {
   it('Non-TC: pbcopy failure returns 500', async () => {
     const { exec } = await import('node:child_process');
     const mockExec = vi.mocked(exec);
-    mockExec.mockImplementationOnce((() => makeMockProc(1)) as any);
+    mockExec.mockImplementationOnce(() => makeMockProc(1));
 
     const app = await buildApp();
 

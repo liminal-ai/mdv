@@ -47,6 +47,10 @@ It identifies the key application states that should be visually explored, inclu
 - conflict/unsaved-change modals
 - narrow window state
 
+### [future-markdown-package-format.md](/Users/leemoore/code/md-viewer/docs/spec-build/01--preliminary/future-markdown-package-format.md)
+
+Early idea capture for a potential future capability: a simple packaging convention for structured collections of markdown files. A package is a directory of markdown files with a manifest (itself just a markdown file with links) that defines the navigation tree. The viewer detects the manifest and presents authored navigation instead of a filesystem scan. The same directory can be tar'd into a single file for easy transfer (consolidation, not compression — mostly text with binary sections for embedded resources). Not scoped for any current epic — captured here so it doesn't get lost.
+
 ## Historical Context Worth Preserving
 
 These notes are useful context for future planning sessions and should be treated as working assumptions unless later product work changes them.
@@ -109,7 +113,7 @@ The browser/local-server architecture should be the primary product shape.
 
 ### 6. Shared Core Remains Important
 
-The existing render/export/document logic in `src/core` is worth preserving as the long-lived reusable layer.
+The existing render/export/document logic in `first-pass-poc/src/core` is worth preserving as the long-lived reusable layer.
 
 Future planning should continue to separate:
 
