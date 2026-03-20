@@ -97,6 +97,13 @@ export class ApiClient {
     });
   }
 
+  async openExternal(path: string): Promise<{ ok: true }> {
+    return this.request('/api/open-external', {
+      method: 'POST',
+      body: { path },
+    });
+  }
+
   async copyToClipboard(text: string): Promise<void> {
     await this.request('/api/clipboard', {
       method: 'POST',

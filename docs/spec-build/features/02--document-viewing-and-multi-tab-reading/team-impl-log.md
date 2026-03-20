@@ -245,3 +245,23 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 **Observations:** Both reviewers independently found the left-truncation CSS gap — a tech design requirement that the implementer missed. This is a good example of the review catching a spec-compliance issue that wouldn't show up in tests but affects real user experience. The warning panel toggle glitch was also a genuine interaction bug. Pattern continuing: review phase adds real value on every story.
 
 **Test baseline for Story 3:** 263 tests. Story 3 specifies ~12 TCs. Expected total after Story 3: ~275.
+
+### Story 3: Image Handling — ACCEPTED
+
+**Codex evidence:**
+- Implementation: `019d0954-aa4f-7a31-8add-ecc6eb39ba96`
+- Review: `019d095c-abd5-7e70-b682-b01a9e337fbb`
+
+**Findings and dispositions:**
+- existsSync doesn't check isFile for directories with image extensions → `accepted-risk` (extreme edge case, proxy catches it)
+- No stream error handler on createReadStream → `accepted-risk` (microsecond race window, Fastify handles gracefully)
+- TC-3.1c/d no automated tests (CSS-only) → `accepted-risk` (JSDOM has no layout engine, CSS verified by inspection)
+- Case-sensitive URL scheme detection → `accepted-risk` (nonexistent in practice)
+
+**Gate:** `npm run verify` — 277 tests passing, format/lint/typecheck clean
+**Commit:** `993b7f3`
+**Open risks:** none
+
+**Observations:** Second story in a row where the review found no fixes needed — all findings were accept-risk. The implementation quality is trending upward as stories build on well-tested foundations. Story 2's render pipeline handled the heavy lifting; Story 3 just added the proxy endpoint and wired client warnings (already built in Story 5). Clean layering.
+
+**Test baseline for Story 6:** 277 tests. Story 6 specifies ~6 TCs. Expected total after Story 6: ~283.

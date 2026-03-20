@@ -65,6 +65,7 @@ describe('client bootstrap api injection', () => {
         filename: path.split('/').filter(Boolean).at(-1) ?? path,
         html: `<h1>${path}</h1>`,
       })),
+      openExternal: vi.fn().mockResolvedValue({ ok: true }),
       copyToClipboard: vi.fn().mockResolvedValue(undefined),
       updateTabs: vi
         .fn()
@@ -301,6 +302,105 @@ describe('client bootstrap api injection', () => {
     );
 
     expect(labels).toEqual(['one/team/readme.md', 'two/team/readme.md']);
+  });
+
+  it('opens rendered relative markdown links through the existing file flow', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const api = await renderApp(
+        {
+          ...emptySession,
+          lastRoot: '/root',
+        },
+        {
+          getTree: vi.fn().mockResolvedValue({
+            root: '/root',
+            tree: [{ name: 'readme.md', path: '/root/docs/readme.md', type: 'file' as const }],
+          }),
+          readFile: vi.fn().mockImplementation(async (path: string) => {
+            if (path === '/root/docs/readme.md') {
+              return {
+                ...basicFileResponse,
+                path,
+                canonicalPath: path,
+                filename: 'readme.md',
+                html: '<p><a href="./guide.md">Guide</a></p>',
+              };
+            }
+
+            return {
+              ...basicFileResponse,
+              path,
+              canonicalPath: path,
+              filename: 'guide.md',
+              html: '<h1 id="guide">Guide</h1>',
+            };
+          }),
+        },
+      );
+
+      document.querySelector<HTMLElement>('[data-type="file"]')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      document
+        .querySelector<HTMLAnchorElement>('.markdown-body a')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(api.readFile).toHaveBeenNthCalledWith(1, '/root/docs/readme.md');
+      expect(api.readFile).toHaveBeenNthCalledWith(2, '/root/docs/guide.md');
+      expect(document.querySelectorAll('.tab')).toHaveLength(2);
+      expect(document.querySelector('.tab--active')?.getAttribute('title')).toBe(
+        '/root/docs/guide.md',
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it('shows an error notification when a rendered relative markdown link is missing', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await renderApp(
+        {
+          ...emptySession,
+          lastRoot: '/root',
+        },
+        {
+          getTree: vi.fn().mockResolvedValue({
+            root: '/root',
+            tree: [{ name: 'readme.md', path: '/root/docs/readme.md', type: 'file' as const }],
+          }),
+          readFile: vi.fn().mockImplementation(async (path: string) => {
+            if (path === '/root/docs/readme.md') {
+              return {
+                ...basicFileResponse,
+                path,
+                canonicalPath: path,
+                filename: 'readme.md',
+                html: '<p><a href="./missing.md">Missing</a></p>',
+              };
+            }
+
+            throw new ApiError(404, 'FILE_NOT_FOUND', 'The requested file no longer exists.');
+          }),
+        },
+      );
+
+      document.querySelector<HTMLElement>('[data-type="file"]')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      document
+        .querySelector<HTMLAnchorElement>('.markdown-body a')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(document.querySelector('[role="alert"]')).toBeTruthy();
+      expect(document.body.textContent).toContain('The requested file no longer exists.');
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('renders fallback shell when bootstrap fails', async () => {

@@ -190,6 +190,19 @@ function restoreScrollPosition(scrollPosition: number): void {
   queueMicrotask(applyScroll);
 }
 
+function scrollToHeading(anchor: string): void {
+  const scroll = () => {
+    document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(scroll);
+    return;
+  }
+
+  queueMicrotask(scroll);
+}
+
 function getErrorMessage(error: unknown): { code: string; message: string } {
   if (error instanceof ApiError) {
     return {
@@ -561,13 +574,16 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     }
   };
 
-  async function openFile(path: string): Promise<void> {
+  async function openFile(path: string, anchor?: string): Promise<void> {
     const state = store.get();
     const knownTab = state.tabs.find((tab) => tab.path === path || tab.canonicalPath === path);
 
     if (knownTab) {
       if (state.activeTabId !== knownTab.id) {
         await switchTab(knownTab.id);
+      }
+      if (anchor) {
+        scrollToHeading(anchor);
       }
       await touchRecentFile(path);
       return;
@@ -605,6 +621,9 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
         restoreScrollPosition(
           mergedTabs.find((tab) => tab.id === existingTab.id)?.scrollPosition ?? 0,
         );
+        if (anchor) {
+          scrollToHeading(anchor);
+        }
         await touchRecentFile(response.path);
         await syncTabsToSession();
         return;
@@ -618,6 +637,9 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
 
       updateTabsState(hydratedTabs, loadingTab.id, { closeContextMenu: true });
       restoreScrollPosition(0);
+      if (anchor) {
+        scrollToHeading(anchor);
+      }
       await touchRecentFile(response.path);
       await syncTabsToSession();
     } catch (error) {
@@ -763,6 +785,9 @@ export async function bootstrapApp(api = new ApiClient()): Promise<void> {
     onBrowse: browseForFolder,
     onOpenFile: pickAndOpenFile,
     onOpenRecentFile: openFile,
+    onOpenMarkdownLink: openFile,
+    onOpenExternalLink: (path) => api.openExternal(path),
+    onLinkError: setError,
   });
   mountWarningPanel(warningPanelHost, store);
   mountErrorNotification(errorHost, store, {

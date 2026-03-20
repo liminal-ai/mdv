@@ -1,3 +1,4 @@
+import { attach as attachLinkHandler } from '../utils/link-handler.js';
 import type { StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
 
@@ -10,6 +11,9 @@ export interface ContentAreaActions {
   onBrowse: () => void | Promise<void>;
   onOpenFile: () => void | Promise<void>;
   onOpenRecentFile?: (path: string) => void | Promise<void>;
+  onOpenMarkdownLink?: (path: string, anchor?: string) => void | Promise<void>;
+  onOpenExternalLink?: (path: string) => Promise<{ ok: true }>;
+  onLinkError?: (error: unknown) => void;
 }
 
 export function mountContentArea(
@@ -183,6 +187,17 @@ export function mountContentArea(
       const markdownBody = container.querySelector<HTMLElement>('.markdown-body');
       if (markdownBody) {
         markdownBody.innerHTML = activeTab.html;
+        if (actions.onOpenMarkdownLink && actions.onOpenExternalLink && actions.onLinkError) {
+          attachLinkHandler(markdownBody, {
+            tabs: state.tabs,
+            activeTabId: state.activeTabId,
+            openFile: actions.onOpenMarkdownLink,
+            api: {
+              openExternal: actions.onOpenExternalLink,
+            },
+            showError: actions.onLinkError,
+          });
+        }
       }
     }
   };
