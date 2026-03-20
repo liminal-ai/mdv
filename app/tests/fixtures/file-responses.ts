@@ -5,7 +5,7 @@ export const basicFileResponse: FileReadResponse = {
   canonicalPath: '/Users/leemoore/code/project/docs/architecture.md',
   filename: 'architecture.md',
   content: '# Architecture\n\nSome content.',
-  html: '<h1 id="architecture">Architecture</h1>\n<p>Some content.</p>',
+  html: '<h1 id="architecture" tabindex="-1">Architecture</h1>\n<p>Some content.</p>\n',
   warnings: [],
   modifiedAt: '2026-03-19T00:00:00Z',
   size: 35,

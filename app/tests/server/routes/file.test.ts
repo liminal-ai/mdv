@@ -82,7 +82,6 @@ describe('file routes', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       ...basicFileResponse,
-      html: '',
       modifiedAt: new Date(basicFileResponse.modifiedAt).toISOString(),
     });
 
@@ -126,7 +125,7 @@ describe('file routes', () => {
       canonicalPath: outsidePath,
       filename: 'notes.md',
       content: '# Outside Root\n\nOpened.',
-      html: '',
+      html: '<h1 id="outside-root" tabindex="-1">Outside Root</h1>\n<p>Opened.</p>\n',
       warnings: [],
       size: 24,
     });
@@ -168,6 +167,8 @@ describe('file routes', () => {
       canonicalPath: pickedPath,
       filename: 'from-picker.md',
       content: '# Picked\n\nOpened.',
+      html: '<h1 id="picked" tabindex="-1">Picked</h1>\n<p>Opened.</p>\n',
+      warnings: [],
     });
 
     await app.close();

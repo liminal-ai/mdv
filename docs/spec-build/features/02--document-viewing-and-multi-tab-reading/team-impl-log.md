@@ -154,3 +154,28 @@ Step 8 — Report to orchestrator (SEND THIS MESSAGE):
 **Observations:** Both implementer and reviewer followed the Codex subagent process correctly. Sequential reading + reflection checkpoint worked — both agents produced detailed, spec-aware reports. The reviewer's note about FileChangeEventSchema lacking a `type` field (added by ServerWsMessageSchema wrapper) is worth flagging to Story 7's implementer.
 
 **Test baseline for Story 1:** 164 tests. Story 1 specifies ~19 TCs. Expected total after Story 1: ~183.
+
+### Story 1: File Read API — ACCEPTED
+
+**Codex evidence:**
+- Implementation: `019d08f7-627c-77d1-970b-6b5c120a7672`
+- Review: `019d0901-6b11-7712-a1f1-05d201be3bca`
+- Fixes: `019d0905-f726-77a3-a698-51fab7ecc0de`
+
+**Findings and dispositions:**
+- Session routes missing `attachValidation` + error envelope → `fixed`
+- `activeTab` not validated against `openTabs` → `fixed`
+- File picker 500 error path untested → `fixed`
+- Default-mode validation test weak assertion → `fixed`
+- `html: ''` and `warnings: []` placeholders → `accepted-risk` (Story 2 scope)
+- Symlink to non-markdown file → `accepted-risk` (by design — user owns machine)
+- Client-side TCs (loading, dedup, recent click) → `defer` (client story scope)
+- `INVALID_PATH` reused for mode validation → `accepted-risk` (minor, consistent with codebase pattern)
+
+**Gate:** `npm run verify` — 187 tests passing, format/lint/typecheck clean
+**Commit:** `25a7d29`
+**Open risks:** none
+
+**Observations:** Reviewer caught a meaningful gap — session routes lacked `attachValidation` and the error envelope, meaning validation errors returned Fastify's default format instead of the app's normalized shape. This is the kind of consistency issue that Codex spec-compliance review is designed to catch. The `activeTab` consistency check was also a good find — could have led to impossible persisted state.
+
+**Test baseline for Story 2:** 187 tests. Story 2 specifies ~24 TCs. Expected total after Story 2: ~211.

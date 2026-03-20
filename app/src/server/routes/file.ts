@@ -8,6 +8,7 @@ import {
   FileReadResponseSchema,
 } from '../schemas/index.js';
 import { FileService } from '../services/file.service.js';
+import { RenderService } from '../services/render.service.js';
 import {
   ErrorCode,
   FileTooLargeError,
@@ -39,6 +40,7 @@ function execCommand(command: string): Promise<{ stdout: string; stderr: string 
 export async function fileRoutes(app: FastifyInstance) {
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
   const fileService = new FileService();
+  const renderService = new RenderService();
 
   typedApp.get(
     '/api/file',
@@ -64,13 +66,14 @@ export async function fileRoutes(app: FastifyInstance) {
 
       try {
         const file = await fileService.readFile(request.query.path);
+        const renderResult = renderService.render(file.content, request.query.path);
         return {
           path: file.path,
           canonicalPath: file.canonicalPath,
           filename: file.filename,
           content: file.content,
-          html: '',
-          warnings: [],
+          html: renderResult.html,
+          warnings: renderResult.warnings,
           modifiedAt: file.modifiedAt.toISOString(),
           size: file.size,
         };

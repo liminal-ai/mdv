@@ -74,7 +74,7 @@ describe('client bootstrap api injection', () => {
 
     window.__MDV_DISABLE_AUTO_BOOTSTRAP__ = true;
     const { bootstrapApp } = await import('../../src/client/app.js');
-    await bootstrapApp(api as any);
+    await bootstrapApp(api as Parameters<typeof bootstrapApp>[0]);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     return api;
