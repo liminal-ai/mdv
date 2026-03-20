@@ -75,7 +75,7 @@ describe('session routes epic 2', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({
       error: {
-        code: 'INVALID_PATH',
+        code: 'INVALID_MODE',
         message: 'Invalid mode value',
       },
     });

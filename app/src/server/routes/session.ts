@@ -193,7 +193,7 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
     },
     async (request, reply) => {
       if (request.validationError) {
-        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Invalid mode value'));
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_MODE, 'Invalid mode value'));
       }
 
       const { mode } = request.body;

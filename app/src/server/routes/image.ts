@@ -45,6 +45,11 @@ export async function imageRoutes(app: FastifyInstance) {
         const { contentType } = await imageService.validate(imagePath);
         await access(imagePath, constants.R_OK);
         const stream = createReadStream(imagePath);
+        stream.on('error', () => {
+          if (!reply.sent) {
+            void reply.code(500).send(toApiError(ErrorCode.READ_ERROR, 'Stream read failed'));
+          }
+        });
 
         return reply.header('Cache-Control', 'private, max-age=60').type(contentType).send(stream);
       } catch (error) {

@@ -18,7 +18,7 @@ vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>();
   return {
     ...actual,
-    existsSync: vi.fn(),
+    statSync: vi.fn(),
   };
 });
 
@@ -89,9 +89,13 @@ async function withRenderedFile(
   );
   vi.mocked(fs.realpath).mockResolvedValue(options.canonicalPath ?? documentPath);
   vi.mocked(fs.readFile).mockResolvedValue(content);
-  vi.mocked(nodeFs.existsSync).mockImplementation((candidate) =>
-    existingPaths.has(String(candidate)),
-  );
+  vi.mocked(nodeFs.statSync).mockImplementation((candidate) => {
+    if (!existingPaths.has(String(candidate))) {
+      throw Object.assign(new Error('Missing'), { code: 'ENOENT' });
+    }
+
+    return makeFileStat();
+  });
 
   const app = await buildApp();
 
@@ -116,7 +120,9 @@ async function withRenderedFile(
 describe('file render route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(nodeFs.existsSync).mockReturnValue(false);
+    vi.mocked(nodeFs.statSync).mockImplementation(() => {
+      throw Object.assign(new Error('Missing'), { code: 'ENOENT' });
+    });
   });
 
   afterEach(() => {
@@ -340,7 +346,9 @@ describe('file render route', () => {
     );
     vi.mocked(fs.realpath).mockImplementation(async (requestedPath) => requestedPath);
     vi.mocked(fs.readFile).mockResolvedValue(markdown);
-    vi.mocked(nodeFs.existsSync).mockReturnValue(false);
+    vi.mocked(nodeFs.statSync).mockImplementation(() => {
+      throw Object.assign(new Error('Missing'), { code: 'ENOENT' });
+    });
 
     const app = await buildApp();
 
@@ -502,5 +510,31 @@ describe('file render route', () => {
         existingPaths: ['/Users/leemoore/code/project/docs/diagram.png'],
       },
     );
+  });
+
+  it('Non-TC: duplicate headings produce distinct anchor ids', async () => {
+    await withRenderedFile('# Heading\n\n# Heading\n\n# Heading', ({ document }) => {
+      const headings = [...document.querySelectorAll('h1')];
+      const ids = headings.map((h) => h.id);
+      expect(ids).toEqual(['heading', 'heading-1', 'heading-2']);
+    });
+  });
+
+  it('Non-TC: unicode heading produces a valid slug', async () => {
+    await withRenderedFile('# Ünïcödé Héàdïng', ({ document }) => {
+      const heading = document.querySelector('h1');
+      expect(heading?.id).toBeTruthy();
+      expect(heading?.id).not.toContain(' ');
+      expect(heading?.id).toBe('ünïcödé-héàdïng');
+    });
+  });
+
+  it('Non-TC: punctuation-heavy heading produces a valid slug', async () => {
+    await withRenderedFile("# What's New? (v2.0)", ({ document }) => {
+      const heading = document.querySelector('h1');
+      expect(heading?.id).toBeTruthy();
+      expect(heading?.id).not.toContain(' ');
+      expect(heading?.id).toBe('whats-new-v20');
+    });
   });
 });

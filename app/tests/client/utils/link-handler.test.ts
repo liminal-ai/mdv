@@ -172,4 +172,23 @@ describe('link handler', () => {
     expect(state.openFile).not.toHaveBeenCalled();
     expect(state.api.openExternal).not.toHaveBeenCalled();
   });
+
+  it('Non-TC: modifier-key clicks are not intercepted', () => {
+    const container = renderLink('./design.md');
+    const state = createLinkHandlerState();
+
+    attach(container, state);
+
+    const event = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      metaKey: true,
+    });
+    const link = container.querySelector<HTMLAnchorElement>('a')!;
+    const prevented = !link.dispatchEvent(event);
+
+    expect(prevented).toBe(false);
+    expect(state.openFile).not.toHaveBeenCalled();
+    expect(state.api.openExternal).not.toHaveBeenCalled();
+  });
 });

@@ -541,7 +541,7 @@ export class WatchService {
 
 ### Debouncing (TC-7.2b)
 
-File changes are debounced at 100ms. Multiple events within the window collapse to a single notification. This handles editors that trigger multiple write events per save and agents that write incrementally.
+File changes are debounced at 300ms. Multiple events within the window collapse to a single notification. This handles editors that trigger multiple write events per save and agents that write incrementally.
 
 ```typescript
 private handleChange(filePath: string): void {
@@ -948,7 +948,7 @@ sequenceDiagram
     Note over Agent,FS: Agent modifies the file on disk
     Agent->>FS: Write to architecture.md
     FS-->>Watch: fs.watch 'change' event
-    Watch->>Watch: Debounce 100ms (TC-7.2b)
+    Watch->>Watch: Debounce 300ms (TC-7.2b)
     Watch->>WS: { type: 'file-change', path, event: 'modified' }
     WS-->>Browser: message received
     Browser->>Server: GET /api/file?path=...
@@ -1032,7 +1032,7 @@ export class UnsupportedFormatError extends Error {
 - [x] WebSocket handler registers message listener synchronously (research finding)
 - [x] Watch service handles atomic saves via rename detection + re-establishment
 - [x] Watch service handles file deletion with subscriber notification
-- [x] Debounce at 100ms for rapid file changes
+- [x] Debounce at 300ms for rapid file changes
 - [x] File picker uses researched osascript syntax with type filter
 - [x] External opening uses `open` with path quoting, no root restriction
 - [x] Session extensions: defaultOpenMode, openTabs, activeTab

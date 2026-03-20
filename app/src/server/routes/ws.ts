@@ -3,6 +3,8 @@ import type { WebSocket } from 'ws';
 import { ClientWsMessageSchema, ServerWsMessageSchema } from '../schemas/index.js';
 import { WatchService } from '../services/watch.service.js';
 
+const MARKDOWN_EXTENSIONS_RE = /\.(md|markdown)$/i;
+
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) {
     return true;
@@ -42,6 +44,17 @@ export async function wsRoutes(app: FastifyInstance) {
 
         switch (parsed.type) {
           case 'watch':
+            if (!MARKDOWN_EXTENSIONS_RE.test(parsed.path)) {
+              socket.send(
+                JSON.stringify(
+                  ServerWsMessageSchema.parse({
+                    type: 'error',
+                    message: 'Only markdown files can be watched',
+                  }),
+                ),
+              );
+              break;
+            }
             watchService.watch(parsed.path, socket as WebSocket);
             break;
           case 'unwatch':

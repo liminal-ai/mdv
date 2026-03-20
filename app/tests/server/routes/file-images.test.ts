@@ -18,7 +18,7 @@ vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>();
   return {
     ...actual,
-    existsSync: vi.fn(),
+    statSync: vi.fn(),
   };
 });
 
@@ -62,9 +62,13 @@ async function withRenderedFile(
   );
   vi.mocked(fs.realpath).mockResolvedValue(documentPath);
   vi.mocked(fs.readFile).mockResolvedValue(content);
-  vi.mocked(nodeFs.existsSync).mockImplementation((candidate) =>
-    existingPaths.has(String(candidate)),
-  );
+  vi.mocked(nodeFs.statSync).mockImplementation((candidate) => {
+    if (!existingPaths.has(String(candidate))) {
+      throw Object.assign(new Error('Missing'), { code: 'ENOENT' });
+    }
+
+    return makeFileStat();
+  });
 
   const app = await buildApp();
 
@@ -89,7 +93,9 @@ async function withRenderedFile(
 describe('file image handling route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(nodeFs.existsSync).mockReturnValue(false);
+    vi.mocked(nodeFs.statSync).mockImplementation(() => {
+      throw Object.assign(new Error('Missing'), { code: 'ENOENT' });
+    });
   });
 
   afterEach(() => {

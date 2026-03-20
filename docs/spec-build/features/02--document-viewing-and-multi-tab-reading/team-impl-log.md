@@ -442,3 +442,28 @@ When handing off spec documents to implementation or review agents, do NOT list 
 - Cross-references between documents connect to the agent's own summary rather than requiring attention back to raw text thousands of tokens earlier
 
 The extra time to read serially and reflect on each file is very much worth it for the additional quality of context achieved. This applies to every agent dispatch — implementers, reviewers, and follow-up fixers alike.
+
+---
+
+## Hardening Fixes
+
+3 moderate-effort fixes dispatched to an Opus+Codex implementer:
+1. Read timeout (TC-9.3b) — AbortSignal server-side, AbortController client-side
+2. Replace fs.watch with chokidar — WatchService rewrite, removed manual rename/deletion handling
+3. Bulk action integration tests — closeOtherTabs, closeTabsToRight, copyTabPath
+
+Codex sessions: `019d0b02-b95a-7f80-9fa4-10f5d2e2772e`, `019d0b06-6e8f-7833-8bcd-b6b4182c31a6`, `019d0b09-f0da-7ee3-8454-4b1ac6722fc1`
+
+318 tests passing. Committed as `8c7c0be`.
+
+### Process failure: item list drop on dispatch
+
+The orchestrator was instructed to include ALL remaining items (moderate + small) in the hardening dispatch. Instead, only the 3 moderate items were sent to the implementer. The 7 low-effort items were dropped.
+
+**Root cause:** Same mechanism as the earlier skill-loading failure — context distance. The conversation went: full list → filter → separate by effort → user asks for scope descriptions of moderate items → detailed discussion of 3 moderate items → user says "do them all." By dispatch time, the moderate items had been elaborated in detail and were salient. The small items were further back, never elaborated, and fell off when the handoff prompt was written. The orchestrator interpreted "the list" as "the things we just discussed in detail" rather than "all remaining items."
+
+**Diagnosis:** Adding prose instructions to the skill ("materialize the list before dispatch") won't reliably fix this. The orchestrator will skip advisory instructions the same way it skips other instructions when in execution mode. The fix needs to be operationalized — concrete steps with self-run commands baked into the skill workflow that force the behavior. For example: "write the complete fix list to a numbered file → read that file back → paste its contents into the handoff prompt." That creates a structural intervention, not just an instruction. The skill does not currently have this, and adding it requires designing the actual commands, not just the intent.
+
+**Interim mitigation:** The human can gate dispatch with "list every item you're giving to the implementer" — forcing materialization before the handoff is written. This catches drops but requires the human to remember to do it.
+
+**Remaining small items to address:** existsSync isFile check, stream error handler, watch channel extension check, debounce docs update, INVALID_MODE error code, duplicate/Unicode slug tests, modifier-key passthrough test.

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import path from 'node:path';
 import DOMPurify from 'isomorphic-dompurify';
 import GithubSlugger from 'github-slugger';
@@ -95,7 +95,14 @@ function processImages(html: string, documentDir: string): RenderResult {
         return renderImagePlaceholder('unsupported', src);
       }
 
-      if (!existsSync(normalizedPath)) {
+      let isFile = false;
+      try {
+        isFile = statSync(normalizedPath).isFile();
+      } catch {
+        // ENOENT or other error — treat as missing
+      }
+
+      if (!isFile) {
         warnings.push({
           type: 'missing-image',
           source: src,
