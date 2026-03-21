@@ -14,6 +14,7 @@ import { mountWarningPanel } from './components/warning-panel.js';
 import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { KeyboardManager } from './utils/keyboard.js';
+import { reRenderMermaidDiagrams } from './utils/mermaid-renderer.js';
 import { WsClient } from './utils/ws.js';
 
 declare global {
@@ -1106,6 +1107,18 @@ export async function bootstrapApp(
     },
   });
   keyboardManager.attach();
+
+  const themeObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.attributeName === 'data-theme') {
+        void reRenderMermaidDiagrams();
+      }
+    }
+  });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  });
 
   if (bootstrap.session.lastRoot) {
     setTreeLoading(true);

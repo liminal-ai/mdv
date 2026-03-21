@@ -1,10 +1,29 @@
+import type { RenderWarning } from '../../shared/types.js';
 import { attach as attachLinkHandler } from '../utils/link-handler.js';
 import type { StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
+import { renderMermaidBlocks } from '../utils/mermaid-renderer.js';
 
 function fileName(filePath: string): string {
   const segments = filePath.split('/').filter(Boolean);
   return segments.at(-1) ?? filePath;
+}
+
+function warningsEqual(left: RenderWarning[], right: RenderWarning[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((warning, index) => {
+    const other = right[index];
+    return (
+      other !== undefined &&
+      warning.type === other.type &&
+      warning.source === other.source &&
+      warning.message === other.message &&
+      warning.line === other.line
+    );
+  });
 }
 
 export interface ContentAreaActions {
@@ -112,7 +131,7 @@ export function mountContentArea(
     );
   };
 
-  const render = () => {
+  const render = async () => {
     const state = store.get();
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
 
@@ -198,10 +217,41 @@ export function mountContentArea(
             showError: actions.onLinkError,
           });
         }
+
+        const renderingTabId = activeTab.id;
+        const mermaidResult = await renderMermaidBlocks(markdownBody);
+        const currentState = store.get();
+        if (currentState.activeTabId !== renderingTabId) {
+          return;
+        }
+
+        const currentTab = currentState.tabs.find((tab) => tab.id === renderingTabId);
+        if (!currentTab) {
+          return;
+        }
+
+        const serverWarnings = currentTab.warnings.filter(
+          (warning) => warning.type !== 'mermaid-error',
+        );
+        const allWarnings = [...serverWarnings, ...mermaidResult.warnings];
+        if (warningsEqual(currentTab.warnings, allWarnings)) {
+          return;
+        }
+
+        store.update(
+          {
+            tabs: currentState.tabs.map((tab) =>
+              tab.id === renderingTabId ? { ...tab, warnings: allWarnings } : tab,
+            ),
+          },
+          ['tabs'],
+        );
       }
     }
   };
 
-  render();
-  return store.subscribe(render);
+  void render();
+  return store.subscribe(() => {
+    void render();
+  });
 }
