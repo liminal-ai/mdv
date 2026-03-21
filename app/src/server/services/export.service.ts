@@ -23,6 +23,26 @@ function toExportWarnings(
   return warnings.map((warning) => ({ ...warning }));
 }
 
+function expandDetailsElements(html: string): { html: string; warnings: ExportWarning[] } {
+  const warnings: ExportWarning[] = [];
+  const DETAILS_RE = /<details(?![^>]*\bopen\b)([^>]*)>/gi;
+
+  const expandedHtml = html.replace(DETAILS_RE, (_match, attrs: string = '') => {
+    warnings.push({
+      type: 'format-degradation',
+      source: '<details>',
+      message: '<details> element expanded for static format export',
+    });
+
+    return `<details open${attrs}>`;
+  });
+
+  return {
+    html: expandedHtml,
+    warnings,
+  };
+}
+
 export class ExportService {
   private exporting = false;
 
@@ -60,12 +80,17 @@ export class ExportService {
       );
 
       const assetResult = await this.assetService.resolveImages(mermaidResult.html, request.path);
+      const detailsResult =
+        request.format === 'html'
+          ? { html: assetResult.html, warnings: [] }
+          : expandDetailsElements(assetResult.html);
       const warnings = toExportWarnings([
         ...renderResult.warnings,
         ...mermaidResult.warnings,
         ...assetResult.warnings,
+        ...detailsResult.warnings,
       ]);
-      const fullHtml = this.htmlExportService.assemble(assetResult.html, exportTheme);
+      const fullHtml = this.htmlExportService.assemble(detailsResult.html, exportTheme);
 
       let output: Buffer | string;
       switch (request.format) {
@@ -73,7 +98,7 @@ export class ExportService {
           output = await this.pdfService.generate(fullHtml);
           break;
         case 'docx':
-          output = await this.docxService.generate(assetResult.html, warnings);
+          output = await this.docxService.generate(detailsResult.html, warnings);
           break;
         case 'html':
         default:

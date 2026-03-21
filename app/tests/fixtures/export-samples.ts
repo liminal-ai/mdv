@@ -37,6 +37,35 @@ def export_document(fmt: str) -> str:
 \`\`\`
 `;
 
+export const withTaskListMarkdown = `
+# Task List
+
+- [x] Completed task
+- [ ] Pending task
+- [x] Another done item
+`;
+
+export const withDetailsMarkdown = `
+# Collapsible Content
+
+<details>
+<summary>Click to expand</summary>
+
+This is the hidden content that should be visible in static exports.
+
+</details>
+`;
+
+export const withInlineHtmlMarkdown = `
+# Inline HTML
+
+Water is H<sub>2</sub>O and energy equals mc<sup>2</sup>.
+
+Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to copy.
+
+First line<br>Second line
+`;
+
 export const withTablesMarkdown = `
 # Export Matrix
 
@@ -56,6 +85,24 @@ export const withDegradedContentMarkdown = `
 \`\`\`mermaid
 graph TD
   Broken[broken
+\`\`\`
+`;
+
+export const withFullyDegradedMarkdown = `
+# All Degraded
+
+![Missing 1](./no-exist-1.png)
+![Missing 2](./no-exist-2.png)
+![Missing 3](./no-exist-3.png)
+
+\`\`\`mermaid
+graph TD
+  Invalid[broken
+\`\`\`
+
+\`\`\`mermaid
+pie title
+  broken[syntax
 \`\`\`
 `;
 
@@ -102,3 +149,23 @@ def render_document(path: str) -> str:
 
 export const exportSamplePath = '/Users/test/docs/architecture.md';
 export const exportSavePath = '/Users/test/exports/architecture.pdf';
+
+export function generateLargeMarkdown(lineCount: number = 10_000): string {
+  const sections: string[] = ['# Large Document Test\n'];
+
+  for (let i = 1; i <= Math.floor(lineCount / 10); i++) {
+    sections.push(
+      `## Section ${i}\n`,
+      `Paragraph content for section ${i}. `.repeat(5) + '\n',
+      '',
+      '```js',
+      `function section${i}() {`,
+      `  return ${i};`,
+      '}',
+      '```',
+      '',
+    );
+  }
+
+  return sections.join('\n');
+}
