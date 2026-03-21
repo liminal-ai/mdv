@@ -12,6 +12,41 @@ const availableThemes = [
   { id: 'dark-cool', label: 'Dark Cool', variant: 'dark' as const },
 ];
 
+function openRootContextMenu(): HTMLElement {
+  const rootLine = document.querySelector<HTMLElement>('.root-line');
+  if (!rootLine) {
+    throw new Error('Root line not found');
+  }
+
+  rootLine.dispatchEvent(
+    new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 40,
+      clientY: 24,
+    }),
+  );
+
+  const menu = document.querySelector<HTMLElement>('.root-line-context');
+  if (!menu) {
+    throw new Error('Root context menu not found');
+  }
+
+  return menu;
+}
+
+function clickRootMenuItem(label: string): void {
+  const item = Array.from(
+    openRootContextMenu().querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ).find((element) => element.textContent === label);
+
+  if (!item) {
+    throw new Error(`Root menu item not found: ${label}`);
+  }
+
+  item.click();
+}
+
 describe('client bootstrap api injection', () => {
   afterEach(() => {
     document.body.innerHTML = '';
@@ -181,7 +216,7 @@ describe('client bootstrap api injection', () => {
   it('refreshes the tree from the root line using the current root', async () => {
     const api = await renderApp(populatedSession);
 
-    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+    clickRootMenuItem('Refresh Tree');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(api.getTree).toHaveBeenCalledWith('/Users/leemoore/code');
@@ -204,7 +239,7 @@ describe('client bootstrap api injection', () => {
     const api = await renderApp(session);
     api.getTree.mockRejectedValueOnce(new ApiError(403, 'PERMISSION_DENIED', 'Cannot read'));
 
-    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+    clickRootMenuItem('Refresh Tree');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(document.querySelector('[role="alert"]')).toBeTruthy();
@@ -216,15 +251,18 @@ describe('client bootstrap api injection', () => {
     const api = await renderApp(session);
     api.getTree.mockRejectedValueOnce(new ApiError(404, 'PATH_NOT_FOUND', 'Directory not found'));
 
-    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+    clickRootMenuItem('Refresh Tree');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(document.querySelector('[role="alert"]')).toBeTruthy();
     expect(document.body.textContent).toContain('Directory not found');
     expect(document.body.textContent).not.toContain('No folder selected');
     expect(document.querySelector('.root-line__path--invalid')?.textContent).toBe('~/code');
-    expect(document.querySelector<HTMLButtonElement>('.root-line__copy--visible')).toBeTruthy();
-    expect(document.querySelector<HTMLButtonElement>('.root-line__refresh')).toBeNull();
+    const itemLabels = Array.from(
+      openRootContextMenu().querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    ).map((item) => item.textContent);
+    expect(itemLabels).toContain('Copy Path');
+    expect(itemLabels).not.toContain('Refresh Tree');
   });
 
   it('surfaces bootstrap tree-load errors to the user', async () => {
@@ -616,7 +654,10 @@ describe('client bootstrap api injection', () => {
     expect(document.querySelectorAll('.tab')).toHaveLength(1);
     expect(document.querySelector('.tab--active')?.getAttribute('title')).toBe('/root/b.md');
     expect(document.querySelector('.markdown-body h1')?.textContent).toBe('/root/b.md');
-    expect(api.updateTabs).toHaveBeenLastCalledWith(['/root/b.md'], '/root/b.md');
+    expect(api.updateTabs).toHaveBeenLastCalledWith(
+      [{ path: '/root/b.md', mode: 'render', scrollPosition: 0 }],
+      '/root/b.md',
+    );
   });
 
   it('TC-4.3f (integration): Close Tabs to Right removes tabs after the target', async () => {
@@ -674,7 +715,13 @@ describe('client bootstrap api injection', () => {
     expect(remainingTabs).toEqual(['/root/a.md', '/root/b.md']);
     expect(document.querySelector('.tab--active')?.getAttribute('title')).toBe('/root/b.md');
     expect(document.querySelector('.markdown-body h1')?.textContent).toBe('/root/b.md');
-    expect(api.updateTabs).toHaveBeenLastCalledWith(['/root/a.md', '/root/b.md'], '/root/b.md');
+    expect(api.updateTabs).toHaveBeenLastCalledWith(
+      [
+        { path: '/root/a.md', mode: 'render', scrollPosition: 0 },
+        { path: '/root/b.md', mode: 'render', scrollPosition: 0 },
+      ],
+      '/root/b.md',
+    );
   });
 
   it('TC-4.3g (integration): Copy Path copies the tab file path to clipboard', async () => {

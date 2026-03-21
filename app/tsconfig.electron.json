@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "outDir": "dist/electron",
+    "rootDir": "src/electron"
+  },
+  "include": ["src/electron/**/*.ts"],
+  "exclude": ["node_modules", "tests"]
+}

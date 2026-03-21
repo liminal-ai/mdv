@@ -24,7 +24,10 @@ export const populatedSession: SessionState = {
   theme: 'dark-default',
   sidebarState: { workspacesCollapsed: false },
   defaultOpenMode: 'render',
-  openTabs: ['/Users/leemoore/code/README.md', '/Users/leemoore/code/liminal/ARCHITECTURE.md'],
+  openTabs: [
+    { path: '/Users/leemoore/code/README.md', mode: 'render' },
+    { path: '/Users/leemoore/code/liminal/ARCHITECTURE.md', mode: 'render' },
+  ],
   activeTab: '/Users/leemoore/code/README.md',
 };
 

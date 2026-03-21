@@ -1,4 +1,10 @@
-import type { ExportFormat, FileReadResponse, SessionState, ThemeInfo } from '../shared/types.js';
+import type {
+  ExportFormat,
+  FileReadResponse,
+  PersistedTab,
+  SessionState,
+  ThemeInfo,
+} from '../shared/types.js';
 import { ApiClient, ApiError } from './api.js';
 import { mountContentArea } from './components/content-area.js';
 import { mountContentToolbar, TOGGLE_EXPORT_DROPDOWN_EVENT } from './components/content-toolbar.js';
@@ -122,6 +128,7 @@ function createTabId(): string {
 function createLoadingTab(
   path: string,
   mode: ClientState['session']['defaultOpenMode'] = 'render',
+  scrollPosition = 0,
 ): TabState {
   return {
     id: createTabId(),
@@ -132,7 +139,7 @@ function createLoadingTab(
     content: '',
     warnings: [],
     renderGeneration: 0,
-    scrollPosition: 0,
+    scrollPosition,
     loading: true,
     modifiedAt: '',
     size: 0,
@@ -174,6 +181,20 @@ function buildLoadedTab(
     dirty: preserveEditState,
     editedSinceLastSave: preserveEditState ? (existing?.editedSinceLastSave ?? false) : false,
   };
+}
+
+function normalizePersistedTab(
+  tab: string | PersistedTab,
+  defaultMode: ClientState['session']['defaultOpenMode'],
+): PersistedTab {
+  if (typeof tab === 'string') {
+    return {
+      path: tab,
+      mode: defaultMode,
+    };
+  }
+
+  return tab;
 }
 
 function disambiguateDisplayNames(tabs: TabState[]): TabState[] {
@@ -633,7 +654,11 @@ export async function bootstrapApp(
     try {
       applySession(
         await api.updateTabs(
-          tabs.map((tab) => tab.path),
+          tabs.map((tab) => ({
+            path: tab.path,
+            mode: tab.mode,
+            scrollPosition: tab.mode === 'render' ? tab.scrollPosition : undefined,
+          })),
           activeTab?.path ?? null,
         ),
       );
@@ -1452,13 +1477,17 @@ export async function bootstrapApp(
   };
 
   const restoreTabsFromSession = async () => {
-    const { openTabs, activeTab } = bootstrap.session;
-    if (!openTabs.length) {
+    const { activeTab } = bootstrap.session;
+    const persistedTabs = bootstrap.session.openTabs.map((tab) =>
+      normalizePersistedTab(tab, bootstrap.session.defaultOpenMode),
+    );
+
+    if (!persistedTabs.length) {
       return;
     }
 
     const loadingTabs = disambiguateDisplayNames(
-      openTabs.map((path) => createLoadingTab(path, bootstrap.session.defaultOpenMode)),
+      persistedTabs.map((tab) => createLoadingTab(tab.path, tab.mode, tab.scrollPosition ?? 0)),
     );
     const initialActiveTabId =
       loadingTabs.find((tab) => tab.path === activeTab)?.id ?? loadingTabs.at(-1)?.id ?? null;

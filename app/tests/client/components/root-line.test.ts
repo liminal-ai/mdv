@@ -28,6 +28,29 @@ function renderRootLine(lastRoot: string | null = '/Users/leemoore/code/project-
   return { store, actions, cleanup };
 }
 
+function openRootContextMenu(): HTMLElement {
+  const rootLine = document.querySelector<HTMLElement>('.root-line');
+  if (!rootLine) {
+    throw new Error('Root line not found');
+  }
+
+  rootLine.dispatchEvent(
+    new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 40,
+      clientY: 24,
+    }),
+  );
+
+  const menu = document.querySelector<HTMLElement>('.root-line-context');
+  if (!menu) {
+    throw new Error('Root context menu not found');
+  }
+
+  return menu;
+}
+
 describe('root line', () => {
   afterEach(() => {
     document.body.innerHTML = '';
@@ -71,7 +94,13 @@ describe('root line', () => {
   it('TC-4.3a: Pin adds workspace', () => {
     const { actions } = renderRootLine();
 
-    document.querySelector<HTMLButtonElement>('.root-line__pin')?.click();
+    openRootContextMenu()
+      .querySelectorAll<HTMLElement>('[role="menuitem"]')
+      .forEach((item) => {
+        if (item.textContent === 'Pin as Path') {
+          item.click();
+        }
+      });
 
     expect(actions.onPin).toHaveBeenCalledTimes(1);
   });
@@ -79,7 +108,13 @@ describe('root line', () => {
   it('TC-4.4a: Copy copies root path', () => {
     const { actions } = renderRootLine();
 
-    document.querySelector<HTMLButtonElement>('.root-line__copy')?.click();
+    openRootContextMenu()
+      .querySelectorAll<HTMLElement>('[role="menuitem"]')
+      .forEach((item) => {
+        if (item.textContent === 'Copy Path') {
+          item.click();
+        }
+      });
 
     expect(actions.onCopy).toHaveBeenCalledTimes(1);
   });
@@ -87,7 +122,13 @@ describe('root line', () => {
   it('TC-4.5a: Refresh reloads tree', () => {
     const { actions } = renderRootLine();
 
-    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+    openRootContextMenu()
+      .querySelectorAll<HTMLElement>('[role="menuitem"]')
+      .forEach((item) => {
+        if (item.textContent === 'Refresh Tree') {
+          item.click();
+        }
+      });
 
     expect(actions.onRefresh).toHaveBeenCalledTimes(1);
   });
@@ -96,19 +137,27 @@ describe('root line', () => {
     const { store } = renderRootLine();
     const before = store.get().expandedDirsByRoot;
 
-    document.querySelector<HTMLButtonElement>('.root-line__refresh')?.click();
+    openRootContextMenu()
+      .querySelectorAll<HTMLElement>('[role="menuitem"]')
+      .forEach((item) => {
+        if (item.textContent === 'Refresh Tree') {
+          item.click();
+        }
+      });
 
     expect(store.get().expandedDirsByRoot).toEqual(before);
   });
 
-  it('TC-4.6a: Hover reveals pin copy and refresh via classes', () => {
+  it('TC-4.6a: Context menu reveals pin copy and refresh actions', () => {
     renderRootLine();
-
-    expect(document.querySelector('.root-line__pin')?.className).toContain('root-line__pin');
-    expect(document.querySelector('.root-line__copy')?.className).toContain('root-line__copy');
-    expect(document.querySelector('.root-line__refresh')?.className).toContain(
-      'root-line__refresh',
+    const menu = openRootContextMenu();
+    const itemLabels = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]')).map(
+      (item) => item.textContent,
     );
+
+    expect(itemLabels).toContain('Pin as Path');
+    expect(itemLabels).toContain('Copy Path');
+    expect(itemLabels).toContain('Refresh Tree');
   });
 
   it('TC-4.6b: Browse always visible without hover', () => {

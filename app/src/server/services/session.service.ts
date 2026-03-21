@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { SessionStateSchema, type SessionState } from '../schemas/index.js';
+import { SessionStateSchema, type PersistedTab, type SessionState } from '../schemas/index.js';
 import { isNotFoundError, isPermissionError } from '../utils/errors.js';
 
 const SESSION_FILE_NAME = 'session.json';
@@ -105,13 +105,13 @@ export class SessionService {
     });
   }
 
-  async updateTabs(openTabs: string[], activeTab: string | null): Promise<SessionState> {
+  async updateTabs(openTabs: PersistedTab[], activeTab: string | null): Promise<SessionState> {
     return this.mutate((session) => {
-      if (activeTab !== null && !openTabs.includes(activeTab)) {
-        activeTab = openTabs.length > 0 ? openTabs[0] : null;
+      if (activeTab !== null && !openTabs.some((tab) => tab.path === activeTab)) {
+        activeTab = openTabs.length > 0 ? (openTabs[0]?.path ?? null) : null;
       }
 
-      session.openTabs = [...openTabs];
+      session.openTabs = openTabs.map((tab) => ({ ...tab }));
       session.activeTab = activeTab;
     });
   }

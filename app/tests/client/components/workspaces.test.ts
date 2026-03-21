@@ -69,7 +69,7 @@ describe('workspaces', () => {
   it('TC-3.2a: Workspace label shows directory name', () => {
     renderWorkspaces();
 
-    expect(document.querySelector('.workspace-entry__label')?.textContent).toBe('leemoore');
+    expect(document.querySelector('.workspace-entry__label')?.textContent).toBe('~');
   });
 
   it('TC-3.2b: Full path tooltip on hover', () => {

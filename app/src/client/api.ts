@@ -2,6 +2,7 @@ import type {
   AppBootstrapResponse,
   ExportWarning,
   FilePickerResponse,
+  PersistedTab,
   FileReadResponse,
   FileSaveResponse,
   FileTreeResponse,
@@ -161,7 +162,7 @@ export class ApiClient {
     });
   }
 
-  async updateTabs(openTabs: string[], activeTab: string | null): Promise<SessionState> {
+  async updateTabs(openTabs: PersistedTab[], activeTab: string | null): Promise<SessionState> {
     return this.request('/api/session/tabs', {
       method: 'PUT',
       body: { openTabs, activeTab },

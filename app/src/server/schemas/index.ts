@@ -35,6 +35,22 @@ export const RecentFileSchema = z.object({
   openedAt: z.string().datetime(),
 });
 
+export const PersistedTabSchema = z.object({
+  path: AbsolutePathSchema,
+  mode: OpenModeSchema,
+  scrollPosition: z.number().nonnegative().optional(),
+});
+
+export const LegacyOrPersistedTab = z.union([
+  AbsolutePathSchema.transform(
+    (path): z.infer<typeof PersistedTabSchema> => ({
+      path,
+      mode: 'render',
+    }),
+  ),
+  PersistedTabSchema,
+]);
+
 export const SidebarStateSchema = z.object({
   workspacesCollapsed: z.boolean(),
 });
@@ -47,9 +63,31 @@ export const SessionStateSchema = z.object({
   theme: ThemeIdSchema,
   sidebarState: SidebarStateSchema,
   defaultOpenMode: OpenModeSchema.default('render'),
-  openTabs: z.array(AbsolutePathSchema).default([]),
+  openTabs: z.array(LegacyOrPersistedTab).default([]),
   activeTab: AbsolutePathSchema.nullable().default(null),
 });
+
+export interface MermaidCacheEntry {
+  svg: string;
+  accessedAt: number;
+}
+
+export interface WindowState {
+  x?: number;
+  y?: number;
+  width: number;
+  height: number;
+  isMaximized: boolean;
+}
+
+export interface MenuState {
+  hasDocument: boolean;
+  hasDirtyTab: boolean;
+  activeTabDirty: boolean;
+  activeTheme: string;
+  activeMode: 'render' | 'edit';
+  defaultMode: 'render' | 'edit';
+}
 
 // --- Tree ---
 export const TreeNodeSchema: z.ZodType<TreeNode> = z.lazy(() =>
@@ -160,7 +198,7 @@ export const SetDefaultModeRequestSchema = z.object({
   mode: z.enum(['render', 'edit']),
 });
 export const UpdateTabsRequestSchema = z.object({
-  openTabs: z.array(AbsolutePathSchema),
+  openTabs: z.array(PersistedTabSchema),
   activeTab: AbsolutePathSchema.nullable(),
 });
 
@@ -238,6 +276,7 @@ export const ErrorResponseSchema = z.object({
 export type SessionState = z.infer<typeof SessionStateSchema>;
 export type Workspace = z.infer<typeof WorkspaceSchema>;
 export type RecentFile = z.infer<typeof RecentFileSchema>;
+export type PersistedTab = z.infer<typeof PersistedTabSchema>;
 export type SidebarState = z.infer<typeof SidebarStateSchema>;
 export type ThemeId = z.infer<typeof ThemeIdSchema>;
 export type ThemeInfo = z.infer<typeof ThemeInfoSchema>;

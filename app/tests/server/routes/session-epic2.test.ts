@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../../src/server/app.js';
+import type { PersistedTab } from '../../../src/shared/types.js';
 import { emptySession } from '../../fixtures/session.js';
 import { multipleTabs, singleTab } from '../../fixtures/tab-states.js';
 import { createTempDir, removeTempDir } from '../../utils/tmp.js';
@@ -16,9 +17,16 @@ async function readSessionFile(sessionDir: string) {
   const raw = await readFile(sessionFilePath(sessionDir), 'utf8');
   return JSON.parse(raw) as {
     defaultOpenMode: string;
-    openTabs: string[];
+    openTabs: PersistedTab[];
     activeTab: string | null;
   };
+}
+
+function toPersistedTabs(paths: string[]): PersistedTab[] {
+  return paths.map((tabPath) => ({
+    path: tabPath,
+    mode: 'render',
+  }));
 }
 
 async function writeSession(sessionDir: string, session: unknown): Promise<void> {
@@ -81,13 +89,13 @@ describe('session routes epic 2', () => {
   it('Non-TC: Tab list persists', async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);
-    const openTabs = multipleTabs.map((tab) => tab.path);
+    const openTabs = toPersistedTabs(multipleTabs.map((tab) => tab.path));
     const app = await buildApp({ sessionDir });
 
     const response = await app.inject({
       method: 'PUT',
       url: '/api/session/tabs',
-      payload: { openTabs, activeTab: openTabs[0] },
+      payload: { openTabs, activeTab: openTabs[0]?.path ?? null },
     });
 
     expect(response.statusCode).toBe(200);
@@ -102,19 +110,22 @@ describe('session routes epic 2', () => {
   it('Non-TC: Active tab persists', async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);
-    const openTabs = multipleTabs.map((tab) => tab.path);
+    const openTabs = toPersistedTabs(multipleTabs.map((tab) => tab.path));
     const activeTab = singleTab.path;
     await writeSession(sessionDir, {
       ...emptySession,
       openTabs,
-      activeTab: openTabs[0],
+      activeTab: openTabs[0]?.path ?? null,
     });
     const app = await buildApp({ sessionDir });
 
     const updateResponse = await app.inject({
       method: 'PUT',
       url: '/api/session/tabs',
-      payload: { openTabs: [activeTab, ...openTabs], activeTab },
+      payload: {
+        openTabs: [{ path: activeTab, mode: 'render' }, ...openTabs],
+        activeTab,
+      },
     });
 
     expect(updateResponse.statusCode).toBe(200);
@@ -140,7 +151,7 @@ describe('session routes epic 2', () => {
       method: 'PUT',
       url: '/api/session/tabs',
       payload: {
-        openTabs: ['/a/one.md', '/a/two.md'],
+        openTabs: toPersistedTabs(['/a/one.md', '/a/two.md']),
         activeTab: '/a/nonexistent.md',
       },
     });
