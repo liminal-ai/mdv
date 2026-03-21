@@ -134,8 +134,7 @@ export function mountRootLine(
         }),
       ],
       on: {
-        contextmenu: (e: MouseEvent) =>
-          showRootContextMenu(e, actions, hasRoot, invalidRoot),
+        contextmenu: (e: MouseEvent) => showRootContextMenu(e, actions, hasRoot, invalidRoot),
       },
     });
 
