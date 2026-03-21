@@ -14,6 +14,12 @@ export const singleTab: TabState = {
   modifiedAt: '2026-03-19T00:00:00Z',
   size: 10,
   status: 'ok',
+  mode: 'render' as const,
+  editContent: null,
+  editScrollPosition: 0,
+  cursorPosition: null,
+  dirty: false,
+  editedSinceLastSave: false,
 };
 
 export const multipleTabs: TabState[] = [

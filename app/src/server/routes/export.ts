@@ -188,7 +188,9 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
         if (isNotFoundError(error)) {
           return reply
             .code(404)
-            .send(toApiError(ErrorCode.FILE_NOT_FOUND, `Source file not found: ${request.body.path}`));
+            .send(
+              toApiError(ErrorCode.FILE_NOT_FOUND, `Source file not found: ${request.body.path}`),
+            );
         }
 
         if (isInsufficientStorageError(error)) {

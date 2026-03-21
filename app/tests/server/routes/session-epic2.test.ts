@@ -61,7 +61,7 @@ describe('session routes epic 2', () => {
     await reloadedApp.close();
   });
 
-  it("Non-TC: Only 'render' accepted in Epic 2", async () => {
+  it("Non-TC: 'edit' is accepted for default open mode", async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);
     const app = await buildApp({ sessionDir });
@@ -72,13 +72,8 @@ describe('session routes epic 2', () => {
       payload: { mode: 'edit' },
     });
 
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({
-      error: {
-        code: 'INVALID_MODE',
-        message: 'Invalid mode value',
-      },
-    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().defaultOpenMode).toBe('edit');
 
     await app.close();
   });

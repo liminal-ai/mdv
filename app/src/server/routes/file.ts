@@ -6,6 +6,8 @@ import {
   FilePickerResponseSchema,
   FileReadRequestSchema,
   FileReadResponseSchema,
+  FileSaveRequestSchema,
+  FileSaveResponseSchema,
 } from '../schemas/index.js';
 import { FileService } from '../services/file.service.js';
 import { RenderService } from '../services/render.service.js';
@@ -122,6 +124,22 @@ export async function fileRoutes(app: FastifyInstance) {
           .code(500)
           .send(toApiError(ErrorCode.READ_ERROR, 'Failed to read the requested file.'));
       }
+    },
+  );
+
+  typedApp.put(
+    '/api/file',
+    {
+      schema: {
+        body: FileSaveRequestSchema,
+        response: {
+          200: FileSaveResponseSchema,
+          501: ErrorResponseSchema,
+        },
+      },
+    },
+    async (_request, reply) => {
+      return reply.code(501).send(toApiError(ErrorCode.WRITE_ERROR, 'Not implemented'));
     },
   );
 

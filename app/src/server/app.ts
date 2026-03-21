@@ -8,6 +8,8 @@ import { exportRoutes } from './routes/export.js';
 import { fileRoutes } from './routes/file.js';
 import { imageRoutes } from './routes/image.js';
 import { openExternalRoutes } from './routes/open-external.js';
+import { renderRoutes } from './routes/render.js';
+import { saveDialogRoutes } from './routes/save-dialog.js';
 import { sessionRoutes } from './routes/session.js';
 import { treeRoutes } from './routes/tree.js';
 import { wsRoutes } from './routes/ws.js';
@@ -40,6 +42,8 @@ export async function buildApp(opts?: AppOptions) {
   await app.register(fileRoutes);
   await app.register(imageRoutes);
   await app.register(openExternalRoutes);
+  await app.register(renderRoutes);
+  await app.register(saveDialogRoutes);
   await app.register(exportRoutes, {
     sessionService,
   });

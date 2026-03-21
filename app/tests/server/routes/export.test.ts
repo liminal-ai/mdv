@@ -694,9 +694,11 @@ describe('export routes', () => {
   });
 
   it('Non-TC: Warning sources are truncated to 200 characters', async () => {
-    const longBrokenDiagram = ['```mermaid', `graph TD\n${'A-->B\n'.repeat(80)}Broken[broken`, '```'].join(
-      '\n',
-    );
+    const longBrokenDiagram = [
+      '```mermaid',
+      `graph TD\n${'A-->B\n'.repeat(80)}Broken[broken`,
+      '```',
+    ].join('\n');
     configureSourceFile(`# Mermaid\n\n${longBrokenDiagram}`);
     const app = await buildApp();
 

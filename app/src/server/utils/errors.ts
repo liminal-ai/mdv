@@ -9,7 +9,9 @@ export const ErrorCode = {
   NOT_MARKDOWN: 'NOT_MARKDOWN',
   READ_TIMEOUT: 'READ_TIMEOUT',
   READ_ERROR: 'READ_ERROR',
+  WRITE_ERROR: 'WRITE_ERROR',
   SCAN_ERROR: 'SCAN_ERROR',
+  CONFLICT: 'CONFLICT',
   EXPORT_ERROR: 'EXPORT_ERROR',
   EXPORT_IN_PROGRESS: 'EXPORT_IN_PROGRESS',
   INSUFFICIENT_STORAGE: 'INSUFFICIENT_STORAGE',
@@ -49,6 +51,26 @@ export class NotMarkdownError extends Error {
   constructor(path: string, ext: string) {
     super(`Not a markdown file (${ext}): ${path}`);
     this.name = 'NotMarkdownError';
+  }
+}
+
+export class ConflictError extends Error {
+  readonly expected: string;
+
+  readonly actual: string;
+
+  constructor(path: string, expected: string, actual: string) {
+    super(`File changed on disk since last load: ${path}`);
+    this.name = 'ConflictError';
+    this.expected = expected;
+    this.actual = actual;
+  }
+}
+
+export class PathNotFoundError extends Error {
+  constructor(path: string) {
+    super(`Parent directory does not exist: ${path}`);
+    this.name = 'PathNotFoundError';
   }
 }
 

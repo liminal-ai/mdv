@@ -90,6 +90,28 @@ export const FileReadResponseSchema = z.object({
   size: z.number().int().nonnegative(),
 });
 
+export const FileSaveRequestSchema = z.object({
+  path: AbsolutePathSchema,
+  content: z.string(),
+  expectedModifiedAt: z.string().datetime().nullable().optional(),
+});
+
+export const FileSaveResponseSchema = z.object({
+  path: AbsolutePathSchema,
+  modifiedAt: z.string().datetime(),
+  size: z.number().int().nonnegative(),
+});
+
+export const RenderFromContentRequestSchema = z.object({
+  content: z.string(),
+  documentPath: AbsolutePathSchema,
+});
+
+export const RenderFromContentResponseSchema = z.object({
+  html: z.string(),
+  warnings: z.array(RenderWarningSchema),
+});
+
 export const FilePickerResponseSchema = z
   .object({
     path: AbsolutePathSchema,
@@ -135,7 +157,7 @@ export const ClipboardRequestSchema = z.object({ text: z.string().max(100_000) }
 export const TouchRecentFileRequestSchema = z.object({ path: AbsolutePathSchema });
 export const RemoveRecentFileRequestSchema = z.object({ path: AbsolutePathSchema });
 export const SetDefaultModeRequestSchema = z.object({
-  mode: z.enum(['render']),
+  mode: z.enum(['render', 'edit']),
 });
 export const UpdateTabsRequestSchema = z.object({
   openTabs: z.array(AbsolutePathSchema),
@@ -174,6 +196,7 @@ export const ExportResponseSchema = z.object({
 export const SaveDialogRequestSchema = z.object({
   defaultPath: AbsolutePathSchema,
   defaultFilename: z.string(),
+  prompt: z.string().optional(),
 });
 
 export const SaveDialogResponseSchema = z
@@ -224,6 +247,10 @@ export type OpenMode = z.infer<typeof OpenModeSchema>;
 export type FileReadRequest = z.infer<typeof FileReadRequestSchema>;
 export type RenderWarning = z.infer<typeof RenderWarningSchema>;
 export type FileReadResponse = z.infer<typeof FileReadResponseSchema>;
+export type FileSaveRequest = z.infer<typeof FileSaveRequestSchema>;
+export type FileSaveResponse = z.infer<typeof FileSaveResponseSchema>;
+export type RenderFromContentRequest = z.infer<typeof RenderFromContentRequestSchema>;
+export type RenderFromContentResponse = z.infer<typeof RenderFromContentResponseSchema>;
 export type FilePickerResponse = z.infer<typeof FilePickerResponseSchema>;
 export type ImageRequest = z.infer<typeof ImageRequestSchema>;
 export type OpenExternalRequest = z.infer<typeof OpenExternalRequestSchema>;
