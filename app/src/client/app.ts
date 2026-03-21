@@ -9,6 +9,7 @@ import { mountErrorNotification } from './components/error-notification.js';
 import { mountMenuBar } from './components/menu-bar.js';
 import { mountSidebar } from './components/sidebar.js';
 import { mountTabStrip } from './components/tab-strip.js';
+import { mountUnsavedModal } from './components/unsaved-modal.js';
 import { mountWarningPanel } from './components/warning-panel.js';
 import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
@@ -50,6 +51,8 @@ const SAVE_PENDING_CLEAR_DELAY_MS = 500;
 export const INSERT_LINK_EVENT = 'mdv:insert-link';
 
 let tabSequence = 0;
+type UnsavedChoice = 'save' | 'discard' | 'cancel';
+type UnsavedModalContext = NonNullable<ClientState['unsavedModal']>['context'];
 
 interface ScrollSnapshot {
   offset: number;
@@ -434,7 +437,6 @@ export async function bootstrapApp(
     }
 
     store.update(nextState, changedKeys);
-    updateBeforeUnloadHandler();
   };
 
   const getActiveTab = () => {
@@ -485,6 +487,7 @@ export async function bootstrapApp(
   });
 
   let beforeUnloadRegistered = false;
+  let resolveUnsavedChoice: ((choice: UnsavedChoice) => void) | null = null;
   const handleBeforeUnload = (event: BeforeUnloadEvent) => {
     event.preventDefault();
     event.returnValue = '';
@@ -502,6 +505,48 @@ export async function bootstrapApp(
       window.removeEventListener('beforeunload', handleBeforeUnload);
       beforeUnloadRegistered = false;
     }
+  };
+
+  store.subscribe((_state, changed) => {
+    if (changed.includes('tabs')) {
+      updateBeforeUnloadHandler();
+    }
+  });
+
+  const settleUnsavedChoice = (choice: UnsavedChoice) => {
+    const resolve = resolveUnsavedChoice;
+    resolveUnsavedChoice = null;
+
+    if (store.get().unsavedModal) {
+      store.update({ unsavedModal: null }, ['unsavedModal']);
+    }
+
+    resolve?.(choice);
+  };
+
+  const showUnsavedModal = (
+    tab: TabState,
+    context: UnsavedModalContext,
+  ): Promise<UnsavedChoice> => {
+    if (resolveUnsavedChoice) {
+      resolveUnsavedChoice('cancel');
+      resolveUnsavedChoice = null;
+    }
+
+    store.update(
+      {
+        unsavedModal: {
+          tabId: tab.id,
+          filename: tab.filename,
+          context,
+        },
+      },
+      ['unsavedModal'],
+    );
+
+    return new Promise((resolve) => {
+      resolveUnsavedChoice = resolve;
+    });
   };
 
   const syncTabsToSession = async () => {
@@ -709,7 +754,7 @@ export async function bootstrapApp(
     await syncTabsToSession();
   };
 
-  const closeTab = async (tabId: string) => {
+  const performTabClose = async (tabId: string) => {
     const state = store.get();
     const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
     if (tabIndex === -1) {
@@ -741,6 +786,86 @@ export async function bootstrapApp(
     await syncTabsToSession();
   };
 
+  const saveTab = async (tabId: string): Promise<boolean> => {
+    const tabToSave = store.get().tabs.find((tab) => tab.id === tabId) ?? null;
+    if (!tabToSave || tabToSave.status !== 'ok') {
+      return false;
+    }
+
+    const contentToSave = tabToSave.editContent ?? tabToSave.content;
+    markSavePending(tabToSave.path);
+
+    try {
+      const response = await api.saveFile({
+        path: tabToSave.path,
+        content: contentToSave,
+        expectedModifiedAt: tabToSave.modifiedAt,
+      });
+
+      const latestState = store.get();
+      const nextTabs = disambiguateDisplayNames(
+        latestState.tabs.map((tab) =>
+          tab.id === tabToSave.id
+            ? buildSavedTab(tab, {
+                content: contentToSave,
+                modifiedAt: response.modifiedAt,
+                size: response.size,
+              })
+            : tab,
+        ),
+      );
+
+      updateTabsState(nextTabs, latestState.activeTabId);
+      return true;
+    } catch (error) {
+      if ((error as { code?: string } | undefined)?.code === 'CONFLICT') {
+        store.update(
+          {
+            conflictModal: {
+              tabId: tabToSave.id,
+              filename: tabToSave.filename,
+            },
+          },
+          ['conflictModal'],
+        );
+        return false;
+      }
+
+      setError(error);
+      return false;
+    } finally {
+      scheduleClearSavePending(tabToSave.path);
+    }
+  };
+
+  const requestTabClose = async (tabId: string, context: UnsavedModalContext): Promise<boolean> => {
+    const tab = store.get().tabs.find((candidate) => candidate.id === tabId) ?? null;
+    if (!tab) {
+      return true;
+    }
+
+    if (tab.dirty) {
+      const choice = await showUnsavedModal(tab, context);
+      if (choice === 'cancel') {
+        return false;
+      }
+
+      if (choice === 'save') {
+        const saved = await saveTab(tab.id);
+        if (!saved) {
+          return false;
+        }
+      }
+    }
+
+    await performTabClose(tab.id);
+    return true;
+  };
+
+  const closeTab = async (tabId: string) => {
+    await requestTabClose(tabId, 'close-tab');
+  };
+
   const closeOtherTabs = async (tabId: string) => {
     const state = store.get();
     const tabsWithScroll = saveScrollPosition(state.tabs, state.activeTabId);
@@ -749,15 +874,22 @@ export async function bootstrapApp(
       return;
     }
 
+    store.update({ tabContextMenu: null }, ['tabContextMenu']);
+
     for (const tab of tabsWithScroll) {
-      if (tab.id !== tabId) {
-        unwatchPath(tab.path);
+      if (tab.id === tabId) {
+        continue;
+      }
+
+      const closed = await requestTabClose(tab.id, 'close-others');
+      if (!closed) {
+        return;
       }
     }
 
-    updateTabsState(disambiguateDisplayNames([targetTab]), tabId, { closeContextMenu: true });
-    restoreScrollPosition(targetTab.scrollPosition);
-    await syncTabsToSession();
+    if (store.get().activeTabId !== tabId) {
+      await switchTab(tabId);
+    }
   };
 
   const closeTabsToRight = async (tabId: string) => {
@@ -768,15 +900,18 @@ export async function bootstrapApp(
     }
 
     const tabsWithScroll = saveScrollPosition(state.tabs, state.activeTabId);
-    for (const tab of tabsWithScroll.slice(targetIndex + 1)) {
-      unwatchPath(tab.path);
-    }
-    const remainingTabs = disambiguateDisplayNames(tabsWithScroll.slice(0, targetIndex + 1));
-    const targetTab = remainingTabs.find((tab) => tab.id === tabId) ?? null;
+    store.update({ tabContextMenu: null }, ['tabContextMenu']);
 
-    updateTabsState(remainingTabs, tabId, { closeContextMenu: true });
-    restoreScrollPosition(targetTab?.scrollPosition ?? 0);
-    await syncTabsToSession();
+    for (const tab of tabsWithScroll.slice(targetIndex + 1)) {
+      const closed = await requestTabClose(tab.id, 'close-right');
+      if (!closed) {
+        return;
+      }
+    }
+
+    if (store.get().activeTabId !== tabId) {
+      await switchTab(tabId);
+    }
   };
 
   const copyTabPath = async (tabId: string) => {
@@ -1007,50 +1142,7 @@ export async function bootstrapApp(
       return false;
     }
 
-    const contentToSave = activeTab.editContent ?? activeTab.content;
-    markSavePending(activeTab.path);
-
-    try {
-      const response = await api.saveFile({
-        path: activeTab.path,
-        content: contentToSave,
-        expectedModifiedAt: activeTab.modifiedAt,
-      });
-
-      const latestState = store.get();
-      const nextTabs = disambiguateDisplayNames(
-        latestState.tabs.map((tab) =>
-          tab.id === activeTab.id
-            ? buildSavedTab(tab, {
-                content: contentToSave,
-                modifiedAt: response.modifiedAt,
-                size: response.size,
-              })
-            : tab,
-        ),
-      );
-
-      updateTabsState(nextTabs, latestState.activeTabId);
-      return true;
-    } catch (error) {
-      if ((error as { code?: string } | undefined)?.code === 'CONFLICT') {
-        store.update(
-          {
-            conflictModal: {
-              tabId: activeTab.id,
-              filename: activeTab.filename,
-            },
-          },
-          ['conflictModal'],
-        );
-        return false;
-      }
-
-      setError(error);
-      return false;
-    } finally {
-      scheduleClearSavePending(activeTab.path);
-    }
+    return saveTab(activeTab.id);
   };
 
   const saveCurrentTabAs = async (): Promise<boolean> => {
@@ -1317,6 +1409,10 @@ export async function bootstrapApp(
   warningPanelHost.id = 'warning-panel-root';
   document.body.append(warningPanelHost);
 
+  const unsavedModalHost = document.createElement('div');
+  unsavedModalHost.id = 'unsaved-modal-root';
+  document.body.append(unsavedModalHost);
+
   mountMenuBar(menuBarHost, store, {
     onOpenFile: pickAndOpenFile,
     onBrowse: browseForFolder,
@@ -1365,6 +1461,17 @@ export async function bootstrapApp(
   mountWarningPanel(warningPanelHost, store);
   mountErrorNotification(errorHost, store, {
     onDismiss: () => store.update({ error: null }, ['error']),
+  });
+  mountUnsavedModal(unsavedModalHost, store, {
+    onSaveAndClose: () => {
+      settleUnsavedChoice('save');
+    },
+    onDiscardChanges: () => {
+      settleUnsavedChoice('discard');
+    },
+    onCancel: () => {
+      settleUnsavedChoice('cancel');
+    },
   });
 
   const contextMenuHost = document.createElement('div');
@@ -1533,6 +1640,11 @@ export async function bootstrapApp(
     key: 'Escape',
     description: 'Close Menu',
     action: () => {
+      if (store.get().unsavedModal) {
+        settleUnsavedChoice('cancel');
+        return;
+      }
+
       store.update({ activeMenuId: null, tabContextMenu: null }, [
         'activeMenuId',
         'tabContextMenu',
