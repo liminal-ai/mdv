@@ -2,6 +2,7 @@ import type { ExportFormat, FileReadResponse, SessionState, ThemeInfo } from '..
 import { ApiClient, ApiError } from './api.js';
 import { mountContentArea } from './components/content-area.js';
 import { mountContentToolbar, TOGGLE_EXPORT_DROPDOWN_EVENT } from './components/content-toolbar.js';
+import { mountConflictModal } from './components/conflict-modal.js';
 import { mountExportProgress } from './components/export-progress.js';
 import { mountExportResult } from './components/export-result.js';
 import { mountContextMenu } from './components/context-menu.js';
@@ -549,6 +550,80 @@ export async function bootstrapApp(
     });
   };
 
+  const showConflictModal = (tab: TabState) => {
+    store.update(
+      {
+        conflictModal: {
+          tabId: tab.id,
+          filename: tab.filename,
+        },
+      },
+      ['conflictModal'],
+    );
+  };
+
+  const dismissConflictModal = (tabId?: string) => {
+    const conflictModal = store.get().conflictModal;
+    if (!conflictModal) {
+      return;
+    }
+
+    if (tabId && conflictModal.tabId !== tabId) {
+      return;
+    }
+
+    store.update({ conflictModal: null }, ['conflictModal']);
+  };
+
+  const getConflictTab = () => {
+    const state = store.get();
+    const conflictModal = state.conflictModal;
+    if (!conflictModal) {
+      return null;
+    }
+
+    const tab = state.tabs.find((candidate) => candidate.id === conflictModal.tabId) ?? null;
+    if (!tab) {
+      return null;
+    }
+
+    return {
+      conflictModal,
+      tab,
+    };
+  };
+
+  const applyConflictReload = (tabId: string, response: FileReadResponse): boolean => {
+    const latestState = store.get();
+    const nextTabs = disambiguateDisplayNames(
+      latestState.tabs.map((tab) =>
+        tab.id === tabId
+          ? {
+              ...buildLoadedTab(response, tab),
+              editContent: response.content,
+              dirty: false,
+              editedSinceLastSave: false,
+              status: 'ok',
+              errorMessage: undefined,
+            }
+          : tab,
+      ),
+    );
+
+    if (!nextTabs.some((tab) => tab.id === tabId)) {
+      return false;
+    }
+
+    updateTabsState(nextTabs, latestState.activeTabId);
+    return true;
+  };
+
+  const canPersistDirtyTab = (tab: TabState | null): tab is TabState =>
+    Boolean(
+      tab &&
+      (tab.status === 'ok' || (tab.status === 'deleted' && tab.dirty && tab.editContent !== null)),
+    );
+
   const syncTabsToSession = async () => {
     const { tabs, activeTabId } = store.get();
     const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
@@ -788,7 +863,7 @@ export async function bootstrapApp(
 
   const saveTab = async (tabId: string): Promise<boolean> => {
     const tabToSave = store.get().tabs.find((tab) => tab.id === tabId) ?? null;
-    if (!tabToSave || tabToSave.status !== 'ok') {
+    if (!canPersistDirtyTab(tabToSave)) {
       return false;
     }
 
@@ -799,7 +874,7 @@ export async function bootstrapApp(
       const response = await api.saveFile({
         path: tabToSave.path,
         content: contentToSave,
-        expectedModifiedAt: tabToSave.modifiedAt,
+        expectedModifiedAt: tabToSave.status === 'deleted' ? null : tabToSave.modifiedAt,
       });
 
       const latestState = store.get();
@@ -819,15 +894,7 @@ export async function bootstrapApp(
       return true;
     } catch (error) {
       if ((error as { code?: string } | undefined)?.code === 'CONFLICT') {
-        store.update(
-          {
-            conflictModal: {
-              tabId: tabToSave.id,
-              filename: tabToSave.filename,
-            },
-          },
-          ['conflictModal'],
-        );
+        showConflictModal(tabToSave);
         return false;
       }
 
@@ -1138,7 +1205,7 @@ export async function bootstrapApp(
 
   const saveCurrentTab = async (): Promise<boolean> => {
     const activeTab = getActiveTab();
-    if (!activeTab || activeTab.status !== 'ok' || !activeTab.dirty) {
+    if (!canPersistDirtyTab(activeTab) || !activeTab.dirty) {
       return false;
     }
 
@@ -1148,7 +1215,7 @@ export async function bootstrapApp(
   const saveCurrentTabAs = async (): Promise<boolean> => {
     const state = store.get();
     const activeTab = getActiveTab();
-    if (!activeTab || activeTab.status !== 'ok') {
+    if (!activeTab || (activeTab.status !== 'ok' && !canPersistDirtyTab(activeTab))) {
       return false;
     }
 
@@ -1413,6 +1480,10 @@ export async function bootstrapApp(
   unsavedModalHost.id = 'unsaved-modal-root';
   document.body.append(unsavedModalHost);
 
+  const conflictModalHost = document.createElement('div');
+  conflictModalHost.id = 'conflict-modal-root';
+  document.body.append(conflictModalHost);
+
   mountMenuBar(menuBarHost, store, {
     onOpenFile: pickAndOpenFile,
     onBrowse: browseForFolder,
@@ -1461,6 +1532,88 @@ export async function bootstrapApp(
   mountWarningPanel(warningPanelHost, store);
   mountErrorNotification(errorHost, store, {
     onDismiss: () => store.update({ error: null }, ['error']),
+  });
+  mountConflictModal(conflictModalHost, store, {
+    onKeep: () => {
+      dismissConflictModal();
+    },
+    onReload: async () => {
+      const conflict = getConflictTab();
+      if (!conflict) {
+        dismissConflictModal();
+        return;
+      }
+
+      try {
+        const response = await api.readFile(conflict.tab.path);
+        if (applyConflictReload(conflict.conflictModal.tabId, response)) {
+          dismissConflictModal(conflict.conflictModal.tabId);
+        }
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'FILE_NOT_FOUND') {
+          markTabDeleted(conflict.tab.path);
+          dismissConflictModal(conflict.conflictModal.tabId);
+          return;
+        }
+
+        setError(error);
+      }
+    },
+    onSaveCopy: async () => {
+      const conflict = getConflictTab();
+      if (!conflict) {
+        dismissConflictModal();
+        return;
+      }
+
+      let selection: { path: string } | null;
+      try {
+        selection = await api.saveDialog({
+          defaultPath: directoryName(conflict.tab.path),
+          defaultFilename: `copy-of-${fileName(conflict.tab.path)}`,
+        });
+      } catch (error) {
+        setError(error);
+        return;
+      }
+
+      if (!selection) {
+        return;
+      }
+
+      const latestConflict = getConflictTab();
+      if (!latestConflict || latestConflict.conflictModal.tabId !== conflict.conflictModal.tabId) {
+        return;
+      }
+
+      const contentToSave = latestConflict.tab.editContent ?? latestConflict.tab.content;
+
+      try {
+        await api.saveFile({
+          path: selection.path,
+          content: contentToSave,
+          expectedModifiedAt: undefined,
+        });
+      } catch (error) {
+        setError(error);
+        return;
+      }
+
+      try {
+        const response = await api.readFile(latestConflict.tab.path);
+        if (applyConflictReload(conflict.conflictModal.tabId, response)) {
+          dismissConflictModal(conflict.conflictModal.tabId);
+        }
+      } catch (error) {
+        if (error instanceof ApiError && error.code === 'FILE_NOT_FOUND') {
+          markTabDeleted(latestConflict.tab.path);
+          dismissConflictModal(conflict.conflictModal.tabId);
+          return;
+        }
+
+        setError(error);
+      }
+    },
   });
   mountUnsavedModal(unsavedModalHost, store, {
     onSaveAndClose: () => {
@@ -1515,12 +1668,20 @@ export async function bootstrapApp(
       setClientError(WS_SERVER_ERROR_CODE, message.message);
     });
     wsClient.on('file-change', (message) => {
+      const state = store.get();
+      const tab = state.tabs.find((candidate) => candidate.path === message.path) ?? null;
+
       if (message.event === 'deleted') {
         markTabDeleted(message.path);
         return;
       }
 
       if (isSavePending(message.path)) {
+        return;
+      }
+
+      if (tab?.dirty && message.event === 'modified') {
+        showConflictModal(tab);
         return;
       }
 
