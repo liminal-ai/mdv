@@ -1,11 +1,15 @@
 import type { RenderWarning } from '../../shared/types.js';
 import { Editor } from './editor.js';
+import { renderChunked } from './chunked-render.js';
 import { insertLink, insertTable } from './insert-tools.js';
 import { attach as attachLinkHandler } from '../utils/link-handler.js';
 import type { StateStore, TabState } from '../state.js';
 import { createElement } from '../utils/dom.js';
 import { INSERT_LINK_EVENT, INSERT_TABLE_EVENT } from '../utils/keyboard.js';
 import { renderMermaidBlocks } from '../utils/mermaid-renderer.js';
+
+const LARGE_FILE_CHUNKED_RENDER_THRESHOLD_BYTES = 500 * 1024;
+const activeChunkedRenderControllers = new WeakMap<HTMLElement, AbortController>();
 
 function fileName(filePath: string): string {
   const segments = filePath.split('/').filter(Boolean);
@@ -68,6 +72,11 @@ export function mountContentArea(
   let lastVisibleTabId: string | null = null;
   let lastVisibleMode: TabState['mode'] | null = null;
   const lastRenderedDirtyContent = new Map<string, string>();
+  const abortPendingChunkedRender = () => {
+    const controller = activeChunkedRenderControllers.get(container);
+    controller?.abort();
+    activeChunkedRenderControllers.delete(container);
+  };
 
   const shouldKeepDeletedEditorVisible = (tab: TabState): boolean =>
     tab.status === 'deleted' && tab.mode === 'edit' && tab.dirty && tab.editContent !== null;
@@ -343,8 +352,9 @@ export function mountContentArea(
   };
 
   const render = async () => {
-    const state = store.get();
     const activeTab = getActiveTab();
+
+    abortPendingChunkedRender();
 
     if (!activeTab) {
       destroyEditor();
@@ -585,11 +595,58 @@ export function mountContentArea(
       lastRenderedDirtyContent.delete(activeTab.id);
     }
 
-    markdownBody.innerHTML = html;
+    if (activeTab.size > LARGE_FILE_CHUNKED_RENDER_THRESHOLD_BYTES) {
+      const chunkedRenderController = new AbortController();
+      activeChunkedRenderControllers.set(container, chunkedRenderController);
+
+      const completed = await new Promise<boolean>((resolve) => {
+        let settled = false;
+        const finish = (result: boolean) => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          resolve(result);
+        };
+
+        chunkedRenderController.signal.addEventListener('abort', () => finish(false), {
+          once: true,
+        });
+        renderChunked({
+          container: markdownBody,
+          html,
+          signal: chunkedRenderController.signal,
+          onComplete: () => finish(true),
+        });
+      });
+
+      if (activeChunkedRenderControllers.get(container) === chunkedRenderController) {
+        activeChunkedRenderControllers.delete(container);
+      }
+
+      if (!completed || chunkedRenderController.signal.aborted) {
+        return;
+      }
+    } else {
+      markdownBody.innerHTML = html;
+    }
+
+    const currentRenderState = store.get();
+    const currentRenderTab = currentRenderState.tabs.find((tab) => tab.id === activeTab.id) ?? null;
+    if (
+      !currentRenderTab ||
+      currentRenderState.activeTabId !== activeTab.id ||
+      currentRenderTab.mode !== 'render' ||
+      (currentRenderTab.renderGeneration ?? 0) !== renderingGeneration
+    ) {
+      return;
+    }
+
     if (actions.onOpenMarkdownLink && actions.onOpenExternalLink && actions.onLinkError) {
       attachLinkHandler(markdownBody, {
-        tabs: state.tabs,
-        activeTabId: state.activeTabId,
+        tabs: currentRenderState.tabs,
+        activeTabId: currentRenderState.activeTabId,
         openFile: actions.onOpenMarkdownLink,
         api: {
           openExternal: actions.onOpenExternalLink,
@@ -683,6 +740,7 @@ export function mountContentArea(
     unsubscribe();
     document.removeEventListener(INSERT_LINK_EVENT, handleInsertLink);
     document.removeEventListener(INSERT_TABLE_EVENT, handleInsertTable);
+    abortPendingChunkedRender();
     for (const timer of dirtyTimers.values()) {
       clearTimeout(timer);
     }
