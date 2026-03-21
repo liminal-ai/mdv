@@ -54,16 +54,20 @@ a {
 #app {
   display: grid;
   grid-template-rows: 2.75rem minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 #main {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(13rem, 16rem) minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width, 15rem) 0px minmax(0, 1fr);
   min-height: 0;
 }
 
 #workspace {
+  grid-column: 3;
   display: grid;
   grid-template-rows: 2.5rem auto minmax(0, 1fr);
   min-width: 0;

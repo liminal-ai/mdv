@@ -1,4 +1,5 @@
 #sidebar {
+  grid-column: 1;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -13,7 +14,12 @@
 }
 
 #main[data-sidebar-visible='false'] {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 0px 0px minmax(0, 1fr);
+}
+
+#main[data-sidebar-visible='false'] #sidebar-resizer,
+#main[data-sidebar-visible='false'] #sidebar {
+  display: none;
 }
 
 .sidebar__workspaces,
@@ -270,4 +276,54 @@
   color: var(--color-text-muted);
   font-size: 0.85rem;
   text-align: center;
+}
+
+#sidebar-resizer {
+  grid-column: 2;
+  width: 5px;
+  margin-left: -3px;
+  margin-right: -2px;
+  cursor: col-resize;
+  background: transparent;
+  border: none;
+  z-index: 5;
+  transition: background 150ms ease;
+}
+
+#sidebar-resizer:hover,
+#sidebar-resizer.dragging {
+  background: var(--color-accent);
+  opacity: 0.4;
+}
+
+.sidebar-reveal {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--color-border-light);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  font-size: 7px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 150ms ease;
+}
+
+.sidebar-reveal:hover {
+  opacity: 1;
+  background: var(--color-bg-hover);
+}
+
+.sidebar-reveal[hidden] {
+  display: none;
 }

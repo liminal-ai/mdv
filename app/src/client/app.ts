@@ -9,6 +9,7 @@ import { mountContextMenu } from './components/context-menu.js';
 import { mountErrorNotification } from './components/error-notification.js';
 import { mountMenuBar } from './components/menu-bar.js';
 import { mountSidebar } from './components/sidebar.js';
+import { mountSidebarResizer } from './components/sidebar-resizer.js';
 import { mountTabStrip } from './components/tab-strip.js';
 import { mountUnsavedModal } from './components/unsaved-modal.js';
 import { mountWarningPanel } from './components/warning-panel.js';
@@ -1512,12 +1513,18 @@ export async function bootstrapApp(
 
   const menuBarHost = document.querySelector<HTMLElement>('#menu-bar');
   const sidebarHost = document.querySelector<HTMLElement>('#sidebar');
+  const sidebarResizerHost = document.querySelector<HTMLElement>('#sidebar-resizer');
+  const mainHost = document.querySelector<HTMLElement>('#main');
   const workspaceHost = document.querySelector<HTMLElement>('#workspace');
   const tabStripHost = document.querySelector<HTMLElement>('#tab-strip');
   const contentAreaHost = document.querySelector<HTMLElement>('#content-area');
 
   if (!menuBarHost || !sidebarHost || !workspaceHost || !tabStripHost || !contentAreaHost) {
     throw new Error('App shell is missing required mount points.');
+  }
+
+  if (sidebarResizerHost && mainHost) {
+    mountSidebarResizer(sidebarResizerHost, mainHost, store, toggleSidebar);
   }
 
   const contentToolbarHost = document.createElement('div');
