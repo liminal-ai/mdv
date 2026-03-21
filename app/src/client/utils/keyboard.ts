@@ -7,6 +7,8 @@ export interface ShortcutDefinition {
   description: string;
 }
 
+export const INSERT_LINK_EVENT = 'mdv:insert-link';
+
 export class KeyboardManager {
   private readonly shortcuts: ShortcutDefinition[] = [];
 

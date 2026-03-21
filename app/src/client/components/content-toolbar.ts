@@ -5,10 +5,15 @@ import { WARNING_PANEL_TOGGLE_EVENT } from './warning-panel.js';
 
 type OpenMenuId = 'default-mode' | 'export' | null;
 type ExportFormat = 'pdf' | 'docx' | 'html';
+type ExportDirtyChoice = 'save-and-export' | 'export-anyway' | 'cancel';
 
 export interface ContentToolbarActions {
   onSetDefaultMode: (mode: SessionState['defaultOpenMode']) => void | Promise<void>;
-  onExportFormat: (format: ExportFormat) => void | Promise<void>;
+  onExportFormat: (
+    format: ExportFormat,
+    options?: { allowDirty?: boolean; tabId?: string },
+  ) => void | Promise<void>;
+  onResolveExportDirtyWarning?: (choice: ExportDirtyChoice) => void | Promise<void>;
 }
 
 export const TOGGLE_EXPORT_DROPDOWN_EVENT = 'mdv:toggle-export-dropdown';
@@ -170,6 +175,20 @@ export function mountContentToolbar(
                 on: exportEnabled
                   ? {
                       click: () => {
+                        if (activeTab?.dirty) {
+                          openMenuId = null;
+                          store.update(
+                            {
+                              exportDirtyWarning: {
+                                tabId: activeTab.id,
+                                format,
+                              },
+                            },
+                            ['exportDirtyWarning'],
+                          );
+                          return;
+                        }
+
                         openMenuId = null;
                         render();
                         void actions.onExportFormat(format);
@@ -181,131 +200,197 @@ export function mountContentToolbar(
           })
         : null;
 
+    const exportDirtyWarning = state.exportDirtyWarning
+      ? createElement('div', {
+          className: 'modal-overlay',
+          children: [
+            createElement('div', {
+              className: 'modal',
+              attrs: {
+                role: 'dialog',
+                'aria-modal': 'true',
+                'aria-labelledby': 'export-dirty-warning-title',
+              },
+              children: [
+                createElement('h2', {
+                  className: 'modal__title',
+                  text: 'Unsaved changes',
+                  attrs: { id: 'export-dirty-warning-title' },
+                }),
+                createElement('p', {
+                  className: 'modal__message',
+                  text: 'This file has unsaved changes. The export will use the saved version on disk, not your current edits.',
+                }),
+                createElement('div', {
+                  className: 'modal__actions',
+                  children: [
+                    createElement('button', {
+                      className: 'button--primary',
+                      text: 'Save and Export',
+                      attrs: { type: 'button' },
+                      on: {
+                        click: () => {
+                          void actions.onResolveExportDirtyWarning?.('save-and-export');
+                        },
+                      },
+                    }),
+                    createElement('button', {
+                      className: 'button--danger',
+                      text: 'Export Anyway',
+                      attrs: { type: 'button' },
+                      on: {
+                        click: () => {
+                          void actions.onResolveExportDirtyWarning?.('export-anyway');
+                        },
+                      },
+                    }),
+                    createElement('button', {
+                      text: 'Cancel',
+                      attrs: { type: 'button' },
+                      on: {
+                        click: () => {
+                          void actions.onResolveExportDirtyWarning?.('cancel');
+                        },
+                      },
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        })
+      : null;
+
     container.replaceChildren(
       createElement('div', {
-        className: 'content-toolbar',
         children: [
           createElement('div', {
-            className: 'content-toolbar__left',
+            className: 'content-toolbar',
             children: [
               createElement('div', {
-                className: 'content-toolbar__menu',
+                className: 'content-toolbar__left',
                 children: [
                   createElement('div', {
-                    className: 'mode-toggle',
+                    className: 'content-toolbar__menu',
+                    children: [
+                      createElement('div', {
+                        className: 'mode-toggle',
+                        children: [
+                          createElement('button', {
+                            className: activeTab.mode === 'render' ? 'mode-toggle--active' : '',
+                            text: 'Render',
+                            attrs: { type: 'button' },
+                            on: {
+                              click: () => {
+                                setActiveTabMode('render');
+                              },
+                            },
+                          }),
+                          createElement('button', {
+                            className: activeTab.mode === 'edit' ? 'mode-toggle--active' : '',
+                            text: 'Edit',
+                            attrs: { type: 'button' },
+                            on: {
+                              click: () => {
+                                setActiveTabMode('edit');
+                              },
+                            },
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                  activeTab.dirty
+                    ? createElement('span', {
+                        className: 'dirty-indicator',
+                        text: 'Modified',
+                      })
+                    : null,
+                  createElement('div', {
+                    className: 'content-toolbar__menu default-mode-picker',
                     children: [
                       createElement('button', {
-                        className: activeTab.mode === 'render' ? 'mode-toggle--active' : '',
-                        text: 'Render',
-                        attrs: { type: 'button' },
+                        className: 'content-toolbar__button',
+                        text: `Opens in: ${defaultModeLabel} ▾`,
+                        attrs: {
+                          type: 'button',
+                          'aria-expanded': String(openMenuId === 'default-mode'),
+                        },
                         on: {
                           click: () => {
-                            setActiveTabMode('render');
+                            toggleMenu('default-mode');
                           },
                         },
                       }),
-                      createElement('button', {
-                        className: activeTab.mode === 'edit' ? 'mode-toggle--active' : '',
-                        text: 'Edit',
-                        attrs: { type: 'button' },
-                        on: {
-                          click: () => {
-                            setActiveTabMode('edit');
-                          },
-                        },
-                      }),
+                      defaultModeDropdown,
                     ],
                   }),
                 ],
               }),
-              activeTab.dirty
-                ? createElement('span', {
-                    className: 'dirty-indicator',
-                    text: 'Modified',
-                  })
-                : null,
               createElement('div', {
-                className: 'content-toolbar__menu default-mode-picker',
+                className: 'content-toolbar__right',
                 children: [
-                  createElement('button', {
-                    className: 'content-toolbar__button',
-                    text: `Opens in: ${defaultModeLabel} ▾`,
-                    attrs: {
-                      type: 'button',
-                      'aria-expanded': String(openMenuId === 'default-mode'),
-                    },
-                    on: {
-                      click: () => {
-                        toggleMenu('default-mode');
-                      },
-                    },
+                  createElement('div', {
+                    className: 'content-toolbar__menu export-dropdown',
+                    children: [
+                      createElement('button', {
+                        className: 'content-toolbar__button',
+                        text: 'Export ▾',
+                        attrs: {
+                          type: 'button',
+                          'aria-expanded': String(openMenuId === 'export'),
+                          'data-export-trigger': 'true',
+                        },
+                        dataset: { exportTrigger: 'true' },
+                        on: {
+                          click: () => {
+                            toggleMenu('export');
+                          },
+                        },
+                      }),
+                      exportDropdown,
+                    ],
                   }),
-                  defaultModeDropdown,
+                  createElement('div', {
+                    className: 'status-area',
+                    children:
+                      activeTab.mode === 'edit'
+                        ? [
+                            createElement('span', {
+                              className: 'cursor-position',
+                              text: cursorLabel,
+                            }),
+                          ]
+                        : warningCount > 0
+                          ? [
+                              createElement('button', {
+                                className: 'warning-count',
+                                text: `⚠ ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
+                                attrs: {
+                                  type: 'button',
+                                  title: 'Show rendering warnings',
+                                },
+                                on: {
+                                  click: (event) => {
+                                    const target = event.currentTarget as HTMLElement;
+                                    document.dispatchEvent(
+                                      new CustomEvent(WARNING_PANEL_TOGGLE_EVENT, {
+                                        detail: {
+                                          anchorRect: target.getBoundingClientRect(),
+                                        },
+                                      }),
+                                    );
+                                  },
+                                },
+                              }),
+                            ]
+                          : [],
+                  }),
                 ],
               }),
             ],
           }),
-          createElement('div', {
-            className: 'content-toolbar__right',
-            children: [
-              createElement('div', {
-                className: 'content-toolbar__menu export-dropdown',
-                children: [
-                  createElement('button', {
-                    className: 'content-toolbar__button',
-                    text: 'Export ▾',
-                    attrs: {
-                      type: 'button',
-                      'aria-expanded': String(openMenuId === 'export'),
-                      'data-export-trigger': 'true',
-                    },
-                    dataset: { exportTrigger: 'true' },
-                    on: {
-                      click: () => {
-                        toggleMenu('export');
-                      },
-                    },
-                  }),
-                  exportDropdown,
-                ],
-              }),
-              createElement('div', {
-                className: 'status-area',
-                children:
-                  activeTab.mode === 'edit'
-                    ? [
-                        createElement('span', {
-                          className: 'cursor-position',
-                          text: cursorLabel,
-                        }),
-                      ]
-                    : warningCount > 0
-                      ? [
-                          createElement('button', {
-                            className: 'warning-count',
-                            text: `⚠ ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
-                            attrs: {
-                              type: 'button',
-                              title: 'Show rendering warnings',
-                            },
-                            on: {
-                              click: (event) => {
-                                const target = event.currentTarget as HTMLElement;
-                                document.dispatchEvent(
-                                  new CustomEvent(WARNING_PANEL_TOGGLE_EVENT, {
-                                    detail: {
-                                      anchorRect: target.getBoundingClientRect(),
-                                    },
-                                  }),
-                                );
-                              },
-                            },
-                          }),
-                        ]
-                      : [],
-              }),
-            ],
-          }),
+          exportDirtyWarning,
         ],
       }),
     );
@@ -322,6 +407,12 @@ export function mountContentToolbar(
 
   const handleDocumentKeydown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
+      if (store.get().exportDirtyWarning) {
+        event.preventDefault();
+        void actions.onResolveExportDirtyWarning?.('cancel');
+        return;
+      }
+
       closeTransientUi();
     }
   };
@@ -393,7 +484,8 @@ export function mountContentToolbar(
       changed.includes('activeTabId') ||
       changed.includes('contentToolbarVisible') ||
       changed.includes('session') ||
-      changed.includes('exportState')
+      changed.includes('exportState') ||
+      changed.includes('exportDirtyWarning')
     ) {
       if (!state.contentToolbarVisible) {
         openMenuId = null;

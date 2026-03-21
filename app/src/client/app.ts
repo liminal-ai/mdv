@@ -14,7 +14,7 @@ import { mountUnsavedModal } from './components/unsaved-modal.js';
 import { mountWarningPanel } from './components/warning-panel.js';
 import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
-import { KeyboardManager } from './utils/keyboard.js';
+import { INSERT_LINK_EVENT, KeyboardManager } from './utils/keyboard.js';
 import { reRenderMermaidDiagrams } from './utils/mermaid-renderer.js';
 import { clearSavePending, isSavePending, markSavePending, WsClient } from './utils/ws.js';
 
@@ -49,10 +49,9 @@ const LARGE_FILE_CONFIRM_MIN_BYTES = 1_048_576;
 const LARGE_FILE_CONFIRM_MAX_BYTES = 5_242_880;
 const SAVE_PENDING_CLEAR_DELAY_MS = 500;
 
-export const INSERT_LINK_EVENT = 'mdv:insert-link';
-
 let tabSequence = 0;
 type UnsavedChoice = 'save' | 'discard' | 'cancel';
+type ExportDirtyChoice = 'save-and-export' | 'export-anyway' | 'cancel';
 type UnsavedModalContext = NonNullable<ClientState['unsavedModal']>['context'];
 
 interface ScrollSnapshot {
@@ -1302,15 +1301,13 @@ export async function bootstrapApp(
     }
   };
 
-  const handleExportClick = async (format: ExportFormat) => {
-    const state = store.get();
-    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
-    if (!activeTab || activeTab.status !== 'ok' || state.exportState.inProgress) {
+  const proceedWithExport = async (tab: TabState, format: ExportFormat) => {
+    if (tab.status !== 'ok' || store.get().exportState.inProgress) {
       return;
     }
 
-    const defaultDir = state.session.lastExportDir ?? directoryName(activeTab.path);
-    const defaultFilename = `${exportBaseName(activeTab.path)}.${format}`;
+    const defaultDir = store.get().session.lastExportDir ?? directoryName(tab.path);
+    const defaultFilename = `${exportBaseName(tab.path)}.${format}`;
 
     let selection: { path: string } | null;
     try {
@@ -1346,7 +1343,7 @@ export async function bootstrapApp(
 
     try {
       const result = await api.exportDocument({
-        path: activeTab.path,
+        path: tab.path,
         format,
         savePath: selection.path,
         theme: store.get().session.theme,
@@ -1383,6 +1380,76 @@ export async function bootstrapApp(
         },
         ['exportState'],
       );
+    }
+  };
+
+  const handleExportClick = async (
+    format: ExportFormat,
+    options: { allowDirty?: boolean; tabId?: string } = {},
+  ) => {
+    const state = store.get();
+    const tabId = options.tabId ?? state.activeTabId;
+    const activeTab = state.tabs.find((tab) => tab.id === tabId) ?? null;
+    if (!activeTab || activeTab.status !== 'ok' || state.exportState.inProgress) {
+      return;
+    }
+
+    if (activeTab.dirty && !options.allowDirty) {
+      store.update(
+        {
+          exportDirtyWarning: {
+            tabId: activeTab.id,
+            format,
+          },
+        },
+        ['exportDirtyWarning'],
+      );
+      return;
+    }
+
+    await proceedWithExport(activeTab, format);
+  };
+
+  const resolveExportDirtyWarning = async (choice: ExportDirtyChoice) => {
+    const warning = store.get().exportDirtyWarning;
+    if (!warning) {
+      return;
+    }
+
+    store.update({ exportDirtyWarning: null }, ['exportDirtyWarning']);
+
+    if (choice === 'cancel') {
+      return;
+    }
+
+    const warningTab = store.get().tabs.find((tab) => tab.id === warning.tabId) ?? null;
+    if (!warningTab) {
+      return;
+    }
+
+    if (choice === 'save-and-export') {
+      const saved = await saveTab(warning.tabId);
+      if (!saved) {
+        return;
+      }
+
+      const latestTab = store.get().tabs.find((tab) => tab.id === warning.tabId) ?? null;
+      if (!latestTab) {
+        return;
+      }
+
+      await handleExportClick(warning.format, {
+        allowDirty: true,
+        tabId: latestTab.id,
+      });
+      return;
+    }
+
+    if (choice === 'export-anyway') {
+      await handleExportClick(warning.format, {
+        allowDirty: true,
+        tabId: warningTab.id,
+      });
     }
   };
 
@@ -1517,6 +1584,7 @@ export async function bootstrapApp(
   mountContentToolbar(contentToolbarHost, store, {
     onSetDefaultMode: setDefaultMode,
     onExportFormat: handleExportClick,
+    onResolveExportDirtyWarning: resolveExportDirtyWarning,
   });
   mountExportProgress(exportProgressHost, store);
   mountExportResult(exportResultHost, store);

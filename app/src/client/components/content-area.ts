@@ -1,8 +1,10 @@
 import type { RenderWarning } from '../../shared/types.js';
 import { Editor } from './editor.js';
+import { insertLink } from './insert-tools.js';
 import { attach as attachLinkHandler } from '../utils/link-handler.js';
 import type { StateStore, TabState } from '../state.js';
 import { createElement } from '../utils/dom.js';
+import { INSERT_LINK_EVENT } from '../utils/keyboard.js';
 import { renderMermaidBlocks } from '../utils/mermaid-renderer.js';
 
 function fileName(filePath: string): string {
@@ -570,13 +572,31 @@ export function mountContentArea(
     );
   };
 
+  const handleInsertLink = () => {
+    const activeTab = getActiveTab();
+    if (!activeTab || activeTab.mode !== 'edit' || !editor || editorTabId !== activeTab.id) {
+      return;
+    }
+
+    if (
+      typeof window.prompt !== 'function' ||
+      navigator.userAgent.toLowerCase().includes('jsdom')
+    ) {
+      return;
+    }
+
+    insertLink(editor);
+  };
+
   void render();
   const unsubscribe = store.subscribe(() => {
     void render();
   });
+  document.addEventListener(INSERT_LINK_EVENT, handleInsertLink);
 
   return () => {
     unsubscribe();
+    document.removeEventListener(INSERT_LINK_EVENT, handleInsertLink);
     for (const timer of dirtyTimers.values()) {
       clearTimeout(timer);
     }
