@@ -50,6 +50,9 @@ const pageMock = {
   setContent: vi.fn(async () => undefined),
   addScriptTag: vi.fn(async () => undefined),
   evaluate: pageEvaluateMock,
+  emulateMediaType: vi.fn(async () => undefined),
+  pdf: vi.fn(async () => Buffer.from('%PDF-1.4 mocked export')),
+  close: vi.fn(async () => undefined),
 };
 const browserMock = {
   newPage: vi.fn(async () => pageMock),
@@ -477,7 +480,10 @@ describe('export routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(fs.writeFile).toHaveBeenCalledWith(`${PDF_SAVE_PATH}.tmp`, Buffer.from('%PDF-1.4 stub'));
+    expect(fs.writeFile).toHaveBeenCalledWith(
+      `${PDF_SAVE_PATH}.tmp`,
+      Buffer.from('%PDF-1.4 mocked export'),
+    );
     expect(fs.rename).toHaveBeenCalledWith(`${PDF_SAVE_PATH}.tmp`, PDF_SAVE_PATH);
 
     await app.close();

@@ -30,6 +30,9 @@ const PRINT_CSS = `
     page-break-inside: auto;
   }
 
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+
   .image-placeholder { break-inside: avoid; }
   .mermaid-diagram { break-inside: avoid; }
   .mermaid-error { break-inside: avoid; }
