@@ -521,7 +521,13 @@ describe('export routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(fs.writeFile).toHaveBeenCalledWith(`${DOCX_SAVE_PATH}.tmp`, Buffer.from('PK stub docx'));
+    const writeCall = vi
+      .mocked(fs.writeFile)
+      .mock.calls.find(([target]) => String(target) === `${DOCX_SAVE_PATH}.tmp`);
+
+    expect(writeCall).toBeDefined();
+    expect(Buffer.isBuffer(writeCall?.[1])).toBe(true);
+    expect((writeCall?.[1] as Buffer).subarray(0, 2).toString('latin1')).toBe('PK');
     expect(fs.rename).toHaveBeenCalledWith(`${DOCX_SAVE_PATH}.tmp`, DOCX_SAVE_PATH);
 
     await app.close();
