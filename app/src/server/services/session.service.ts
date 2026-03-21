@@ -11,6 +11,7 @@ function getDefaultSession(): SessionState {
   return {
     workspaces: [],
     lastRoot: null,
+    lastExportDir: null,
     recentFiles: [],
     theme: 'light-default',
     sidebarState: { workspacesCollapsed: false },

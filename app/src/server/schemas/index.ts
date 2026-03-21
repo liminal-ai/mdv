@@ -42,6 +42,7 @@ export const SidebarStateSchema = z.object({
 export const SessionStateSchema = z.object({
   workspaces: z.array(WorkspaceSchema),
   lastRoot: AbsolutePathSchema.nullable(),
+  lastExportDir: AbsolutePathSchema.nullable().default(null),
   recentFiles: z.array(RecentFileSchema),
   theme: ThemeIdSchema,
   sidebarState: SidebarStateSchema,
@@ -141,6 +142,54 @@ export const UpdateTabsRequestSchema = z.object({
   activeTab: AbsolutePathSchema.nullable(),
 });
 
+// --- Export ---
+export const ExportFormatSchema = z.enum(['pdf', 'docx', 'html']);
+
+export const ExportRequestSchema = z.object({
+  path: AbsolutePathSchema,
+  format: ExportFormatSchema,
+  savePath: AbsolutePathSchema,
+  theme: ThemeIdSchema,
+});
+
+export const ExportWarningSchema = z.object({
+  type: z.enum([
+    'missing-image',
+    'remote-image-blocked',
+    'unsupported-format',
+    'mermaid-error',
+    'format-degradation',
+  ]),
+  source: z.string(),
+  line: z.number().optional(),
+  message: z.string(),
+});
+
+export const ExportResponseSchema = z.object({
+  status: z.literal('success'),
+  outputPath: AbsolutePathSchema,
+  warnings: z.array(ExportWarningSchema),
+});
+
+export const SaveDialogRequestSchema = z.object({
+  defaultPath: AbsolutePathSchema,
+  defaultFilename: z.string(),
+});
+
+export const SaveDialogResponseSchema = z
+  .object({
+    path: AbsolutePathSchema,
+  })
+  .nullable();
+
+export const RevealRequestSchema = z.object({
+  path: AbsolutePathSchema,
+});
+
+export const SetLastExportDirSchema = z.object({
+  path: AbsolutePathSchema,
+});
+
 // --- Theme Info ---
 export const ThemeInfoSchema = z.object({
   id: ThemeIdSchema,
@@ -185,3 +234,11 @@ export type AppBootstrapResponse = z.infer<typeof AppBootstrapResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 export type SetDefaultModeRequest = z.infer<typeof SetDefaultModeRequestSchema>;
 export type UpdateTabsRequest = z.infer<typeof UpdateTabsRequestSchema>;
+export type ExportFormat = z.infer<typeof ExportFormatSchema>;
+export type ExportRequest = z.infer<typeof ExportRequestSchema>;
+export type ExportWarning = z.infer<typeof ExportWarningSchema>;
+export type ExportResponse = z.infer<typeof ExportResponseSchema>;
+export type SaveDialogRequest = z.infer<typeof SaveDialogRequestSchema>;
+export type SaveDialogResponse = z.infer<typeof SaveDialogResponseSchema>;
+export type RevealRequest = z.infer<typeof RevealRequestSchema>;
+export type SetLastExportDir = z.infer<typeof SetLastExportDirSchema>;

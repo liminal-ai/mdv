@@ -1,0 +1,85 @@
+/* Export progress indicator */
+.export-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 0.85em;
+}
+
+.export-progress__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Export result notification */
+.export-result {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9em;
+}
+
+.export-result--success {
+  background: var(--color-bg-secondary);
+  border-left: 3px solid var(--color-success);
+}
+
+.export-result--degraded {
+  background: var(--color-bg-secondary);
+  border-left: 3px solid var(--color-warning);
+}
+
+.export-result--error {
+  background: var(--color-bg-secondary);
+  border-left: 3px solid var(--color-error);
+}
+
+.export-result__path {
+  color: var(--color-text-secondary);
+  font-size: 0.85em;
+  direction: rtl;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
+  unicode-bidi: plaintext;
+  max-width: 400px;
+}
+
+.export-result__reveal {
+  color: var(--color-accent);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 0.85em;
+  padding: 0;
+}
+
+.export-result__reveal:hover {
+  text-decoration: underline;
+}
+
+.export-result__dismiss {
+  margin-left: auto;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border: none;
+  background: none;
+}
+
+.export-result__warnings {
+  margin-top: 6px;
+  font-size: 0.85em;
+  color: var(--color-text-secondary);
+}
+
+.export-result__warning {
+  padding: 2px 0;
+}

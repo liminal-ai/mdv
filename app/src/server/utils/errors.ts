@@ -1,6 +1,7 @@
 export const ErrorCode = {
   INVALID_PATH: 'INVALID_PATH',
   INVALID_ROOT: 'INVALID_ROOT',
+  INVALID_FORMAT: 'INVALID_FORMAT',
   PERMISSION_DENIED: 'PERMISSION_DENIED',
   PATH_NOT_FOUND: 'PATH_NOT_FOUND',
   FILE_NOT_FOUND: 'FILE_NOT_FOUND',
@@ -9,6 +10,9 @@ export const ErrorCode = {
   READ_TIMEOUT: 'READ_TIMEOUT',
   READ_ERROR: 'READ_ERROR',
   SCAN_ERROR: 'SCAN_ERROR',
+  EXPORT_ERROR: 'EXPORT_ERROR',
+  EXPORT_IN_PROGRESS: 'EXPORT_IN_PROGRESS',
+  INSUFFICIENT_STORAGE: 'INSUFFICIENT_STORAGE',
   INVALID_THEME: 'INVALID_THEME',
   INVALID_MODE: 'INVALID_MODE',
   UNSUPPORTED_FORMAT: 'UNSUPPORTED_FORMAT',
@@ -22,6 +26,10 @@ export function isPermissionError(err: unknown): boolean {
 
 export function isNotFoundError(err: unknown): boolean {
   return (err as NodeJS.ErrnoException)?.code === 'ENOENT';
+}
+
+export function isInsufficientStorageError(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException)?.code === 'ENOSPC';
 }
 
 export interface ApiError {
@@ -69,6 +77,13 @@ export class UnsupportedFormatError extends Error {
   constructor(path: string, ext: string) {
     super(`Unsupported image format (${ext}): ${path}`);
     this.name = 'UnsupportedFormatError';
+  }
+}
+
+export class ExportInProgressError extends Error {
+  constructor() {
+    super('Another export is already in progress');
+    this.name = 'ExportInProgressError';
   }
 }
 

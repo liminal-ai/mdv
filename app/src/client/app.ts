@@ -26,6 +26,7 @@ declare global {
 const FALLBACK_SESSION: SessionState = {
   workspaces: [],
   lastRoot: null,
+  lastExportDir: null,
   recentFiles: [],
   theme: 'light-default',
   sidebarState: { workspacesCollapsed: false },

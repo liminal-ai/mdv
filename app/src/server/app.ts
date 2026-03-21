@@ -4,6 +4,7 @@ import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod
 import { staticPlugin } from './plugins/static.js';
 import { browseRoutes } from './routes/browse.js';
 import { clipboardRoutes } from './routes/clipboard.js';
+import { exportRoutes } from './routes/export.js';
 import { fileRoutes } from './routes/file.js';
 import { imageRoutes } from './routes/image.js';
 import { openExternalRoutes } from './routes/open-external.js';
@@ -39,6 +40,7 @@ export async function buildApp(opts?: AppOptions) {
   await app.register(fileRoutes);
   await app.register(imageRoutes);
   await app.register(openExternalRoutes);
+  await app.register(exportRoutes);
   await app.register(wsRoutes);
 
   return app;
