@@ -216,6 +216,38 @@ describe('content toolbar', () => {
     expect(document.body.textContent).toContain('https://example.com/logo.png');
   });
 
+  it('TC-6.5b2: mermaid-error warnings render with correct icon and show message as detail', () => {
+    renderContentToolbar({
+      tabs: [
+        {
+          ...singleTab,
+          warnings: [
+            {
+              type: 'mermaid-error',
+              source: 'mermaid-block-1',
+              message: 'Parse error on line 3: unexpected token',
+            },
+          ],
+        },
+      ],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    document.querySelector<HTMLButtonElement>('.warning-count')?.click();
+
+    const panel = document.querySelector('.warning-panel');
+    expect(panel).not.toBeNull();
+
+    const icon = panel!.querySelector('.warning-panel__icon');
+    const type = panel!.querySelector('.warning-panel__type');
+    const detail = panel!.querySelector('.warning-panel__detail');
+
+    expect(icon?.textContent).toBe('⚠');
+    expect(type?.textContent).toBe('Mermaid error');
+    expect(detail?.textContent).toBe('Parse error on line 3: unexpected token');
+  });
+
   it('TC-6.5c: hides the warning indicator when there are no warnings', () => {
     renderContentToolbar({
       tabs: [singleTab],
