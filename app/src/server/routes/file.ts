@@ -12,12 +12,15 @@ import {
 import { FileService } from '../services/file.service.js';
 import { RenderService } from '../services/render.service.js';
 import {
+  ConflictError,
   ErrorCode,
   FileTooLargeError,
   InvalidPathError,
   NotFileError,
   NotMarkdownError,
+  PathNotFoundError,
   ReadTimeoutError,
+  isInsufficientStorageError,
   isNotFoundError,
   isPermissionError,
   toApiError,
@@ -130,16 +133,76 @@ export async function fileRoutes(app: FastifyInstance) {
   typedApp.put(
     '/api/file',
     {
+      attachValidation: true,
       schema: {
         body: FileSaveRequestSchema,
         response: {
           200: FileSaveResponseSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
+          403: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          409: ErrorResponseSchema,
+          415: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+          507: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => {
-      return reply.code(501).send(toApiError(ErrorCode.WRITE_ERROR, 'Not implemented'));
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
+      }
+
+      try {
+        return await fileService.writeFile(request.body);
+      } catch (error) {
+        if (error instanceof InvalidPathError || error instanceof NotFileError) {
+          return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, error.message));
+        }
+
+        if (error instanceof NotMarkdownError) {
+          return reply.code(415).send(toApiError(ErrorCode.NOT_MARKDOWN, error.message));
+        }
+
+        if (error instanceof PathNotFoundError) {
+          return reply.code(404).send(toApiError(ErrorCode.PATH_NOT_FOUND, error.message));
+        }
+
+        if (error instanceof ConflictError) {
+          return reply.code(409).send(toApiError(ErrorCode.CONFLICT, error.message));
+        }
+
+        if (isPermissionError(error)) {
+          return reply
+            .code(403)
+            .send(
+              toApiError(
+                ErrorCode.PERMISSION_DENIED,
+                error instanceof Error ? error.message : 'Permission denied',
+              ),
+            );
+        }
+
+        if (isInsufficientStorageError(error)) {
+          return reply
+            .code(507)
+            .send(
+              toApiError(
+                ErrorCode.INSUFFICIENT_STORAGE,
+                error instanceof Error ? error.message : 'Insufficient storage',
+              ),
+            );
+        }
+
+        return reply
+          .code(500)
+          .send(
+            toApiError(
+              ErrorCode.WRITE_ERROR,
+              error instanceof Error ? error.message : 'Failed to save file',
+            ),
+          );
+      }
     },
   );
 

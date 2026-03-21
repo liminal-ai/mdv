@@ -14,6 +14,8 @@ interface MenuItem {
 export interface MenuBarActions {
   onOpenFile: () => void | Promise<void>;
   onBrowse: () => void | Promise<void>;
+  onSave?: () => void | Promise<void>;
+  onSaveAs?: () => void | Promise<void>;
   onToggleSidebar: () => void | Promise<void>;
   onSetTheme: (themeId: string) => void | Promise<void>;
   onExportFormat: (format: ExportFormat) => void | Promise<void>;
@@ -24,9 +26,22 @@ const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html'];
 
 function getMenuItems(menuId: MenuId, state: ClientState, actions: MenuBarActions): MenuItem[] {
   if (menuId === 'file') {
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
     return [
       { label: 'Open File', shortcut: 'Cmd+O', action: actions.onOpenFile },
       { label: 'Open Folder', shortcut: 'Cmd+Shift+O', action: actions.onBrowse },
+      {
+        label: 'Save',
+        shortcut: 'Cmd+S',
+        disabled: !activeTab?.dirty,
+        action: activeTab?.dirty ? actions.onSave : undefined,
+      },
+      {
+        label: 'Save As...',
+        shortcut: 'Cmd+Shift+S',
+        disabled: !activeTab,
+        action: activeTab ? actions.onSaveAs : undefined,
+      },
     ];
   }
 

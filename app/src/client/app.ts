@@ -14,7 +14,7 @@ import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { KeyboardManager } from './utils/keyboard.js';
 import { reRenderMermaidDiagrams } from './utils/mermaid-renderer.js';
-import { WsClient } from './utils/ws.js';
+import { clearSavePending, isSavePending, markSavePending, WsClient } from './utils/ws.js';
 
 declare global {
   interface Window {
@@ -45,6 +45,9 @@ const WS_DISCONNECTED_ERROR_CODE = 'WS_DISCONNECTED';
 const WS_SERVER_ERROR_CODE = 'WS_SERVER_ERROR';
 const LARGE_FILE_CONFIRM_MIN_BYTES = 1_048_576;
 const LARGE_FILE_CONFIRM_MAX_BYTES = 5_242_880;
+const SAVE_PENDING_CLEAR_DELAY_MS = 500;
+
+export const INSERT_LINK_EVENT = 'mdv:insert-link';
 
 let tabSequence = 0;
 
@@ -300,7 +303,7 @@ function getErrorMessage(error: unknown): { code: string; message: string } {
 export async function bootstrapApp(
   api = new ApiClient(),
   wsClient: WsClient | null = shouldAutoBootstrap() ? new WsClient() : null,
-): Promise<void> {
+): Promise<{ store: StateStore; api: ApiClient; wsClient: WsClient | null }> {
   const cachedTheme = readCachedTheme();
   let bootstrap = createFallbackBootstrap();
   let bootstrapError: unknown = null;
@@ -342,6 +345,9 @@ export async function bootstrapApp(
       activeFormat: null,
       result: null,
     },
+    conflictModal: null,
+    unsavedModal: null,
+    exportDirtyWarning: null,
   };
 
   const store = new StateStore(initialState);
@@ -428,6 +434,74 @@ export async function bootstrapApp(
     }
 
     store.update(nextState, changedKeys);
+    updateBeforeUnloadHandler();
+  };
+
+  const getActiveTab = () => {
+    const state = store.get();
+    return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+  };
+
+  const savePendingTimers = new Map<string, number>();
+
+  const scheduleClearSavePending = (path: string) => {
+    const existingTimer = savePendingTimers.get(path);
+    if (existingTimer !== undefined) {
+      window.clearTimeout(existingTimer);
+    }
+
+    const timer = window.setTimeout(() => {
+      clearSavePending(path);
+      savePendingTimers.delete(path);
+    }, SAVE_PENDING_CLEAR_DELAY_MS);
+
+    savePendingTimers.set(path, timer);
+  };
+
+  const buildSavedTab = (
+    tab: TabState,
+    options: {
+      path?: string;
+      canonicalPath?: string;
+      filename?: string;
+      content: string;
+      modifiedAt: string;
+      size: number;
+    },
+  ): TabState => ({
+    ...tab,
+    path: options.path ?? tab.path,
+    canonicalPath: options.canonicalPath ?? tab.canonicalPath,
+    filename: options.filename ?? tab.filename,
+    content: options.content,
+    editContent: options.content,
+    modifiedAt: options.modifiedAt,
+    size: options.size,
+    dirty: false,
+    editedSinceLastSave: false,
+    loading: false,
+    status: 'ok',
+    errorMessage: undefined,
+  });
+
+  let beforeUnloadRegistered = false;
+  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    event.preventDefault();
+    event.returnValue = '';
+  };
+
+  const updateBeforeUnloadHandler = () => {
+    const hasDirtyTabs = store.get().tabs.some((tab) => tab.dirty);
+    if (hasDirtyTabs && !beforeUnloadRegistered) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      beforeUnloadRegistered = true;
+      return;
+    }
+
+    if (!hasDirtyTabs && beforeUnloadRegistered) {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      beforeUnloadRegistered = false;
+    }
   };
 
   const syncTabsToSession = async () => {
@@ -927,6 +1001,148 @@ export async function bootstrapApp(
     await switchTab(state.tabs[nextIndex]!.id);
   };
 
+  const saveCurrentTab = async (): Promise<boolean> => {
+    const activeTab = getActiveTab();
+    if (!activeTab || activeTab.status !== 'ok' || !activeTab.dirty) {
+      return false;
+    }
+
+    const contentToSave = activeTab.editContent ?? activeTab.content;
+    markSavePending(activeTab.path);
+
+    try {
+      const response = await api.saveFile({
+        path: activeTab.path,
+        content: contentToSave,
+        expectedModifiedAt: activeTab.modifiedAt,
+      });
+
+      const latestState = store.get();
+      const nextTabs = disambiguateDisplayNames(
+        latestState.tabs.map((tab) =>
+          tab.id === activeTab.id
+            ? buildSavedTab(tab, {
+                content: contentToSave,
+                modifiedAt: response.modifiedAt,
+                size: response.size,
+              })
+            : tab,
+        ),
+      );
+
+      updateTabsState(nextTabs, latestState.activeTabId);
+      return true;
+    } catch (error) {
+      if ((error as { code?: string } | undefined)?.code === 'CONFLICT') {
+        store.update(
+          {
+            conflictModal: {
+              tabId: activeTab.id,
+              filename: activeTab.filename,
+            },
+          },
+          ['conflictModal'],
+        );
+        return false;
+      }
+
+      setError(error);
+      return false;
+    } finally {
+      scheduleClearSavePending(activeTab.path);
+    }
+  };
+
+  const saveCurrentTabAs = async (): Promise<boolean> => {
+    const state = store.get();
+    const activeTab = getActiveTab();
+    if (!activeTab || activeTab.status !== 'ok') {
+      return false;
+    }
+
+    let selection: { path: string } | null;
+    try {
+      selection = await api.saveDialog({
+        defaultPath: directoryName(activeTab.path),
+        defaultFilename: fileName(activeTab.path),
+        prompt: 'Save',
+      });
+    } catch (error) {
+      setError(error);
+      return false;
+    }
+
+    if (!selection) {
+      return false;
+    }
+
+    const duplicateTab = state.tabs.find(
+      (tab) =>
+        tab.id !== activeTab.id &&
+        (tab.path === selection.path || tab.canonicalPath === selection.path),
+    );
+
+    if (duplicateTab?.dirty) {
+      store.update(
+        {
+          unsavedModal: {
+            tabId: duplicateTab.id,
+            filename: duplicateTab.filename,
+            context: 'save-as-replace',
+          },
+        },
+        ['unsavedModal'],
+      );
+      return false;
+    }
+
+    const contentToSave = activeTab.editContent ?? activeTab.content;
+    markSavePending(selection.path);
+
+    try {
+      const response = await api.saveFile({
+        path: selection.path,
+        content: contentToSave,
+        expectedModifiedAt: null,
+      });
+
+      if (duplicateTab) {
+        unwatchPath(duplicateTab.path);
+      }
+      if (activeTab.path !== selection.path) {
+        unwatchPath(activeTab.path);
+      }
+      watchPath(selection.path);
+
+      const latestState = store.get();
+      const nextTabs = disambiguateDisplayNames(
+        latestState.tabs
+          .filter((tab) => tab.id !== duplicateTab?.id)
+          .map((tab) =>
+            tab.id === activeTab.id
+              ? buildSavedTab(tab, {
+                  path: selection.path,
+                  canonicalPath: selection.path,
+                  filename: fileName(selection.path),
+                  content: contentToSave,
+                  modifiedAt: response.modifiedAt,
+                  size: response.size,
+                })
+              : tab,
+          ),
+      );
+
+      updateTabsState(nextTabs, activeTab.id);
+      await syncTabsToSession();
+      return true;
+    } catch (error) {
+      setError(error);
+      return false;
+    } finally {
+      scheduleClearSavePending(selection.path);
+    }
+  };
+
   const handleExportClick = async (format: ExportFormat) => {
     const state = store.get();
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
@@ -1104,6 +1320,12 @@ export async function bootstrapApp(
   mountMenuBar(menuBarHost, store, {
     onOpenFile: pickAndOpenFile,
     onBrowse: browseForFolder,
+    onSave: () => {
+      void saveCurrentTab();
+    },
+    onSaveAs: () => {
+      void saveCurrentTabAs();
+    },
     onToggleSidebar: toggleSidebar,
     onSetTheme: setTheme,
     onExportFormat: handleExportClick,
@@ -1191,6 +1413,10 @@ export async function bootstrapApp(
         return;
       }
 
+      if (isSavePending(message.path)) {
+        return;
+      }
+
       void refreshWatchedFile(message.path);
     });
     wsClient.connect();
@@ -1232,6 +1458,23 @@ export async function bootstrapApp(
     },
   });
   keyboardManager.register({
+    key: 's',
+    meta: true,
+    description: 'Save',
+    action: () => {
+      void saveCurrentTab();
+    },
+  });
+  keyboardManager.register({
+    key: 's',
+    meta: true,
+    shift: true,
+    description: 'Save As',
+    action: () => {
+      void saveCurrentTabAs();
+    },
+  });
+  keyboardManager.register({
     key: 'e',
     meta: true,
     shift: true,
@@ -1242,6 +1485,19 @@ export async function bootstrapApp(
       if (activeTab && activeTab.status === 'ok') {
         document.dispatchEvent(new CustomEvent(TOGGLE_EXPORT_DROPDOWN_EVENT));
       }
+    },
+  });
+  keyboardManager.register({
+    key: 'k',
+    meta: true,
+    description: 'Insert Link',
+    action: () => {
+      const activeTab = getActiveTab();
+      if (!activeTab || activeTab.mode !== 'edit') {
+        return;
+      }
+
+      document.dispatchEvent(new CustomEvent(INSERT_LINK_EVENT));
     },
   });
   keyboardManager.register({
@@ -1317,6 +1573,8 @@ export async function bootstrapApp(
   if (bootstrapError) {
     setError(bootstrapError);
   }
+
+  return { store, api, wsClient };
 }
 
 if (shouldAutoBootstrap()) {

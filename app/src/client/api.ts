@@ -3,6 +3,7 @@ import type {
   ExportWarning,
   FilePickerResponse,
   FileReadResponse,
+  FileSaveResponse,
   FileTreeResponse,
   RenderFromContentResponse,
   SessionState,
@@ -121,6 +122,28 @@ export class ApiClient {
   async pickFile(): Promise<FilePickerResponse> {
     return this.request('/api/file/pick', {
       method: 'POST',
+    });
+  }
+
+  async saveFile(request: {
+    path: string;
+    content: string;
+    expectedModifiedAt?: string | null;
+  }): Promise<FileSaveResponse> {
+    return this.request('/api/file', {
+      method: 'PUT',
+      body: request,
+    });
+  }
+
+  async saveDialog(request: {
+    defaultPath: string;
+    defaultFilename: string;
+    prompt?: string;
+  }): Promise<{ path: string } | null> {
+    return this.request('/api/save-dialog', {
+      method: 'POST',
+      body: request,
     });
   }
 

@@ -27,6 +27,9 @@ export function createClientState(overrides: Partial<ClientState> = {}): ClientS
       activeFormat: null,
       result: null,
     },
+    conflictModal: null,
+    unsavedModal: null,
+    exportDirtyWarning: null,
     ...overrides,
   };
 }

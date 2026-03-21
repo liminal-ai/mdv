@@ -21,6 +21,7 @@ import { MermaidSsrService } from '../services/mermaid-ssr.service.js';
 import { PdfService } from '../services/pdf.service.js';
 import { RenderService } from '../services/render.service.js';
 import { SessionService } from '../services/session.service.js';
+import { openSaveDialog } from '../utils/save-dialog.js';
 import {
   ErrorCode,
   ExportInProgressError,
@@ -56,27 +57,6 @@ function execFileAsync(
       resolve({ stdout, stderr });
     });
   });
-}
-
-async function openSaveDialog(defaultDir: string, defaultName: string): Promise<string | null> {
-  const script =
-    'POSIX path of (choose file name ' +
-    'with prompt "Export document" ' +
-    `default name ${JSON.stringify(defaultName)} ` +
-    `default location POSIX file ${JSON.stringify(defaultDir)})`;
-
-  try {
-    const { stdout } = await execFileAsync('osascript', ['-e', script], {
-      timeout: 60_000,
-    });
-    return stdout.trim();
-  } catch (error) {
-    const errorCode = (error as NodeJS.ErrnoException & { code?: number | string }).code;
-    if (String(errorCode) === '1') {
-      return null;
-    }
-    throw error;
-  }
 }
 
 export interface ExportRoutesOptions {
@@ -232,7 +212,11 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
       },
     },
     async (request) => {
-      const selected = await openSaveDialog(request.body.defaultPath, request.body.defaultFilename);
+      const selected = await openSaveDialog(
+        request.body.defaultPath,
+        request.body.defaultFilename,
+        request.body.prompt ?? 'Export document',
+      );
       return selected ? { path: selected } : null;
     },
   );

@@ -5,6 +5,7 @@ import {
   SaveDialogRequestSchema,
   SaveDialogResponseSchema,
 } from '../schemas/index.js';
+import { openSaveDialog } from '../utils/save-dialog.js';
 import { ErrorCode, toApiError } from '../utils/errors.js';
 
 export async function saveDialogRoutes(app: FastifyInstance) {
@@ -17,12 +18,23 @@ export async function saveDialogRoutes(app: FastifyInstance) {
         body: SaveDialogRequestSchema,
         response: {
           200: SaveDialogResponseSchema,
-          501: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => {
-      return reply.code(501).send(toApiError(ErrorCode.WRITE_ERROR, 'Not implemented'));
+    async (request, reply) => {
+      try {
+        const selected = await openSaveDialog(
+          request.body.defaultPath,
+          request.body.defaultFilename,
+          request.body.prompt ?? 'Save',
+        );
+        return selected ? { path: selected } : null;
+      } catch {
+        return reply
+          .code(500)
+          .send(toApiError(ErrorCode.WRITE_ERROR, 'Failed to open save dialog.'));
+      }
     },
   );
 }

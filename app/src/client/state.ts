@@ -67,6 +67,22 @@ export interface ExportState {
   result: ExportResult | null;
 }
 
+export interface ConflictModalState {
+  tabId: string;
+  filename: string;
+}
+
+export interface UnsavedModalState {
+  tabId: string;
+  filename: string;
+  context: 'close-tab' | 'close-others' | 'close-right' | 'quit' | 'save-as-replace';
+}
+
+export interface ExportDirtyWarningState {
+  tabId: string;
+  format: 'pdf' | 'docx' | 'html';
+}
+
 export interface ClientState {
   session: SessionState;
   availableThemes: ThemeInfo[];
@@ -83,6 +99,9 @@ export interface ClientState {
   tabContextMenu: TabContextMenuState | null;
   contentToolbarVisible: boolean;
   exportState: ExportState;
+  conflictModal: ConflictModalState | null;
+  unsavedModal: UnsavedModalState | null;
+  exportDirtyWarning: ExportDirtyWarningState | null;
 }
 
 type StateListener = (state: ClientState, changed: Array<keyof ClientState>) => void;

@@ -45,6 +45,7 @@ export function mountContentArea(
   store: StateStore,
   actions: ContentAreaActions,
 ): () => void {
+  const dirtyTimers = new Map<string, ReturnType<typeof setTimeout>>();
   let editor: Editor | null = null;
   let editorHost: HTMLElement | null = null;
   let editorTabId: string | null = null;
@@ -119,6 +120,44 @@ export function mountContentArea(
     currentEditor.destroy();
   };
 
+  const scheduleDirtyTruthCheck = (tabId: string) => {
+    const existingTimer = dirtyTimers.get(tabId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    const timer = setTimeout(() => {
+      dirtyTimers.delete(tabId);
+      const state = store.get();
+      const tab = state.tabs.find((candidate) => candidate.id === tabId) ?? null;
+      if (!tab) {
+        return;
+      }
+
+      const isDirty = (tab.editContent ?? tab.content) !== tab.content;
+      if (tab.dirty === isDirty && tab.editedSinceLastSave === isDirty) {
+        return;
+      }
+
+      store.update(
+        {
+          tabs: state.tabs.map((candidate) =>
+            candidate.id === tabId
+              ? {
+                  ...candidate,
+                  dirty: isDirty,
+                  editedSinceLastSave: isDirty,
+                }
+              : candidate,
+          ),
+        },
+        ['tabs'],
+      );
+    }, 300);
+
+    dirtyTimers.set(tabId, timer);
+  };
+
   const updateActiveTab = (updateTab: (tab: TabState) => TabState) => {
     const state = store.get();
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
@@ -144,12 +183,29 @@ export function mountContentArea(
     editorTabId = tabId;
     editor = new Editor(parent, {
       onContentChange: (content) => {
+        const activeTab = getActiveTab();
+        if (!activeTab) {
+          return;
+        }
+
+        const existingTimer = dirtyTimers.get(activeTab.id);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+          dirtyTimers.delete(activeTab.id);
+        }
+
+        const matchesSavedContent = content === activeTab.content;
+
         updateActiveTab((tab) => ({
           ...tab,
           editContent: content,
-          dirty: content !== tab.content,
-          editedSinceLastSave: content !== tab.content,
+          dirty: matchesSavedContent ? false : true,
+          editedSinceLastSave: matchesSavedContent ? false : true,
         }));
+
+        if (!matchesSavedContent) {
+          scheduleDirtyTruthCheck(activeTab.id);
+        }
       },
       onCursorChange: (line, column) => {
         updateActiveTab((tab) => ({
@@ -521,6 +577,10 @@ export function mountContentArea(
 
   return () => {
     unsubscribe();
+    for (const timer of dirtyTimers.values()) {
+      clearTimeout(timer);
+    }
+    dirtyTimers.clear();
     destroyEditor();
   };
 }

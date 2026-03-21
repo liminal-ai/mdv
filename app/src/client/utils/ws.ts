@@ -13,6 +13,19 @@ type WsClientEventType = keyof WsClientEventMap;
 type WsClientHandler<T extends WsClientEventType> = (event: WsClientEventMap[T]) => void;
 
 const WS_RECONNECT_DELAY_MS = 2_000;
+const savePending = new Map<string, boolean>();
+
+export function markSavePending(path: string): void {
+  savePending.set(path, true);
+}
+
+export function clearSavePending(path: string): void {
+  savePending.delete(path);
+}
+
+export function isSavePending(path: string): boolean {
+  return savePending.has(path);
+}
 
 export class WsClient {
   private socket: WebSocket | null = null;

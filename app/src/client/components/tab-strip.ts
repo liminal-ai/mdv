@@ -219,6 +219,12 @@ export function mountTabStrip(
             },
           },
           children: [
+            tab.dirty
+              ? createElement('span', {
+                  className: 'tab__dirty-dot',
+                  attrs: { 'aria-hidden': 'true' },
+                })
+              : null,
             createElement('span', {
               className: 'tab__label',
               text: tab.filename,

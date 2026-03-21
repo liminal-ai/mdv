@@ -221,7 +221,7 @@ export function mountContentToolbar(
               activeTab.dirty
                 ? createElement('span', {
                     className: 'dirty-indicator',
-                    text: '● Modified',
+                    text: 'Modified',
                   })
                 : null,
               createElement('div', {
