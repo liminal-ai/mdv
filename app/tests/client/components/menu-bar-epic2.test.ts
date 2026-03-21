@@ -16,6 +16,7 @@ function renderMenuBar(overrides: Parameters<typeof createStore>[0] = {}) {
     onBrowse: vi.fn(),
     onToggleSidebar: vi.fn(),
     onSetTheme: vi.fn(),
+    onExportFormat: vi.fn(),
   });
   cleanups.push(cleanup);
 

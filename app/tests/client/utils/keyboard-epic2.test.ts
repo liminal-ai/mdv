@@ -48,6 +48,10 @@ async function renderApp(sessionOverrides: Partial<typeof emptySession> = {}) {
       })),
     touchRecentFile: vi.fn().mockResolvedValue(session),
     removeRecentFile: vi.fn().mockResolvedValue(session),
+    exportDocument: vi.fn(),
+    exportSaveDialog: vi.fn().mockResolvedValue(null),
+    reveal: vi.fn().mockResolvedValue({ ok: true }),
+    setLastExportDir: vi.fn().mockResolvedValue(session),
   };
 
   document.body.innerHTML = `

@@ -53,6 +53,23 @@
   max-width: 400px;
 }
 
+.export-result__body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.export-result__detail {
+  color: var(--color-text-secondary);
+}
+
+.export-result__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .export-result__reveal {
   color: var(--color-accent);
   cursor: pointer;
@@ -78,6 +95,10 @@
   margin-top: 6px;
   font-size: 0.85em;
   color: var(--color-text-secondary);
+}
+
+.export-result__warnings summary {
+  cursor: pointer;
 }
 
 .export-result__warning {

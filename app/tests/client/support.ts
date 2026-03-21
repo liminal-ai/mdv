@@ -22,6 +22,11 @@ export function createClientState(overrides: Partial<ClientState> = {}): ClientS
     activeTabId: null,
     tabContextMenu: null,
     contentToolbarVisible: false,
+    exportState: {
+      inProgress: false,
+      activeFormat: null,
+      result: null,
+    },
     ...overrides,
   };
 }

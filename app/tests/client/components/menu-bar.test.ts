@@ -15,6 +15,7 @@ function renderMenuBar(overrides = {}) {
       store.update({ sidebarVisible: !state.sidebarVisible }, ['sidebarVisible']);
     }),
     onSetTheme: vi.fn(),
+    onExportFormat: vi.fn(),
   };
 
   const cleanup = mountMenuBar(document.querySelector<HTMLElement>('#menu-bar')!, store, actions);

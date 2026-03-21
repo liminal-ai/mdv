@@ -12,7 +12,7 @@ import { sessionRoutes } from './routes/session.js';
 import { treeRoutes } from './routes/tree.js';
 import { wsRoutes } from './routes/ws.js';
 import type { BrowseService } from './services/browse.service.js';
-import type { SessionService } from './services/session.service.js';
+import { SessionService } from './services/session.service.js';
 
 export interface AppOptions {
   sessionDir?: string;
@@ -22,6 +22,7 @@ export interface AppOptions {
 
 export async function buildApp(opts?: AppOptions) {
   const app = Fastify({ logger: false });
+  const sessionService = opts?.sessionService ?? new SessionService(opts?.sessionDir);
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -29,8 +30,7 @@ export async function buildApp(opts?: AppOptions) {
   await app.register(staticPlugin);
   await app.register(websocket);
   await app.register(sessionRoutes, {
-    sessionService: opts?.sessionService,
-    sessionDir: opts?.sessionDir,
+    sessionService,
   });
   await app.register(browseRoutes, {
     browseService: opts?.browseService,
@@ -40,7 +40,9 @@ export async function buildApp(opts?: AppOptions) {
   await app.register(fileRoutes);
   await app.register(imageRoutes);
   await app.register(openExternalRoutes);
-  await app.register(exportRoutes);
+  await app.register(exportRoutes, {
+    sessionService,
+  });
   await app.register(wsRoutes);
 
   return app;

@@ -35,6 +35,14 @@ const SHIKI_THEMES = {
   dark: 'github-dark',
 } as const;
 
+function isDarkTheme(themeId: string): boolean {
+  return themeId.startsWith('dark');
+}
+
+function getShikiTheme(themeId: string): (typeof SHIKI_THEMES)[keyof typeof SHIKI_THEMES] {
+  return isDarkTheme(themeId) ? SHIKI_THEMES.dark : SHIKI_THEMES.light;
+}
+
 const shikiHighlighterPromise = createHighlighter({
   themes: [SHIKI_THEMES.light, SHIKI_THEMES.dark],
   langs: [
@@ -65,7 +73,10 @@ const shikiHighlighterPromise = createHighlighter({
   },
 });
 
-async function createRenderer(slugger: GithubSlugger): Promise<MarkdownIt> {
+async function createRenderer(
+  slugger: GithubSlugger,
+  options: { themeId?: string } = {},
+): Promise<MarkdownIt> {
   const md = new MarkdownIt({
     html: true,
     linkify: true,
@@ -75,11 +86,16 @@ async function createRenderer(slugger: GithubSlugger): Promise<MarkdownIt> {
   const originalFence = md.renderer.rules.fence;
   const originalHighlight = md.options.highlight;
   const highlighter = await shikiHighlighterPromise;
-  const shikiPlugin = fromHighlighter(highlighter, {
-    themes: SHIKI_THEMES,
-    defaultColor: false,
-    fallbackLanguage: undefined,
-  });
+  const shikiPlugin = options.themeId
+    ? fromHighlighter(highlighter, {
+        theme: getShikiTheme(options.themeId),
+        fallbackLanguage: undefined,
+      })
+    : fromHighlighter(highlighter, {
+        themes: SHIKI_THEMES,
+        defaultColor: false,
+        fallbackLanguage: undefined,
+      });
 
   md.use(shikiPlugin);
 
@@ -228,9 +244,54 @@ function stripQueryAndHash(value: string): string {
   return value.replace(/[?#].*$/, '');
 }
 
+function setHtmlAttribute(attrs: string | undefined, name: string, value: string): string {
+  const source = attrs ?? '';
+  const attributePattern = new RegExp(`${name}\\s*=\\s*(".*?"|'.*?'|[^\\s>]+)`, 'i');
+
+  if (attributePattern.test(source)) {
+    return source.replace(attributePattern, `${name}="${value}"`);
+  }
+
+  return `${source} ${name}="${value}"`;
+}
+
+function countLinesFromHtml(content: string): number {
+  const text = content.replace(/<[^>]+>/g, '').trim();
+  if (!text) {
+    return 0;
+  }
+
+  return text.split('\n').length;
+}
+
+function addLayoutHints(html: string): string {
+  let hintedHtml = html.replace(
+    /<(h[1-6])([^>]*)>/gi,
+    (_match, tagName: string, attrs: string | undefined) =>
+      `<${tagName}${setHtmlAttribute(attrs, 'data-mdv-layout', 'keep-with-next')}>`,
+  );
+
+  hintedHtml = hintedHtml.replace(
+    /<pre([^>]*)>([\s\S]*?)<\/pre>/gi,
+    (_match, attrs: string | undefined, content: string) => {
+      const layout = countLinesFromHtml(content) < 15 ? 'keep-together' : 'allow-split';
+      return `<pre${setHtmlAttribute(attrs, 'data-mdv-layout', layout)}>${content}</pre>`;
+    },
+  );
+
+  hintedHtml = hintedHtml.replace(
+    /<img([^>]*)>/gi,
+    (_match, attrs: string | undefined) =>
+      `<img${setHtmlAttribute(attrs, 'data-mdv-layout', 'keep-together')}>`,
+  );
+
+  return hintedHtml;
+}
+
 export class RenderService {
   private readonly slugger: GithubSlugger;
   private readonly markdownIt: MarkdownIt;
+  private readonly exportMarkdownItByTheme = new Map<string, Promise<MarkdownIt>>();
 
   private constructor(slugger: GithubSlugger, markdownIt: MarkdownIt) {
     this.slugger = slugger;
@@ -251,6 +312,34 @@ export class RenderService {
 
     const imageResult = processImages(html, path.dirname(documentPath));
     html = DOMPurify.sanitize(imageResult.html);
+
+    return {
+      html,
+      warnings: imageResult.warnings,
+    };
+  }
+
+  async renderForExport(
+    content: string,
+    documentPath: string,
+    themeId: string,
+  ): Promise<RenderResult> {
+    this.slugger.reset();
+
+    let markdownItPromise = this.exportMarkdownItByTheme.get(themeId);
+    if (!markdownItPromise) {
+      markdownItPromise = createRenderer(this.slugger, { themeId });
+      this.exportMarkdownItByTheme.set(themeId, markdownItPromise);
+    }
+
+    const exportMarkdownIt = await markdownItPromise;
+
+    let html = exportMarkdownIt.render(content);
+    html = processMermaidBlocks(html);
+
+    const imageResult = processImages(html, path.dirname(documentPath));
+    html = addLayoutHints(imageResult.html);
+    html = DOMPurify.sanitize(html);
 
     return {
       html,

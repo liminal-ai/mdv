@@ -22,6 +22,7 @@ function renderContentToolbar(
   const store = createStore(overrides);
   const actions = {
     onSetDefaultMode: vi.fn(),
+    onExportFormat: vi.fn(),
     ...actionOverrides,
   };
 
@@ -143,8 +144,8 @@ describe('content toolbar', () => {
     );
   });
 
-  it('TC-6.4b: lists disabled export options', () => {
-    renderContentToolbar({
+  it('TC-6.4b: lists export options', () => {
+    const { actions } = renderContentToolbar({
       tabs: [singleTab],
       activeTabId: singleTab.id,
       contentToolbarVisible: true,
@@ -156,12 +157,12 @@ describe('content toolbar', () => {
       document.querySelectorAll<HTMLButtonElement>('.export-dropdown .dropdown__item'),
     );
 
-    expect(exportItems.map((item) => item.textContent)).toEqual([
-      'PDF (coming soon)',
-      'DOCX (coming soon)',
-      'HTML (coming soon)',
-    ]);
-    expect(exportItems.every((item) => item.disabled)).toBe(true);
+    expect(exportItems.map((item) => item.textContent)).toEqual(['PDF', 'DOCX', 'HTML']);
+    expect(exportItems.every((item) => !item.disabled)).toBe(true);
+
+    exportItems[0]?.click();
+
+    expect(actions.onExportFormat).toHaveBeenCalledWith('pdf');
   });
 
   it('TC-6.5a: shows the warning count when the active tab has warnings', () => {
@@ -276,6 +277,7 @@ describe('content toolbar', () => {
       onBrowse: vi.fn(),
       onToggleSidebar: vi.fn(),
       onSetTheme: vi.fn(),
+      onExportFormat: vi.fn(),
     });
     cleanups.push(cleanupMenuBar);
 

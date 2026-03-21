@@ -6,6 +6,8 @@ import {
   showEditModeComingSoonTooltip,
   TOGGLE_EXPORT_DROPDOWN_EVENT,
 } from './components/content-toolbar.js';
+import { mountExportProgress } from './components/export-progress.js';
+import { mountExportResult } from './components/export-result.js';
 import { mountContextMenu } from './components/context-menu.js';
 import { mountErrorNotification } from './components/error-notification.js';
 import { mountMenuBar } from './components/menu-bar.js';
@@ -1031,6 +1033,14 @@ export async function bootstrapApp(
   contentToolbarHost.id = 'content-toolbar';
   workspaceHost.insertBefore(contentToolbarHost, contentAreaHost);
 
+  const exportProgressHost = document.createElement('div');
+  exportProgressHost.id = 'export-progress-root';
+  workspaceHost.insertBefore(exportProgressHost, contentAreaHost);
+
+  const exportResultHost = document.createElement('div');
+  exportResultHost.id = 'export-result-root';
+  workspaceHost.insertBefore(exportResultHost, contentAreaHost);
+
   const errorHost = document.createElement('div');
   errorHost.id = 'error-notification-root';
   document.body.append(errorHost);
@@ -1067,6 +1077,8 @@ export async function bootstrapApp(
     onSetDefaultMode: setDefaultMode,
     onExportFormat: handleExportClick,
   });
+  mountExportProgress(exportProgressHost, store);
+  mountExportResult(exportResultHost, store);
   mountContentArea(contentAreaHost, store, {
     onBrowse: browseForFolder,
     onOpenFile: pickAndOpenFile,
