@@ -12,6 +12,7 @@ export const RenderWarningTypeSchema = z.enum([
   'missing-image',
   'remote-image-blocked',
   'unsupported-format',
+  'mermaid-error',
 ]);
 
 export interface TreeNode {

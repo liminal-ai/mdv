@@ -1,0 +1,41 @@
+/* Mermaid diagram containers */
+.mermaid-diagram {
+  margin: 1em 0;
+  text-align: center;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mermaid error fallback */
+.mermaid-error {
+  margin: 1em 0;
+  border: 1px solid var(--color-error);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mermaid-error__banner {
+  padding: 0.5em 1em;
+  background: var(--color-error);
+  color: white;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.mermaid-error__source {
+  margin: 0;
+  padding: 1em;
+  background: var(--color-bg-tertiary);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  overflow-x: auto;
+  user-select: text;
+}
+
+.mermaid-error__source code {
+  background: none;
+  padding: 0;
+}

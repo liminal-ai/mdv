@@ -151,3 +151,40 @@
   border: none;
   border-top: 1px solid var(--color-border);
 }
+
+/* Shiki highlighted code blocks */
+.markdown-body .shiki {
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+/* Shiki theme switching — light themes */
+:root .shiki,
+:root .shiki span,
+[data-theme^='light'] .shiki,
+[data-theme^='light'] .shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg) !important;
+}
+
+/* Shiki theme switching — dark themes */
+[data-theme^='dark'] .shiki,
+[data-theme^='dark'] .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
+/* Override the existing pre/code styles for Shiki blocks */
+.markdown-body pre.shiki {
+  background: none;
+}
+
+.markdown-body pre.shiki code {
+  background: none;
+  padding: 0;
+}

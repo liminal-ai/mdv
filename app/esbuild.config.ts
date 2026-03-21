@@ -6,10 +6,11 @@ await mkdir('dist/client', { recursive: true });
 
 await build({
   entryPoints: ['src/client/app.ts'],
-  outfile: 'dist/client/app.js',
+  outdir: 'dist/client',
   platform: 'browser',
   format: 'esm',
   bundle: true,
+  splitting: true,
 });
 
 await cp('src/client/index.html', 'dist/client/index.html');
