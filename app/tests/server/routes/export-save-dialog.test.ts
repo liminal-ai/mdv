@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../../../src/server/app.js';
 
@@ -6,21 +6,21 @@ vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
   return {
     ...actual,
-    exec: vi.fn(),
+    execFile: vi.fn(),
   };
 });
 
-const execMock = vi.mocked(exec);
+const execFileMock = vi.mocked(execFile);
 
 function mockExecResult(
   error: (Error & { code?: number }) | null,
   stdout = '/Users/test/exports/selected-file.pdf\n',
-) {
-  execMock.mockImplementation(((command, options, callback) => {
+): void {
+  execFileMock.mockImplementation(((_file, _args, options, callback) => {
     const done = typeof options === 'function' ? options : callback;
     done?.(error, stdout, '');
     return {} as never;
-  }) as typeof exec);
+  }) as typeof execFile);
 }
 
 describe('export save dialog routes', () => {
@@ -42,8 +42,9 @@ describe('export save dialog routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(execMock).toHaveBeenCalledWith(
-      expect.stringContaining('default name "architecture.pdf"'),
+    expect(execFileMock).toHaveBeenCalledWith(
+      'osascript',
+      ['-e', expect.stringContaining('default name "architecture.pdf"')],
       expect.objectContaining({ timeout: 60000 }),
       expect.any(Function),
     );
@@ -64,8 +65,9 @@ describe('export save dialog routes', () => {
       },
     });
 
-    expect(execMock).toHaveBeenCalledWith(
-      expect.stringContaining('default location POSIX file "/Users/test/docs"'),
+    expect(execFileMock).toHaveBeenCalledWith(
+      'osascript',
+      ['-e', expect.stringContaining('default location POSIX file "/Users/test/docs"')],
       expect.any(Object),
       expect.any(Function),
     );
@@ -86,8 +88,9 @@ describe('export save dialog routes', () => {
       },
     });
 
-    expect(execMock).toHaveBeenCalledWith(
-      expect.stringContaining('default location POSIX file "/Users/test/exports"'),
+    expect(execFileMock).toHaveBeenCalledWith(
+      'osascript',
+      ['-e', expect.stringContaining('default location POSIX file "/Users/test/exports"')],
       expect.any(Object),
       expect.any(Function),
     );
@@ -108,8 +111,9 @@ describe('export save dialog routes', () => {
       },
     });
 
-    expect(execMock).toHaveBeenCalledWith(
-      expect.stringContaining('default name "readme.docx"'),
+    expect(execFileMock).toHaveBeenCalledWith(
+      'osascript',
+      ['-e', expect.stringContaining('default name "readme.docx"')],
       expect.any(Object),
       expect.any(Function),
     );
@@ -130,8 +134,9 @@ describe('export save dialog routes', () => {
       },
     });
 
-    expect(execMock).toHaveBeenCalledWith(
-      expect.stringContaining('default name "notes.html"'),
+    expect(execFileMock).toHaveBeenCalledWith(
+      'osascript',
+      ['-e', expect.stringContaining('default name "notes.html"')],
       expect.any(Object),
       expect.any(Function),
     );
@@ -154,7 +159,8 @@ describe('export save dialog routes', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ path: '/Users/test/exports/architecture.pdf' });
-    expect(execMock.mock.calls[0]?.[0]).not.toContain('overwrite');
+    const scriptArg = (execFileMock.mock.calls[0]?.[1] as string[])?.[1] ?? '';
+    expect(scriptArg).not.toContain('overwrite');
 
     await app.close();
   });

@@ -1,11 +1,11 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
   return {
     ...actual,
-    exec: vi.fn(),
+    execFile: vi.fn(),
   };
 });
 
@@ -28,7 +28,10 @@ describe('export reveal routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(vi.mocked(exec)).toHaveBeenCalledWith('open -R "/Users/test/exports/architecture.pdf"');
+    expect(vi.mocked(execFile)).toHaveBeenCalledWith('open', [
+      '-R',
+      '/Users/test/exports/architecture.pdf',
+    ]);
 
     await app.close();
   });

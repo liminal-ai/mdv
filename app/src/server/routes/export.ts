@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
@@ -45,7 +45,7 @@ async function openSaveDialog(defaultDir: string, defaultName: string): Promise<
       `default name ${JSON.stringify(defaultName)} ` +
       `default location POSIX file ${JSON.stringify(defaultDir)})`;
 
-    exec(`osascript -e '${script}'`, { timeout: 60_000 }, (error, stdout) => {
+    execFile('osascript', ['-e', script], { timeout: 60_000 }, (error, stdout) => {
       if (error) {
         const errorCode = (error as NodeJS.ErrnoException & { code?: number | string }).code;
         if (String(errorCode) === '1') {
@@ -210,7 +210,7 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
         return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
       }
 
-      exec(`open -R ${JSON.stringify(request.body.path)}`);
+      execFile('open', ['-R', request.body.path]);
       return { ok: true as const };
     },
   );
