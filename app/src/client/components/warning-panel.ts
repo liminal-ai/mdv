@@ -20,10 +20,19 @@ function getWarningPresentation(warning: RenderWarning): { icon: string; type: s
       return { icon: '🔒', type: 'Remote image blocked' };
     case 'unsupported-format':
       return { icon: '⚠', type: 'Unsupported image format' };
+    case 'mermaid-error':
+      return { icon: '⚠', type: 'Mermaid error' };
     case 'missing-image':
     default:
       return { icon: '⚠', type: 'Missing image' };
   }
+}
+
+function getWarningDetail(warning: RenderWarning): string {
+  if (warning.type === 'mermaid-error') {
+    return warning.message;
+  }
+  return warning.source;
 }
 
 export function mountWarningPanel(container: HTMLElement, store: StateStore): () => void {
@@ -97,7 +106,7 @@ export function mountWarningPanel(container: HTMLElement, store: StateStore): ()
                   }),
                   createElement('div', {
                     className: 'warning-panel__detail',
-                    text: warning.source,
+                    text: getWarningDetail(warning),
                   }),
                 ],
               });

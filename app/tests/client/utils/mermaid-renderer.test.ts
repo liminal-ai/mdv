@@ -13,10 +13,12 @@ import {
   erMermaid,
   flowchartMermaid,
   ganttMermaid,
+  invalidSyntaxMermaid,
   mindmapMermaid,
   pieMermaid,
   sequenceMermaid,
   stateMermaid,
+  whitespaceOnlyMermaid,
 } from '../../fixtures/mermaid-samples.js';
 import {
   cleanupDom,
@@ -236,7 +238,7 @@ describe('renderMermaidBlocks', () => {
     );
   });
 
-  it('Non-TC: no warnings for successful renders', async () => {
+  it('TC-2.2c: no warnings for successful renders', async () => {
     const container = createMarkdownBodyWithPlaceholders([flowchartMermaid]);
 
     const result = await renderMermaidBlocks(container);
@@ -258,5 +260,298 @@ describe('renderMermaidBlocks', () => {
         message: 'Diagram definition is empty',
       }),
     ]);
+  });
+
+  it('TC-2.1a: syntax error shows error fallback', async () => {
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Parse error on line 3'));
+    const container = createMarkdownBodyWithPlaceholders([flowchartMermaid]);
+
+    await renderMermaidBlocks(container);
+
+    expect(container.querySelector('.mermaid-error')).not.toBeNull();
+    expect(container.querySelector('.mermaid-error__banner')).not.toBeNull();
+    expect(container.querySelector('.mermaid-error__source')).not.toBeNull();
+  });
+
+  it('TC-2.1b: error banner has indicator, description, and selectable source', async () => {
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Unexpected token'));
+    const container = createMarkdownBodyWithPlaceholders([invalidSyntaxMermaid]);
+
+    await renderMermaidBlocks(container);
+
+    const banner = container.querySelector<HTMLElement>('.mermaid-error__banner');
+    const source = container.querySelector<HTMLElement>('.mermaid-error__source');
+    const code = source?.querySelector('code');
+
+    expect(banner?.textContent).toContain('⚠');
+    expect(banner?.textContent).toContain('Mermaid error:');
+    expect(banner?.textContent).toContain('Unexpected token');
+    expect(code?.textContent).toBe(invalidSyntaxMermaid);
+    expect(getComputedStyle(source as HTMLElement).userSelect).not.toBe('none');
+  });
+
+  it('TC-2.1c: partial success - 2 valid + 1 invalid', async () => {
+    vi.mocked(mermaid.render)
+      .mockResolvedValueOnce({
+        svg: '<svg viewBox="0 0 100 100"><rect width="100" height="100"/></svg>',
+      })
+      .mockRejectedValueOnce(new Error('Parse error in middle diagram'))
+      .mockResolvedValueOnce({
+        svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="25"/></svg>',
+      });
+    const container = createMarkdownBodyWithPlaceholders([
+      flowchartMermaid,
+      invalidSyntaxMermaid,
+      sequenceMermaid,
+    ]);
+
+    await renderMermaidBlocks(container);
+
+    expect(container.querySelectorAll('.mermaid-diagram')).toHaveLength(2);
+    expect(container.querySelectorAll('.mermaid-error')).toHaveLength(1);
+
+    const children = Array.from(container.children).map(
+      (child) => child.className || child.tagName.toLowerCase(),
+    );
+    expect(children).toEqual(['mermaid-diagram', 'p', 'mermaid-error', 'p', 'mermaid-diagram']);
+  });
+
+  it('TC-2.1d: empty mermaid block shows error', async () => {
+    const container = createMarkdownBodyWithPlaceholders([emptyMermaid]);
+
+    await renderMermaidBlocks(container);
+
+    expect(container.querySelector('.mermaid-error')).not.toBeNull();
+    expect(container.querySelector('.mermaid-error__banner')?.textContent?.toLowerCase()).toContain(
+      'empty',
+    );
+    expect(mermaid.render).not.toHaveBeenCalled();
+  });
+
+  it('TC-2.2a: warning count includes mermaid errors', async () => {
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Invalid diagram'));
+    const container = createMarkdownBodyWithPlaceholders([flowchartMermaid]);
+
+    const result = await renderMermaidBlocks(container);
+
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toEqual(
+      expect.objectContaining({
+        type: 'mermaid-error',
+      }),
+    );
+  });
+
+  it('TC-2.2b: warning detail has type and message', async () => {
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Syntax error near line 5'));
+    const container = createMarkdownBodyWithPlaceholders([flowchartMermaid]);
+
+    const result = await renderMermaidBlocks(container);
+
+    expect(result.warnings[0]?.type).toBe('mermaid-error');
+    expect(result.warnings[0]?.message).toContain('Syntax error near line 5');
+  });
+
+  it('TC-2.3a: document renders despite mermaid failure', async () => {
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Broken diagram'));
+    const container = document.createElement('div');
+    container.className = 'markdown-body';
+    container.innerHTML = [
+      '<h1>Document Title</h1>',
+      '<p>Lead paragraph.</p>',
+      createPlaceholderHtml(flowchartMermaid),
+    ].join('');
+    document.body.append(container);
+
+    await renderMermaidBlocks(container);
+
+    expect(container.querySelector('h1')?.textContent).toBe('Document Title');
+    expect(container.querySelector('p')?.textContent).toBe('Lead paragraph.');
+    expect(container.querySelector('.mermaid-error')).not.toBeNull();
+  });
+
+  it('TC-2.3b: rendering timeout triggers fallback', async () => {
+    vi.useFakeTimers();
+
+    try {
+      vi.mocked(mermaid.render).mockReturnValue(new Promise<{ svg: string }>(() => {}));
+      const container = createMarkdownBodyWithPlaceholders([flowchartMermaid]);
+
+      const renderPromise = renderMermaidBlocks(container);
+
+      await vi.advanceTimersByTimeAsync(5_001);
+
+      const result = await renderPromise;
+
+      expect(container.querySelector('.mermaid-error')).not.toBeNull();
+      expect(result.warnings[0]?.message).toContain('timed out');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('TC-3.4c: theme switch updates Shiki highlighting (CSS verification)', () => {
+    const style = document.createElement('style');
+    style.textContent = `
+      [data-theme^='light'] .shiki span {
+        color: var(--shiki-light) !important;
+        background-color: var(--shiki-light-bg) !important;
+      }
+
+      [data-theme^='dark'] .shiki span {
+        color: var(--shiki-dark) !important;
+        background-color: var(--shiki-dark-bg) !important;
+      }
+    `;
+    document.head.append(style);
+    const markdownBody = wrapInContentArea(document.createElement('div'));
+    markdownBody.className = 'markdown-body';
+    markdownBody.innerHTML = [
+      '<pre class="shiki"><code>',
+      '<span style="--shiki-light: #111111; --shiki-dark: #eeeeee; --shiki-light-bg: #ffffff; --shiki-dark-bg: #000000;">const value = 1;</span>',
+      '</code></pre>',
+    ].join('');
+
+    setTheme('dark-default');
+
+    const token = markdownBody.querySelector<HTMLElement>('pre.shiki span');
+    const tokenStyles = getComputedStyle(token as HTMLElement);
+
+    expect(document.documentElement.dataset.theme).toBe('dark-default');
+    expect(token?.getAttribute('style')).toContain('--shiki-light: #111111');
+    expect(token?.getAttribute('style')).toContain('--shiki-dark: #eeeeee');
+    expect(tokenStyles.color).toBe('var(--shiki-dark)');
+    expect(tokenStyles.backgroundColor).toBe('var(--shiki-dark-bg)');
+  });
+
+  it('TC-5.1a: multiple failure types in one document', async () => {
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Diagram failed'));
+    const container = document.createElement('div');
+    container.className = 'markdown-body';
+    container.innerHTML = [
+      createPlaceholderHtml(flowchartMermaid),
+      '<div class="image-placeholder">Missing image placeholder</div>',
+      '<pre><code class="language-ts">const untouched = true;</code></pre>',
+    ].join('');
+    document.body.append(container);
+
+    await renderMermaidBlocks(container);
+
+    expect(container.querySelector('.mermaid-error')).not.toBeNull();
+    expect(container.querySelector('.image-placeholder')?.textContent).toBe(
+      'Missing image placeholder',
+    );
+    expect(container.querySelector('code.language-ts')?.textContent).toBe(
+      'const untouched = true;',
+    );
+  });
+
+  it('TC-5.1b: mermaid error in re-rendered content', async () => {
+    const container = createMarkdownBodyWithPlaceholders([flowchartMermaid]);
+
+    await renderMermaidBlocks(container);
+    expect(container.querySelector('.mermaid-diagram')).not.toBeNull();
+
+    container.innerHTML = createPlaceholderHtml(sequenceMermaid);
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Re-render failure'));
+
+    await renderMermaidBlocks(container);
+
+    expect(container.querySelector('.mermaid-error')).not.toBeNull();
+    expect(container.querySelector('.mermaid-diagram')).toBeNull();
+  });
+
+  it('TC-5.2a: new diagram in re-rendered content', async () => {
+    const container = document.createElement('div');
+    container.className = 'markdown-body';
+    document.body.append(container);
+
+    const firstResult = await renderMermaidBlocks(container);
+    expect(firstResult.warnings).toEqual([]);
+    expect(container.querySelector('.mermaid-diagram')).toBeNull();
+
+    container.innerHTML = createPlaceholderHtml(flowchartMermaid);
+
+    await renderMermaidBlocks(container);
+
+    expect(container.querySelector('.mermaid-diagram')).not.toBeNull();
+  });
+
+  it('Non-TC: source truncated at 200 chars in warning', async () => {
+    const longSource = `graph TD\n${'A'.repeat(500)}`;
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Very long diagram source failed'));
+    const container = createMarkdownBodyWithPlaceholders([longSource]);
+
+    const result = await renderMermaidBlocks(container);
+
+    expect(result.warnings[0]?.source.length).toBeLessThanOrEqual(203);
+    expect(result.warnings[0]?.source.endsWith('...')).toBe(true);
+  });
+
+  it('Non-TC: re-render clears old mermaid warnings', async () => {
+    const container = createMarkdownBodyWithPlaceholders([flowchartMermaid]);
+    vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('First render failed'));
+
+    const firstResult = await renderMermaidBlocks(container);
+    expect(firstResult.warnings).toHaveLength(1);
+
+    container.innerHTML = createPlaceholderHtml(sequenceMermaid);
+
+    const secondResult = await renderMermaidBlocks(container);
+
+    expect(secondResult.warnings).toEqual([]);
+  });
+
+  it('Non-TC: whitespace-only source uses the tech design error message', async () => {
+    const container = createMarkdownBodyWithPlaceholders([whitespaceOnlyMermaid]);
+
+    const result = await renderMermaidBlocks(container);
+
+    expect(container.querySelector('.mermaid-error__banner')?.textContent).toContain(
+      'Diagram definition is empty',
+    );
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        type: 'mermaid-error',
+        message: 'Diagram definition is empty',
+      }),
+    ]);
+  });
+
+  it("Non-TC: render errors don't leak to other diagrams", async () => {
+    vi.mocked(mermaid.render)
+      .mockResolvedValueOnce({
+        svg: '<svg viewBox="0 0 100 100"><rect width="100" height="100"/></svg>',
+      })
+      .mockResolvedValueOnce({
+        svg: '<svg viewBox="0 0 100 100"><rect width="100" height="100"/></svg>',
+      })
+      .mockRejectedValueOnce(new Error('Third diagram failed'))
+      .mockResolvedValueOnce({
+        svg: '<svg viewBox="0 0 100 100"><rect width="100" height="100"/></svg>',
+      })
+      .mockResolvedValueOnce({
+        svg: '<svg viewBox="0 0 100 100"><rect width="100" height="100"/></svg>',
+      });
+    const container = createMarkdownBodyWithPlaceholders([
+      flowchartMermaid,
+      sequenceMermaid,
+      invalidSyntaxMermaid,
+      classMermaid,
+      stateMermaid,
+    ]);
+
+    await renderMermaidBlocks(container);
+
+    const renderedBlocks = Array.from(
+      container.querySelectorAll<HTMLElement>('.mermaid-diagram, .mermaid-error'),
+    );
+
+    expect(renderedBlocks).toHaveLength(5);
+    expect(renderedBlocks[0]?.className).toBe('mermaid-diagram');
+    expect(renderedBlocks[1]?.className).toBe('mermaid-diagram');
+    expect(renderedBlocks[2]?.className).toBe('mermaid-error');
+    expect(renderedBlocks[3]?.className).toBe('mermaid-diagram');
+    expect(renderedBlocks[4]?.className).toBe('mermaid-diagram');
   });
 });
