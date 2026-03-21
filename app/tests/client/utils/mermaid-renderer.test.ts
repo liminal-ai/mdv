@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import mermaid from 'mermaid';
+import { mermaidCache } from '../../../src/client/components/mermaid-cache.js';
 import {
   renderMermaidBlocks,
   reRenderMermaidDiagrams,
@@ -62,6 +63,7 @@ function injectStyle(css: string): void {
 describe('renderMermaidBlocks', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mermaidCache.clear();
     setTheme('light-default');
     vi.mocked(mermaid.render).mockResolvedValue({
       svg: '<svg viewBox="0 0 100 100"><rect width="100" height="100"/></svg>',
@@ -69,6 +71,7 @@ describe('renderMermaidBlocks', () => {
   });
 
   afterEach(() => {
+    mermaidCache.clear();
     cleanupDom();
     document.head.innerHTML = '';
   });

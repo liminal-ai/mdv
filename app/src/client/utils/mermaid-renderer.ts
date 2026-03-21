@@ -1,4 +1,5 @@
 import type { RenderWarning } from '../../shared/types.js';
+import { mermaidCache } from '../components/mermaid-cache.js';
 
 export interface MermaidRenderResult {
   warnings: RenderWarning[];
@@ -159,7 +160,14 @@ export async function renderMermaidBlocks(container: HTMLElement): Promise<Merma
     }
 
     try {
+      const cachedSvg = mermaidCache.get(source, theme);
+      if (cachedSvg) {
+        replacePlaceholderWithSvg(placeholder, cachedSvg, source);
+        continue;
+      }
+
       const { svg } = await renderWithTimeout(source, `mermaid-${renderIndex++}`, theme);
+      mermaidCache.set(source, theme, svg);
       replacePlaceholderWithSvg(placeholder, svg, source);
     } catch (error) {
       const message = getErrorMessage(error);
@@ -192,7 +200,16 @@ export async function reRenderMermaidDiagrams(): Promise<void> {
     }
 
     try {
+      const cachedSvg = mermaidCache.get(source, theme);
+      if (cachedSvg) {
+        diagram.innerHTML = cachedSvg;
+        stripInlineEventHandlers(diagram);
+        applySvgSizing(diagram);
+        continue;
+      }
+
       const { svg } = await renderWithTimeout(source, `mermaid-re-${renderIndex++}`, theme);
+      mermaidCache.set(source, theme, svg);
       // tech-design.md Q5 intentionally omits DOMPurify for Mermaid SVG output;
       // strict mode is the main safeguard, with a small defensive scrub of any
       // inline event handlers before the SVG is reattached to the DOM.

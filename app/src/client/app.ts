@@ -19,6 +19,7 @@ import { mountSidebarResizer } from './components/sidebar-resizer.js';
 import { mountTabStrip } from './components/tab-strip.js';
 import { mountUnsavedModal } from './components/unsaved-modal.js';
 import { mountWarningPanel } from './components/warning-panel.js';
+import { mermaidCache } from './components/mermaid-cache.js';
 import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { INSERT_LINK_EVENT, KeyboardManager } from './utils/keyboard.js';
@@ -114,6 +115,19 @@ function directoryName(filePath: string): string {
 function exportBaseName(filePath: string): string {
   const name = fileName(filePath);
   return name.replace(/\.(md|markdown)$/i, '');
+}
+
+function extractMermaidSources(html: string): string[] {
+  if (!html) {
+    return [];
+  }
+
+  const template = document.createElement('template');
+  template.innerHTML = html;
+
+  return Array.from(template.content.querySelectorAll('code.language-mermaid'))
+    .map((block) => block.textContent?.trim() ?? '')
+    .filter((source) => source.length > 0);
 }
 
 function createTabId(): string {
@@ -875,6 +889,7 @@ export async function bootstrapApp(
 
     const closingTab = state.tabs[tabIndex] ?? null;
     if (closingTab) {
+      mermaidCache.invalidateForTab(extractMermaidSources(closingTab.html));
       unwatchPath(closingTab.path);
     }
 
