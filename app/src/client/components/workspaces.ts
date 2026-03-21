@@ -8,6 +8,14 @@ export interface WorkspacesActions {
   onRemoveWorkspace: (path: string) => void;
 }
 
+function shortenPath(fullPath: string): string {
+  const macMatch = fullPath.match(/^\/Users\/[^/]+(?<rest>\/.*)?$/);
+  if (macMatch) return `~${macMatch.groups?.rest ?? ''}`;
+  const linuxMatch = fullPath.match(/^\/home\/[^/]+(?<rest>\/.*)?$/);
+  if (linuxMatch) return `~${linuxMatch.groups?.rest ?? ''}`;
+  return fullPath;
+}
+
 function createWorkspaceEntry(
   workspace: Workspace,
   activePath: string | null,
@@ -15,6 +23,7 @@ function createWorkspaceEntry(
 ): HTMLElement {
   const className =
     workspace.path === activePath ? 'workspace-entry workspace-entry--active' : 'workspace-entry';
+  const displayPath = shortenPath(workspace.path);
 
   return createElement('div', {
     className,
@@ -28,7 +37,7 @@ function createWorkspaceEntry(
     children: [
       createElement('span', {
         className: 'workspace-entry__label',
-        text: workspace.label,
+        text: displayPath,
         attrs: { title: workspace.path },
       }),
       createElement('button', {
@@ -96,7 +105,7 @@ export function mountWorkspaces(
           }),
           createElement('span', {
             className: 'section-header__label',
-            text: 'WORKSPACES',
+            text: 'PINNED PATHS',
           }),
         ],
         on: {
