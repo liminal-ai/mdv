@@ -3,7 +3,13 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
 import { ErrorResponseSchema, FileTreeResponseSchema } from '../schemas/index.js';
 import { scanTree } from '../services/tree.service.js';
-import { ErrorCode, isNotFoundError, isPermissionError, toApiError } from '../utils/errors.js';
+import {
+  ErrorCode,
+  ScanTimeoutError,
+  isNotFoundError,
+  isPermissionError,
+  toApiError,
+} from '../utils/errors.js';
 
 export async function treeRoutes(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -33,6 +39,12 @@ export async function treeRoutes(app: FastifyInstance) {
         const tree = await scanTree(root);
         return { root, tree };
       } catch (err) {
+        if (err instanceof ScanTimeoutError) {
+          return reply
+            .code(500)
+            .send(toApiError(ErrorCode.SCAN_ERROR, err.message, { timeout: true }));
+        }
+
         if (isPermissionError(err)) {
           return reply
             .code(403)

@@ -18,17 +18,22 @@ type ErrorPayload = {
   error?: {
     code?: string;
     message?: string;
+    timeout?: boolean;
   };
 };
 
 export class ApiError extends Error {
+  public readonly timeout: boolean;
+
   constructor(
     public readonly status: number,
     public readonly code: string,
     message: string,
+    timeout = false,
   ) {
     super(message);
     this.name = 'ApiError';
+    this.timeout = timeout;
   }
 }
 
@@ -265,6 +270,7 @@ export class ApiClient {
         response.status,
         errorPayload?.error?.code ?? 'UNKNOWN_ERROR',
         errorPayload?.error?.message ?? response.statusText ?? 'Request failed',
+        errorPayload?.error?.timeout ?? false,
       );
     }
 

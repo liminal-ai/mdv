@@ -38,6 +38,7 @@ export function isInsufficientStorageError(err: unknown): boolean {
 export interface ApiError {
   code: string;
   message: string;
+  timeout?: boolean;
 }
 
 export class InvalidPathError extends Error {
@@ -153,6 +154,20 @@ export class ReadTimeoutError extends Error {
   }
 }
 
-export function toApiError(code: string, message: string): { error: ApiError } {
-  return { error: { code, message } };
+export class ScanTimeoutError extends Error {
+  readonly root: string;
+
+  constructor(root: string) {
+    super(`Tree scan timed out after 10 seconds for ${root}`);
+    this.name = 'ScanTimeoutError';
+    this.root = root;
+  }
+}
+
+export function toApiError(
+  code: string,
+  message: string,
+  extras: Partial<Pick<ApiError, 'timeout'>> = {},
+): { error: ApiError } {
+  return { error: { code, message, ...extras } };
 }

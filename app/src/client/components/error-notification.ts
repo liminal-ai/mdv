@@ -18,6 +18,36 @@ export function mountErrorNotification(
       return;
     }
 
+    const buttons: HTMLElement[] = [];
+
+    if (error.onRetry) {
+      const retryFn = error.onRetry;
+      buttons.push(
+        createElement('button', {
+          className: 'error-notification__retry',
+          text: 'Retry',
+          attrs: { type: 'button' },
+          on: {
+            click: () => {
+              actions.onDismiss();
+              retryFn();
+            },
+          },
+        }),
+      );
+    }
+
+    buttons.push(
+      createElement('button', {
+        className: 'error-notification__dismiss',
+        text: 'Dismiss',
+        attrs: { type: 'button' },
+        on: {
+          click: actions.onDismiss,
+        },
+      }),
+    );
+
     container.replaceChildren(
       createElement('div', {
         className: 'error-notification',
@@ -36,14 +66,7 @@ export function mountErrorNotification(
               }),
             ],
           }),
-          createElement('button', {
-            className: 'error-notification__dismiss',
-            text: 'Dismiss',
-            attrs: { type: 'button' },
-            on: {
-              click: actions.onDismiss,
-            },
-          }),
+          ...buttons,
         ],
       }),
     );

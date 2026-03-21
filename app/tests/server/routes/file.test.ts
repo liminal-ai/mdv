@@ -326,8 +326,8 @@ describe('file routes', () => {
     await app.close();
   });
 
-  it('Non-TC: File over 5MB rejected', async () => {
-    vi.mocked(fs.stat).mockResolvedValue(makeFileStat({ size: 5 * 1024 * 1024 + 1 }));
+  it('Non-TC: File over 20MB rejected', async () => {
+    vi.mocked(fs.stat).mockResolvedValue(makeFileStat({ size: 20 * 1024 * 1024 + 1 }));
     const app = await buildApp();
 
     const response = await app.inject({
@@ -343,7 +343,7 @@ describe('file routes', () => {
     await app.close();
   });
 
-  it('Non-TC: File 1-5MB returns with size for client warning', async () => {
+  it('Non-TC: File under 20MB returns with size for client warning', async () => {
     vi.mocked(fs.stat).mockResolvedValue(makeFileStat({ size: largeFileResponse.size }));
     vi.mocked(fs.realpath).mockResolvedValue(largeFileResponse.canonicalPath);
     vi.mocked(fs.readFile).mockResolvedValue(largeFileResponse.content);

@@ -12,7 +12,7 @@ import {
 } from '../utils/errors.js';
 
 const MARKDOWN_EXTENSIONS = new Set(['.md', '.markdown']);
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export interface FileReadResult {
   path: string;

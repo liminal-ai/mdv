@@ -10,6 +10,7 @@ import type {
 export interface ClientError {
   code: ErrorCode | string;
   message: string;
+  onRetry?: () => void;
 }
 
 export interface ContextMenuState {

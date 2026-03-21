@@ -313,11 +313,12 @@ function scrollToHeading(anchor: string): void {
   queueMicrotask(scroll);
 }
 
-function getErrorMessage(error: unknown): { code: string; message: string } {
+function getErrorMessage(error: unknown): { code: string; message: string; timeout?: boolean } {
   if (error instanceof ApiError) {
     return {
       code: error.code,
       message: error.message,
+      ...(error.timeout ? { timeout: true } : {}),
     };
   }
 
@@ -415,6 +416,15 @@ export async function bootstrapApp(
 
   const setClientError = (code: string, message: string) => {
     store.update({ error: { code, message } }, ['error']);
+  };
+
+  const setTreeError = (error: unknown, retryFn: () => void) => {
+    if (error instanceof ApiError && error.timeout) {
+      const info = getErrorMessage(error);
+      store.update({ error: { ...info, onRetry: retryFn } }, ['error']);
+    } else {
+      setError(error);
+    }
   };
 
   const setInvalidRoot = (error: unknown) => {
@@ -692,7 +702,7 @@ export async function bootstrapApp(
         }
 
         setTreeLoading(false);
-        setError(error);
+        setTreeError(error, () => void refreshTree());
       }
     } catch (error) {
       setTreeLoading(false);
@@ -822,7 +832,7 @@ export async function bootstrapApp(
       }
 
       setTreeLoading(false);
-      setError(error);
+      setTreeError(error, () => void refreshTree());
     }
   };
 
@@ -1937,7 +1947,7 @@ export async function bootstrapApp(
         setInvalidRoot(error);
       } else {
         setTreeLoading(false);
-        setError(error);
+        setTreeError(error, () => void refreshTree());
       }
     }
   }

@@ -1,6 +1,7 @@
 import type { TreeNode } from '../../shared/types.js';
 import type { StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
+import { VirtualTree, type FlatTreeNode } from './virtual-tree.js';
 
 export interface FileTreeActions {
   onExpandAll: () => void;
@@ -22,31 +23,31 @@ function collectAllDirPaths(nodes: TreeNode[]): string[] {
   return paths;
 }
 
-function flattenVisible(nodes: TreeNode[], expandedSet: Set<string>): TreeNode[] {
-  const result: TreeNode[] = [];
+function flattenVisible(
+  nodes: TreeNode[],
+  expandedSet: Set<string>,
+  depth = 0,
+): Array<FlatTreeNode<TreeNode>> {
+  const result: Array<FlatTreeNode<TreeNode>> = [];
   for (const node of nodes) {
-    result.push(node);
+    result.push({ node, depth });
     if (node.type === 'directory' && expandedSet.has(node.path) && node.children) {
-      result.push(...flattenVisible(node.children, expandedSet));
+      result.push(...flattenVisible(node.children, expandedSet, depth + 1));
     }
   }
   return result;
 }
 
-function createTreeNode(
-  node: TreeNode,
-  expandedSet: Set<string>,
-  depth: number,
-  actions: FileTreeActions,
-): HTMLElement {
+function createTreeRow(flatNode: FlatTreeNode<TreeNode>, expandedSet: Set<string>): HTMLElement {
+  const { node, depth } = flatNode;
   const isDir = node.type === 'directory';
   const isExpanded = isDir && expandedSet.has(node.path);
 
-  const row = createElement('div', {
-    className: 'tree-node__row',
+  return createElement('div', {
+    className: `tree-node__row tree-node tree-node--${node.type}`,
     attrs: {
       tabindex: -1,
-      role: isDir ? 'treeitem' : 'treeitem',
+      role: 'treeitem',
       'aria-expanded': isDir ? String(isExpanded) : null,
       'data-path': node.path,
       'data-type': node.type,
@@ -78,27 +79,6 @@ function createTreeNode(
           })
         : null,
     ],
-    on: {
-      click: () => {
-        if (isDir) {
-          actions.onToggleDir(node.path);
-        } else {
-          actions.onSelectFile(node.path);
-        }
-      },
-    },
-  });
-
-  const children: HTMLElement[] = [];
-  if (isDir && isExpanded && node.children) {
-    for (const child of node.children) {
-      children.push(createTreeNode(child, expandedSet, depth + 1, actions));
-    }
-  }
-
-  return createElement('div', {
-    className: `tree-node tree-node--${node.type}`,
-    children: [row, ...children],
   });
 }
 
@@ -108,8 +88,15 @@ export function mountFileTree(
   actions: FileTreeActions,
 ): () => void {
   let focusedIndex = -1;
+  let virtualTree: VirtualTree<TreeNode> | null = null;
+  let currentExpandedSet = new Set<string>();
 
   container.tabIndex = 0;
+
+  const focusIndex = (index: number) => {
+    virtualTree?.scrollToIndex(index);
+    container.querySelector<HTMLElement>(`.tree-node__row[data-index="${index}"]`)?.focus();
+  };
 
   const handleKeydown = (event: KeyboardEvent) => {
     const state = store.get();
@@ -121,22 +108,19 @@ export function mountFileTree(
     const visible = flattenVisible(state.tree, expandedSet);
     if (visible.length === 0) return;
 
-    const rows = Array.from(container.querySelectorAll<HTMLElement>('.tree-node__row'));
-    if (rows.length === 0) return;
-
-    const hasValidFocus = focusedIndex >= 0 && focusedIndex < rows.length;
+    const hasValidFocus = focusedIndex >= 0 && focusedIndex < visible.length;
 
     switch (event.key) {
       case 'ArrowDown': {
         event.preventDefault();
-        focusedIndex = hasValidFocus ? Math.min(focusedIndex + 1, rows.length - 1) : 0;
-        rows[focusedIndex]?.focus();
+        focusedIndex = hasValidFocus ? Math.min(focusedIndex + 1, visible.length - 1) : 0;
+        focusIndex(focusedIndex);
         break;
       }
       case 'ArrowUp': {
         event.preventDefault();
         focusedIndex = hasValidFocus ? Math.max(focusedIndex - 1, 0) : 0;
-        rows[focusedIndex]?.focus();
+        focusIndex(focusedIndex);
         break;
       }
       case 'ArrowRight': {
@@ -144,7 +128,7 @@ export function mountFileTree(
         if (!hasValidFocus) {
           focusedIndex = 0;
         }
-        const currentNode = visible[focusedIndex];
+        const currentNode = visible[focusedIndex]?.node;
         if (currentNode?.type === 'directory' && !expandedSet.has(currentNode.path)) {
           actions.onToggleDir(currentNode.path);
         }
@@ -155,7 +139,7 @@ export function mountFileTree(
         if (!hasValidFocus) {
           focusedIndex = 0;
         }
-        const currentNode = visible[focusedIndex];
+        const currentNode = visible[focusedIndex]?.node;
         if (currentNode?.type === 'directory' && expandedSet.has(currentNode.path)) {
           actions.onToggleDir(currentNode.path);
         }
@@ -166,7 +150,7 @@ export function mountFileTree(
         if (!hasValidFocus) {
           focusedIndex = 0;
         }
-        const currentNode = visible[focusedIndex];
+        const currentNode = visible[focusedIndex]?.node;
         if (currentNode) {
           if (currentNode.type === 'directory') {
             actions.onToggleDir(currentNode.path);
@@ -187,6 +171,10 @@ export function mountFileTree(
     const tree = state.tree;
 
     if (!root || tree.length === 0) {
+      if (virtualTree) {
+        virtualTree.destroy();
+        virtualTree = null;
+      }
       container.replaceChildren(
         createElement('p', {
           className: 'tree-empty',
@@ -198,13 +186,27 @@ export function mountFileTree(
 
     const expandedArr = state.expandedDirsByRoot[root] ?? [];
     const expandedSet = new Set(expandedArr);
+    const visible = flattenVisible(tree, expandedSet);
+    currentExpandedSet = expandedSet;
 
-    const fragment = document.createDocumentFragment();
-    for (const node of tree) {
-      fragment.appendChild(createTreeNode(node, expandedSet, 0, actions));
+    if (!virtualTree) {
+      container.replaceChildren();
+      virtualTree = new VirtualTree<TreeNode>({
+        container,
+        rowHeight: 28,
+        overscan: 20,
+        renderRow: (flatNode) => createTreeRow(flatNode, currentExpandedSet),
+        onNodeClick: (flatNode) => {
+          if (flatNode.node.type === 'directory') {
+            actions.onToggleDir(flatNode.node.path);
+          } else {
+            actions.onSelectFile(flatNode.node.path);
+          }
+        },
+      });
     }
 
-    container.replaceChildren(fragment);
+    virtualTree.setNodes(visible);
   };
 
   render();
@@ -212,9 +214,10 @@ export function mountFileTree(
 
   return () => {
     container.removeEventListener('keydown', handleKeydown);
+    virtualTree?.destroy();
     unsubscribe();
     container.replaceChildren();
   };
 }
 
-export { collectAllDirPaths };
+export { collectAllDirPaths, flattenVisible };
