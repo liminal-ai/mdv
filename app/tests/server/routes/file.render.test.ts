@@ -23,20 +23,27 @@ vi.mock('node:fs', async (importOriginal) => {
 });
 
 import { buildApp } from '../../../src/server/app.js';
+import { RenderService } from '../../../src/server/services/render.service.js';
 import {
+  aliasSamples,
   binaryMarkdown,
   blockquoteMarkdown,
   codeBlockMarkdown,
   emptyMarkdown,
   headingsMarkdown,
+  highlightingSamples,
   horizontalRuleMarkdown,
+  indentedCodeBlock,
   imageMarkdown,
   inlineFormattingMarkdown,
+  largeCodeBlock,
   linksMarkdown,
   listsMarkdown,
   longLineMarkdown,
   malformedMarkdown,
   mermaidMarkdown,
+  noLanguageCodeBlock,
+  unknownLanguageCodeBlock,
   rawHtmlMarkdown,
   scriptTagMarkdown,
   tableMarkdown,
@@ -372,9 +379,8 @@ describe('file render route', () => {
 
   it('Non-TC: escapes html entities inside code blocks', async () => {
     await withRenderedFile('```html\n<div>safe</div>\n```', ({ body, document }) => {
-      expect(document.querySelector('pre > code')?.innerHTML).toContain(
-        '&lt;div&gt;safe&lt;/div&gt;',
-      );
+      expect(document.querySelector('pre.shiki code.language-html')).not.toBeNull();
+      expect(document.querySelector('pre > code')?.textContent).toContain('<div>safe</div>');
       expect(body.html).not.toContain('<div>safe</div>');
     });
   });
@@ -535,6 +541,188 @@ describe('file render route', () => {
       expect(heading?.id).toBeTruthy();
       expect(heading?.id).not.toContain(' ');
       expect(heading?.id).toBe('whats-new-v20');
+    });
+  });
+
+  describe('Epic 3 — Syntax Highlighting', () => {
+    it('TC-3.1a: highlights JavaScript fenced code blocks with theme variables', async () => {
+      await withRenderedFile(highlightingSamples.javascript, ({ document }) => {
+        expect(document.querySelector('pre.shiki')).not.toBeNull();
+        expect(document.querySelector('pre.shiki')?.getAttribute('tabindex')).toBe('0');
+        expect(
+          document.querySelector('pre.shiki span[style*="--shiki-light"][style*="--shiki-dark"]'),
+        ).not.toBeNull();
+      });
+    });
+
+    it('TC-3.1b: highlights multiple languages in a single document', async () => {
+      await withRenderedFile(
+        [highlightingSamples.typescript, highlightingSamples.python, highlightingSamples.yaml].join(
+          '\n\n',
+        ),
+        ({ document }) => {
+          expect(document.querySelectorAll('pre.shiki')).toHaveLength(3);
+        },
+      );
+    });
+
+    it('TC-3.1c: highlighting preserves the rendered code content', async () => {
+      await withRenderedFile(highlightingSamples.javascript, ({ document }) => {
+        expect(document.querySelector('pre.shiki code')?.textContent).toBe(
+          'const x = 42;\nconsole.log(x);',
+        );
+      });
+    });
+
+    it('TC-3.1d: renders large code blocks with syntax highlighting', async () => {
+      await withRenderedFile(largeCodeBlock, ({ document }) => {
+        expect(document.querySelector('pre.shiki')).not.toBeNull();
+      });
+    });
+
+    it('TC-3.2a: highlights all 17 baseline languages', async () => {
+      for (const [language, markdown] of Object.entries(highlightingSamples)) {
+        await withRenderedFile(markdown, ({ document }) => {
+          expect(document.querySelector('pre.shiki'), language).not.toBeNull();
+        });
+      }
+    });
+
+    it('TC-3.2b: supports configured language aliases', async () => {
+      for (const [alias, markdown] of Object.entries(aliasSamples)) {
+        await withRenderedFile(markdown, ({ document }) => {
+          expect(document.querySelector('pre.shiki'), alias).not.toBeNull();
+        });
+      }
+    });
+
+    it('TC-3.3a: leaves fenced code blocks without a language tag unhighlighted', async () => {
+      await withRenderedFile(noLanguageCodeBlock, ({ document }) => {
+        expect(document.querySelector('pre > code')).not.toBeNull();
+        expect(document.querySelector('pre.shiki')).toBeNull();
+      });
+    });
+
+    it('TC-3.3b: leaves unrecognized languages as plain code blocks without errors', async () => {
+      await withRenderedFile(unknownLanguageCodeBlock, ({ body, document }) => {
+        expect(document.querySelector('pre > code.language-brainfuck')).not.toBeNull();
+        expect(document.querySelector('pre.shiki')).toBeNull();
+        expect(body.warnings).toEqual([]);
+      });
+    });
+
+    it('TC-3.3c: leaves indented code blocks unhighlighted', async () => {
+      await withRenderedFile(indentedCodeBlock, ({ document }) => {
+        expect(document.querySelector('pre > code')?.textContent).toContain('indented code block');
+        expect(document.querySelector('pre.shiki')).toBeNull();
+      });
+    });
+
+    it('TC-3.4a: emits light theme CSS variables for highlighted tokens', async () => {
+      await withRenderedFile(highlightingSamples.javascript, ({ body }) => {
+        expect(body.html).toContain('--shiki-light');
+      });
+    });
+
+    it('TC-3.4b: emits dark theme CSS variables for highlighted tokens', async () => {
+      await withRenderedFile(highlightingSamples.javascript, ({ body }) => {
+        expect(body.html).toContain('--shiki-dark');
+      });
+    });
+
+    it('TC-3.5a: falls back to a plain code block when the highlighting engine throws', async () => {
+      const renderService = await RenderService.create();
+      const markdownIt = (
+        renderService as RenderService & {
+          markdownIt: { options: { highlight?: (...args: unknown[]) => string } };
+        }
+      ).markdownIt;
+
+      markdownIt.options.highlight = () => {
+        throw new Error('forced shiki failure');
+      };
+
+      const result = renderService.render(highlightingSamples.javascript, DEFAULT_DOCUMENT_PATH);
+      const document = new JSDOM(`<main>${result.html}</main>`).window.document;
+
+      expect(document.querySelector('pre.shiki')).toBeNull();
+      expect(document.querySelector('pre > code.language-javascript')?.textContent).toBe(
+        'const x = 42;\nconsole.log(x);\n',
+      );
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('TC-3.5b: falls back to a plain code block when grammar loading fails', async () => {
+      const renderService = await RenderService.create();
+      const markdownIt = (
+        renderService as RenderService & {
+          markdownIt: { options: { highlight?: (...args: unknown[]) => string } };
+        }
+      ).markdownIt;
+
+      markdownIt.options.highlight = () => {
+        throw new Error('forced grammar load failure');
+      };
+
+      const result = renderService.render(highlightingSamples.typescript, DEFAULT_DOCUMENT_PATH);
+      const document = new JSDOM(`<main>${result.html}</main>`).window.document;
+
+      expect(document.querySelector('pre.shiki')).toBeNull();
+      expect(document.querySelector('pre > code.language-typescript')?.textContent).toContain(
+        'const x: number = 42;',
+      );
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('TC-5.2b: changing languages on separate renders does not leak highlighting state', async () => {
+      await withRenderedFile(highlightingSamples.javascript, ({ document }) => {
+        expect(document.querySelector('pre.shiki code.language-javascript')?.textContent).toContain(
+          'console.log(x);',
+        );
+      });
+
+      await withRenderedFile(highlightingSamples.python, ({ document }) => {
+        expect(document.querySelector('pre.shiki code.language-python')?.textContent).toContain(
+          'def hello',
+        );
+      });
+    });
+
+    it('Non-TC: leaves mermaid blocks unhighlighted and wrapped in the placeholder container', async () => {
+      await withRenderedFile(mermaidMarkdown, ({ document }) => {
+        expect(document.querySelector('.mermaid-placeholder')).not.toBeNull();
+        expect(document.querySelector('pre.shiki')).toBeNull();
+      });
+    });
+
+    it('Non-TC: defaultColor false emits CSS variables instead of inline color styles on tokens', async () => {
+      await withRenderedFile(highlightingSamples.javascript, ({ document }) => {
+        const tokenSpans = [...document.querySelectorAll('pre.shiki code span')];
+        expect(tokenSpans.length).toBeGreaterThan(0);
+        expect(
+          tokenSpans.every((token) => !(token.getAttribute('style') ?? '').includes('color:')),
+        ).toBe(true);
+      });
+    });
+
+    it('Non-TC: escapes mermaid source HTML inside the placeholder code block', async () => {
+      await withRenderedFile(
+        '```mermaid\ngraph TD\n  A["<div>safe</div>"] --> B\n```',
+        ({ body, document }) => {
+          expect(document.querySelector('.mermaid-placeholder')).not.toBeNull();
+          expect(document.querySelector('code.language-mermaid')?.innerHTML).toContain(
+            '&lt;div&gt;safe&lt;/div&gt;',
+          );
+          expect(body.html).not.toContain('<div>safe</div>');
+        },
+      );
+    });
+
+    it('Non-TC: renders empty fenced code blocks without error', async () => {
+      await withRenderedFile('```\n```', ({ response, document }) => {
+        expect(response.statusCode).toBe(200);
+        expect(document.querySelector('pre > code')?.textContent).toBe('');
+      });
     });
   });
 });

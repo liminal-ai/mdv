@@ -46,7 +46,7 @@ function execOsascript(command: string): Promise<{ stdout: string; stderr: strin
 export async function fileRoutes(app: FastifyInstance) {
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
   const fileService = new FileService();
-  const renderService = new RenderService();
+  const renderService = await RenderService.create();
 
   typedApp.get(
     '/api/file',

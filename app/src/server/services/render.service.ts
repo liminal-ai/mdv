@@ -3,8 +3,10 @@ import path from 'node:path';
 import DOMPurify from 'isomorphic-dompurify';
 import GithubSlugger from 'github-slugger';
 import MarkdownIt from 'markdown-it';
+import { fromHighlighter } from '@shikijs/markdown-it';
 import markdownItAnchor from 'markdown-it-anchor';
 import markdownItTaskLists from 'markdown-it-task-lists';
+import { createHighlighter } from 'shiki';
 import type { RenderWarning } from '../schemas/index.js';
 
 const IMG_TAG_RE = /<img\s+([^>]*?)src\s*=\s*(?:(["'])(.*?)\2|([^>\s]+))([^>]*?)>/gi;
@@ -28,12 +30,89 @@ export interface RenderResult {
 
 type ImagePlaceholderType = 'missing' | 'remote-blocked' | 'unsupported';
 
-function createRenderer(slugger: GithubSlugger): MarkdownIt {
+const SHIKI_THEMES = {
+  light: 'github-light',
+  dark: 'github-dark',
+} as const;
+
+const shikiHighlighterPromise = createHighlighter({
+  themes: [SHIKI_THEMES.light, SHIKI_THEMES.dark],
+  langs: [
+    'javascript',
+    'typescript',
+    'python',
+    'go',
+    'rust',
+    'java',
+    'c',
+    'cpp',
+    'sql',
+    'yaml',
+    'json',
+    'bash',
+    'html',
+    'css',
+    'markdown',
+    'toml',
+    'dockerfile',
+  ],
+  langAlias: {
+    js: 'javascript',
+    ts: 'typescript',
+    py: 'python',
+    sh: 'bash',
+    yml: 'yaml',
+  },
+});
+
+async function createRenderer(slugger: GithubSlugger): Promise<MarkdownIt> {
   const md = new MarkdownIt({
     html: true,
     linkify: true,
     typographer: false,
   });
+
+  const originalFence = md.renderer.rules.fence;
+  const originalHighlight = md.options.highlight;
+  const highlighter = await shikiHighlighterPromise;
+  const shikiPlugin = fromHighlighter(highlighter, {
+    themes: SHIKI_THEMES,
+    defaultColor: false,
+    fallbackLanguage: undefined,
+  });
+
+  md.use(shikiPlugin);
+
+  const shikiHighlight = md.options.highlight;
+  md.options.highlight = (code, lang, attrs) => {
+    const normalizedLang = lang.trim().toLowerCase();
+
+    if (!normalizedLang || normalizedLang === 'mermaid') {
+      return '';
+    }
+
+    return shikiHighlight ? shikiHighlight(code, normalizedLang, attrs) : '';
+  };
+
+  const shikiFence = md.renderer.rules.fence;
+  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+    try {
+      return shikiFence
+        ? shikiFence(tokens, idx, options, env, self)
+        : self.renderToken(tokens, idx, options);
+    } catch {
+      const previousHighlight = md.options.highlight;
+      md.options.highlight = originalHighlight;
+
+      try {
+        return originalFence
+          ? originalFence(tokens, idx, options, env, self)
+          : self.renderToken(tokens, idx, options);
+      } finally {
+        md.options.highlight = previousHighlight;
+      }
+    }
+  };
 
   md.use(markdownItTaskLists, {
     enabled: false,
@@ -153,9 +232,15 @@ export class RenderService {
   private readonly slugger: GithubSlugger;
   private readonly markdownIt: MarkdownIt;
 
-  constructor() {
-    this.slugger = new GithubSlugger();
-    this.markdownIt = createRenderer(this.slugger);
+  private constructor(slugger: GithubSlugger, markdownIt: MarkdownIt) {
+    this.slugger = slugger;
+    this.markdownIt = markdownIt;
+  }
+
+  static async create(): Promise<RenderService> {
+    const slugger = new GithubSlugger();
+    const markdownIt = await createRenderer(slugger);
+    return new RenderService(slugger, markdownIt);
   }
 
   render(content: string, documentPath: string): RenderResult {
