@@ -1,10 +1,10 @@
 import type { RenderWarning } from '../../shared/types.js';
 import { Editor } from './editor.js';
-import { insertLink } from './insert-tools.js';
+import { insertLink, insertTable } from './insert-tools.js';
 import { attach as attachLinkHandler } from '../utils/link-handler.js';
 import type { StateStore, TabState } from '../state.js';
 import { createElement } from '../utils/dom.js';
-import { INSERT_LINK_EVENT } from '../utils/keyboard.js';
+import { INSERT_LINK_EVENT, INSERT_TABLE_EVENT } from '../utils/keyboard.js';
 import { renderMermaidBlocks } from '../utils/mermaid-renderer.js';
 
 function fileName(filePath: string): string {
@@ -27,6 +27,20 @@ function warningsEqual(left: RenderWarning[], right: RenderWarning[]): boolean {
       warning.line === other.line
     );
   });
+}
+
+function isBinaryLikeContent(content: string): boolean {
+  for (let index = 0; index < content.length; index += 1) {
+    const code = content.charCodeAt(index);
+    const isAllowedWhitespace = code === 9 || code === 10 || code === 13;
+    const isControlCharacter = (code >= 0 && code <= 31) || code === 127;
+
+    if (isControlCharacter && !isAllowedWhitespace) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export interface ContentAreaActions {
@@ -54,6 +68,9 @@ export function mountContentArea(
   let lastVisibleTabId: string | null = null;
   let lastVisibleMode: TabState['mode'] | null = null;
   const lastRenderedDirtyContent = new Map<string, string>();
+
+  const shouldKeepDeletedEditorVisible = (tab: TabState): boolean =>
+    tab.status === 'deleted' && tab.mode === 'edit' && tab.dirty && tab.editContent !== null;
 
   const getScrollPercentage = (element: HTMLElement | null): number => {
     if (!element) {
@@ -368,6 +385,11 @@ export function mountContentArea(
         : null;
 
     const bodyChildren: Array<Node | null> = [];
+    const showDeletedEditor = shouldKeepDeletedEditorVisible(activeTab);
+    const showBinaryFallback =
+      activeTab.status === 'ok' &&
+      activeTab.mode === 'edit' &&
+      isBinaryLikeContent(activeTab.content);
 
     if (activeTab.loading) {
       bodyChildren.push(
@@ -392,12 +414,30 @@ export function mountContentArea(
           children: [
             createElement('div', {
               className: 'content-area__deleted-banner',
-              text: 'File not found. Showing the last known rendered content.',
+              text: showDeletedEditor
+                ? 'File not found. Your unsaved edits are still available below.'
+                : 'File not found. Showing the last known rendered content.',
             }),
-            createElement('article', {
-              className: 'markdown-body markdown-body--muted',
-              attrs: { 'aria-label': activeTab.filename },
-            }),
+            showDeletedEditor
+              ? createElement('div', {
+                  className: 'content-area__document',
+                  children: [
+                    createElement('article', {
+                      className: 'markdown-body markdown-body--muted',
+                      attrs: {
+                        'aria-label': activeTab.filename,
+                        hidden: true,
+                      },
+                    }),
+                    createElement('div', {
+                      className: 'editor-container',
+                    }),
+                  ],
+                })
+              : createElement('article', {
+                  className: 'markdown-body markdown-body--muted',
+                  attrs: { 'aria-label': activeTab.filename },
+                }),
           ],
         }),
       );
@@ -418,21 +458,27 @@ export function mountContentArea(
               className: 'markdown-body',
               attrs: {
                 'aria-label': activeTab.filename,
-                hidden: activeTab.mode === 'edit',
+                hidden: activeTab.mode === 'edit' && !showBinaryFallback,
               },
             }),
-            createElement('div', {
-              className: 'editor-container',
-              attrs: {
-                hidden: activeTab.mode !== 'edit',
-              },
-            }),
+            !showBinaryFallback
+              ? createElement('div', {
+                  className: 'editor-container',
+                  attrs: {
+                    hidden: activeTab.mode !== 'edit',
+                  },
+                })
+              : null,
           ],
         }),
       );
     }
 
-    if (activeTab.mode !== 'edit') {
+    if (
+      activeTab.mode !== 'edit' ||
+      (!showDeletedEditor && activeTab.status === 'deleted') ||
+      showBinaryFallback
+    ) {
       destroyEditor();
     }
 
@@ -461,14 +507,14 @@ export function mountContentArea(
       return;
     }
 
-    if (activeTab.status === 'deleted') {
+    if (activeTab.status === 'deleted' && !showDeletedEditor) {
       markdownBody.innerHTML = activeTab.html;
       lastVisibleTabId = activeTab.id;
       lastVisibleMode = 'render';
       return;
     }
 
-    if (activeTab.mode === 'edit') {
+    if (activeTab.mode === 'edit' && !showBinaryFallback) {
       const nextEditorHost = container.querySelector<HTMLElement>('.editor-container');
       if (!nextEditorHost) {
         return;
@@ -610,15 +656,33 @@ export function mountContentArea(
     insertLink(editor);
   };
 
+  const handleInsertTable = () => {
+    const activeTab = getActiveTab();
+    if (!activeTab || activeTab.mode !== 'edit' || !editor || editorTabId !== activeTab.id) {
+      return;
+    }
+
+    if (
+      typeof window.prompt !== 'function' ||
+      navigator.userAgent.toLowerCase().includes('jsdom')
+    ) {
+      return;
+    }
+
+    insertTable(editor);
+  };
+
   void render();
   const unsubscribe = store.subscribe(() => {
     void render();
   });
   document.addEventListener(INSERT_LINK_EVENT, handleInsertLink);
+  document.addEventListener(INSERT_TABLE_EVENT, handleInsertTable);
 
   return () => {
     unsubscribe();
     document.removeEventListener(INSERT_LINK_EVENT, handleInsertLink);
+    document.removeEventListener(INSERT_TABLE_EVENT, handleInsertTable);
     for (const timer of dirtyTimers.values()) {
       clearTimeout(timer);
     }

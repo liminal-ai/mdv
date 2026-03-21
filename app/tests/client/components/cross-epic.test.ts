@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../../src/client/api.js';
 import type { ClientState, TabState } from '../../../src/client/state.js';
 import { cleanTab, dirtyTab, saveResponse } from '../../fixtures/edit-samples.js';
+import { binaryMarkdown } from '../../fixtures/markdown-samples.js';
 import { emptySession } from '../../fixtures/session.js';
 
 interface MockEditorOptions {
@@ -451,22 +452,24 @@ describe('cross-epic integration', () => {
   });
 
   it('TC-10.2b: Binary content in editor', async () => {
-    const { store } = await renderApp({
+    await renderApp({
       sessionOverrides: {
+        defaultOpenMode: 'edit',
         openTabs: ['/Users/leemoore/code/docs/binary.md'],
         activeTab: '/Users/leemoore/code/docs/binary.md',
       },
-    });
-    seedTabState(store, '/Users/leemoore/code/docs/binary.md', {
-      status: 'error',
-      errorMessage: 'This file does not contain valid markdown text.',
-      mode: 'edit',
+      readFileOverrides: {
+        '/Users/leemoore/code/docs/binary.md': {
+          mode: 'edit',
+          content: binaryMarkdown,
+          html: '<h1>Binary Fixture</h1>',
+        },
+      },
     });
     await flushUi();
 
-    expect(document.querySelector('.content-area__error')?.textContent ?? '').toContain(
-      'This file does not contain valid markdown text.',
-    );
+    expect(editorRecords).toHaveLength(0);
     expect(document.querySelector('.editor-container')).toBeNull();
+    expect(document.querySelector('.markdown-body')?.innerHTML).toContain('Binary Fixture');
   });
 });

@@ -163,6 +163,27 @@ describe('content toolbar', () => {
     expect(actions.onExportFormat).toHaveBeenCalledWith('pdf');
   });
 
+  it('AC-9.2: exposes an Insert Table trigger while editing', () => {
+    const handler = vi.fn();
+    document.addEventListener('mdv:insert-table', handler as EventListener);
+
+    renderContentToolbar({
+      tabs: [{ ...singleTab, mode: 'edit' }],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+      (candidate) => candidate.textContent === 'Insert Table',
+    );
+
+    expect(button).toBeTruthy();
+    button?.click();
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    document.removeEventListener('mdv:insert-table', handler as EventListener);
+  });
+
   it('TC-6.5a: shows the warning count when the active tab has warnings', () => {
     renderContentToolbar({
       tabs: [

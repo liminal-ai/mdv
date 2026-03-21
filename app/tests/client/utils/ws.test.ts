@@ -182,6 +182,26 @@ describe('websocket client integration', () => {
     expect(document.querySelector('.markdown-body')?.innerHTML).toContain('Updated');
   });
 
+  it('ignores websocket payloads that fail schema validation', async () => {
+    const api = await renderApp({
+      openTabs: ['/docs/live.md'],
+      activeTab: '/docs/live.md',
+    });
+    const socket = MockWebSocket.instances[0]!;
+    socket.open();
+    await flushPromises();
+
+    socket.receive({
+      type: 'file-change',
+      path: 42,
+      event: 'modified',
+    });
+    await flushPromises();
+
+    expect(api.readFile).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('TC-7.2c: Auto-reload preserves the active tab scroll position approximately', async () => {
     const api = await renderApp({
       openTabs: ['/docs/live.md'],

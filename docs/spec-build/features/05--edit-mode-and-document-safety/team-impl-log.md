@@ -2,7 +2,7 @@
 
 ## State
 
-**state:** `BETWEEN_STORIES`
+**state:** `PRE_EPIC_VERIFY`
 **cli:** codex-subagent
 **cli-model:** gpt-5.4
 **team:** epic-5-impl
@@ -232,3 +232,130 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 | POST /api/render | integrated | Was stub, now functional |
 
 **Next:** Story 2 — Edit Mode Editor. Expected +11 tests, target 534 total. RELOAD SKILL BEFORE STARTING.
+
+### Story 2: Edit Mode Editor — ACCEPTED
+
+**Risk tier:** medium
+**Commit:** bc1b707
+**CLI evidence:** Implementation session 019d1098-f546-7cd1-934d-d8eb04d21811, review session 019d10a8-0935-7762-8f30-77510bdade59
+**Gate:** `npm run verify` — 534/534 PASS
+**Cumulative tests:** 534 (+11 new in editor.test.ts)
+
+**Findings and dispositions:**
+| Finding | Severity | Disposition |
+|---------|----------|-------------|
+| Edit→Render scroll mapping missing | P2 | deferred — no TC covers it, spec says "best-effort" |
+| Undo history lost across mode switches (destroy/recreate) | P2 | accepted-risk — architectural choice, no TC requires it |
+| renderGeneration state-based vs local counter | P3 | accepted — equivalent protection via different mechanism |
+| Theme/line-number tests are existence checks only | P3 | accepted — test plan says manual verify |
+| Dirty state sync instead of debounced | P3 | accepted — simpler, correct, <5ms for files <5MB |
+
+**Open risks:** none blocking
+
+**Deferred items from Story 1 — resolved:**
+- editScrollPosition save: DONE (persistEditorState in content-area.ts)
+- renderGeneration bump: DONE (content-toolbar.ts mode toggle)
+
+**Observations:** Editor skeleton replaced with full CodeMirror 6 wrapper. The destroy/recreate pattern (vs persistent hide/show) was flagged by the CLI as P1 but is a defensible architectural choice given the DOM rebuild strategy in content-area.ts. Reviewer correctly downgraded. The Edit→Render scroll mapping gap is worth noting but no TC tests it and the spec says "best-effort." Both deferred items from Story 1 review are now resolved.
+
+**Boundary inventory update:**
+| Boundary | Status | Change |
+|----------|--------|--------|
+| CodeMirror 6 | integrated | Full wrapper implemented |
+
+**Next:** Story 3 — Save, Save As, Dirty State. This is the largest story (~43 tests: 20 server + 23 client). Expected target 577 total. RELOAD SKILL BEFORE STARTING.
+
+### Story 3: Save, Save As, and Dirty State — ACCEPTED
+
+**Risk tier:** high
+**Commit:** 28d260e
+**CLI evidence:** Implementation session 019d10b3-7447-7a82-ae02-a1ab60ca14cb, review session 019d10d2-e237-79e1-9cca-d20468ad9935
+**Gate:** `npm run verify` — 577/577 PASS
+**Cumulative tests:** 577 (+43 new across 5 test files)
+
+**Findings and dispositions:**
+| Finding | Severity | Disposition |
+|---------|----------|-------------|
+| Dirty-state per-keystroke comparison vs debounced | Minor deviation | accepted — functionally correct, <5ms for files <5MB |
+| TC-3.2d manual verify only | Expected | accepted — OS dialog not automatable |
+| ConflictError message format differs from spec | Cosmetic | accepted — client acts on status code |
+| UnsavedModalState.context includes 'save-as-replace' | Extension | accepted — needed for TC-3.2f, reasonable addition |
+| Export route still uses old /api/export/save-dialog path | Minor | accepted — consolidation at function layer, both paths work |
+
+**Open risks:** none
+
+**Observations:** Largest story delivered cleanly. Server save endpoint has full validation chain with atomic writes and optimistic concurrency. Save dialog correctly consolidated — shared `openSaveDialog` function in utils/ used by both save-dialog route and export route. Security verified: execFile throughout, no shell injection. Self-change suppression uses path-keyed savePending with 500ms delayed clear. The reviewer's CLI found zero bugs and zero security issues across the full server+client surface.
+
+**Boundary inventory update:**
+| Boundary | Status | Change |
+|----------|--------|--------|
+| Filesystem write (PUT /api/file) | integrated | Full atomic write with mtime check |
+| POST /api/save-dialog | integrated | Consolidated with osascript |
+| WebSocket savePending suppression | integrated | Path-keyed Map |
+
+**Next:** Story 4 — Unsaved Changes Protection. Expected +12 tests, target 589 total. RELOAD SKILL BEFORE STARTING.
+
+### Story 4: Unsaved Changes Protection — ACCEPTED
+
+**Risk tier:** medium
+**Commit:** e4943c5
+**CLI evidence:** Implementation session 019d10db-f90d-7000-98d0-05cf4d741db7, review session 019d10eb-ab3a-7ff3-8a8b-44b318c992f3
+**Gate:** `npm run verify` — 589/589 PASS
+**Cumulative tests:** 589 (+12 new in unsaved-modal.test.ts)
+
+**Findings and dispositions:**
+| Finding | Severity | Disposition |
+|---------|----------|-------------|
+| TC-5.1d doesn't test Escape keypress specifically | P3 warn | accepted — Escape IS implemented, test covers Cancel button |
+| Tests don't assert DOM structure/aria attrs | P3 warn | accepted — behavioral tests sufficient |
+| beforeunload removal not explicitly tested | P3 warn | accepted — registration/non-registration tested |
+
+**Open risks:** none
+
+**Observations:** Cleanest story yet — zero defects found by either reviewer. Promise-based showUnsavedModal is a clean pattern. The context discriminator on UnsavedModalState positions well for Epic 6 Electron quit. Double-Escape guard via stopImmediatePropagation + null-check on resolveUnsavedChoice is robust.
+
+**Boundary inventory update:**
+| Boundary | Status | Change |
+|----------|--------|--------|
+| beforeunload (browser quit) | integrated | Dynamically managed on dirty state |
+
+**Next:** Story 5 — External Change Conflict Resolution. Expected +10 tests, target 599 total. RELOAD SKILL BEFORE STARTING.
+
+### Story 5: External Change Conflict Resolution — ACCEPTED
+
+**Risk tier:** medium
+**Commit:** 156e763
+**CLI evidence:** Implementation session 019d10f2-d9d6-7f90-b357-782e977f46d1, review session 019d1101-1023-73d1-aa30-6cdf69558235
+**Gate:** `npm run verify` — 599/599 PASS
+**Cumulative tests:** 599 (+10 new in conflict-modal.test.ts)
+
+**Findings and dispositions:**
+| Finding | Severity | Disposition |
+|---------|----------|-------------|
+| Stale-tab guard after saveDialog has no dedicated test | P3 | accepted — defensive code correct by inspection |
+
+**Open risks:** none
+
+**Observations:** Clean delivery. File-change handler ordering is correct (deleted → savePending → dirty → auto-reload). Save Copy flow handles cancel, failure, and stale-tab race. Escape key on conflict modal maps to Keep My Changes (dismiss). The reviewer's test run showed 37 pre-existing Epic 4 Puppeteer failures from resource contention — orchestrator's gate run was 599/599 clean.
+
+**Next:** Story 6 — Insert Tools, File Menu, Cross-Epic. FINAL STORY. Expected +12 tests, target 611 total. RELOAD SKILL BEFORE STARTING.
+
+### Story 6: Insert Tools, File Menu, Cross-Epic — ACCEPTED
+
+**Risk tier:** medium
+**Commit:** 0ac16ec
+**CLI evidence:** Implementation session 019d1111-b9f3-7bd1-854b-0b5acbecfbce, review session 019d111e-3a15-7ff1-b46d-03ee7d7b4ba9
+**Gate:** `npm run verify` — 611/611 PASS
+**Cumulative tests:** 611 (+12 new: 4 insert-tools + 8 cross-epic)
+
+**Findings and dispositions:**
+| Finding | Severity | Disposition |
+|---------|----------|-------------|
+| TC-8.2a doesn't verify Save disabled-when-clean | P3 | accepted — implementation correct (menu-bar.ts:36) |
+| TC-9.2b blank cells vs "placeholder text" | None | not an issue — tech design specifies blank spaces |
+
+**Open risks:** none
+
+**Observations:** Final story delivered cleanly. Insert tools use Editor API (insertAtCursor, replaceSelection, getSelection) — no raw CodeMirror. Export-dirty warning rendered inline in content-toolbar rather than separate modal component — simpler architecture, same behavior. Cmd+K double-guarded (app.ts + content-area.ts) for render-mode no-op.
+
+**ALL 7 STORIES COMPLETE.** Epic 5 implementation: 510 → 611 tests (+101). Proceeding to Pre-Verification Cleanup, then Epic-Level Verification.

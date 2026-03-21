@@ -150,6 +150,8 @@ function buildLoadedTab(
   existing?: TabState,
   defaultMode: ClientState['session']['defaultOpenMode'] = 'render',
 ): TabState {
+  const preserveEditState = Boolean(existing?.dirty);
+
   return {
     id: existing?.id ?? createTabId(),
     path: existing?.path ?? response.path,
@@ -165,11 +167,11 @@ function buildLoadedTab(
     size: response.size,
     status: 'ok',
     mode: existing?.mode ?? defaultMode,
-    editContent: existing?.editContent ?? null,
+    editContent: preserveEditState ? (existing?.editContent ?? null) : null,
     editScrollPosition: existing?.editScrollPosition ?? 0,
     cursorPosition: existing?.cursorPosition ?? null,
-    dirty: existing?.dirty ?? false,
-    editedSinceLastSave: existing?.editedSinceLastSave ?? false,
+    dirty: preserveEditState,
+    editedSinceLastSave: preserveEditState ? (existing?.editedSinceLastSave ?? false) : false,
   };
 }
 
@@ -1234,24 +1236,19 @@ export async function bootstrapApp(
       return false;
     }
 
-    const duplicateTab = state.tabs.find(
+    let duplicateTab = state.tabs.find(
       (tab) =>
         tab.id !== activeTab.id &&
         (tab.path === selection.path || tab.canonicalPath === selection.path),
     );
 
     if (duplicateTab?.dirty) {
-      store.update(
-        {
-          unsavedModal: {
-            tabId: duplicateTab.id,
-            filename: duplicateTab.filename,
-            context: 'save-as-replace',
-          },
-        },
-        ['unsavedModal'],
-      );
-      return false;
+      const closed = await requestTabClose(duplicateTab.id, 'save-as-replace');
+      if (!closed) {
+        return false;
+      }
+
+      duplicateTab = undefined;
     }
 
     const contentToSave = activeTab.editContent ?? activeTab.content;

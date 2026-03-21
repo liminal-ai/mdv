@@ -1,6 +1,7 @@
 import type { SessionState } from '../../shared/types.js';
 import type { StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
+import { INSERT_TABLE_EVENT } from '../utils/keyboard.js';
 import { WARNING_PANEL_TOGGLE_EVENT } from './warning-panel.js';
 
 type OpenMenuId = 'default-mode' | 'export' | null;
@@ -352,6 +353,24 @@ export function mountContentToolbar(
                     children:
                       activeTab.mode === 'edit'
                         ? [
+                            createElement('div', {
+                              className: 'content-toolbar__edit-tools',
+                              children: [
+                                createElement('button', {
+                                  className: 'content-toolbar__button',
+                                  text: 'Insert Table',
+                                  attrs: {
+                                    type: 'button',
+                                    title: 'Insert markdown table',
+                                  },
+                                  on: {
+                                    click: () => {
+                                      document.dispatchEvent(new CustomEvent(INSERT_TABLE_EVENT));
+                                    },
+                                  },
+                                }),
+                              ],
+                            }),
                             createElement('span', {
                               className: 'cursor-position',
                               text: cursorLabel,

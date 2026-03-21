@@ -681,6 +681,57 @@ describe('external change conflict resolution', () => {
       editContent: dirtyTab.editContent,
       dirty: true,
     });
+    expect(document.querySelector('.content-area__deleted-banner')?.textContent).toContain(
+      'Your unsaved edits are still available below.',
+    );
+    expect(document.querySelector('.editor-container')).not.toBeNull();
+  });
+
+  it('AC-6.2: Clean edit-mode reload clears stale editor buffers and shows fresh disk content', async () => {
+    const freshDiskResponse = createFileResponse(cleanTab.path, {
+      content: '# README\n\nFresh from disk.',
+      html: '<h1>Fresh from disk</h1>',
+      modifiedAt: '2026-03-20T10:30:00Z',
+      size: 28,
+    });
+    const readFile = vi
+      .fn()
+      .mockResolvedValueOnce({ ...cleanTab, mode: 'edit' })
+      .mockResolvedValueOnce({ ...freshDiskResponse, mode: 'edit' });
+    const { api, store, wsClient } = await renderApp({
+      sessionOverrides: {
+        openTabs: [cleanTab.path],
+        activeTab: cleanTab.path,
+      },
+      apiOverrides: { readFile },
+    });
+    seedTabState(store, cleanTab.path, {
+      mode: 'edit',
+      editContent: '# README\n\nStale editor buffer.',
+      dirty: false,
+      editedSinceLastSave: false,
+    });
+    await flushUi();
+
+    wsClient.emit('file-change', {
+      type: 'file-change',
+      path: cleanTab.path,
+      event: 'modified',
+    });
+    await flushUi();
+
+    const tab = asTestStore(store)
+      .get()
+      .tabs.find((candidate) => candidate.path === cleanTab.path);
+
+    expect(api.readFile).toHaveBeenCalledTimes(2);
+    expect(tab).toMatchObject({
+      content: freshDiskResponse.content,
+      editContent: null,
+      dirty: false,
+      modifiedAt: freshDiskResponse.modifiedAt,
+    });
+    expect(editorRecords.at(-1)?.setContent).toHaveBeenLastCalledWith(freshDiskResponse.content);
   });
 
   it('Non-TC: savePending suppresses self-change without modal or reload', async () => {

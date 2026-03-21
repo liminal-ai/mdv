@@ -70,6 +70,13 @@
 .status-area {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.content-toolbar__edit-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .dropdown {

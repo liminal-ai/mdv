@@ -560,6 +560,125 @@ describe('save and dirty state integration', () => {
     });
   });
 
+  it('TC-3.2f: Save As continues after saving the conflicting dirty tab', async () => {
+    const targetPath = cleanTab.path;
+    const { api, store } = await renderApp({
+      sessionOverrides: {
+        openTabs: [targetPath, dirtyTab.path],
+        activeTab: dirtyTab.path,
+      },
+      apiOverrides: {
+        saveDialog: vi.fn().mockResolvedValue({ path: targetPath }),
+        saveFile: vi
+          .fn()
+          .mockResolvedValueOnce({
+            path: targetPath,
+            modifiedAt: '2026-03-20T10:06:00Z',
+            size: 20,
+          })
+          .mockResolvedValueOnce({
+            path: targetPath,
+            modifiedAt: '2026-03-20T10:07:00Z',
+            size: saveResponse.size,
+          }),
+      },
+    });
+    seedTabState(store, targetPath, {
+      id: 'tab-existing-dirty',
+      filename: 'readme.md',
+      mode: 'edit',
+      editContent: '# Existing dirty',
+      dirty: true,
+      editedSinceLastSave: true,
+      modifiedAt: cleanTab.modifiedAt,
+    });
+    seedTabState(store, dirtyTab.path, {
+      mode: 'edit',
+      editContent: dirtyTab.editContent,
+      dirty: true,
+      editedSinceLastSave: true,
+    });
+    await flushUi();
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', metaKey: true, shiftKey: true, bubbles: true }),
+    );
+    await flushUi();
+
+    Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent === 'Save and Close')
+      ?.click();
+    await flushUi();
+    await flushUi();
+
+    expect(api.saveFile).toHaveBeenNthCalledWith(1, {
+      path: targetPath,
+      content: '# Existing dirty',
+      expectedModifiedAt: cleanTab.modifiedAt,
+    });
+    expect(api.saveFile).toHaveBeenNthCalledWith(2, {
+      path: targetPath,
+      content: dirtyTab.editContent,
+      expectedModifiedAt: null,
+    });
+    expect(asTestStore(store).get().unsavedModal).toBeNull();
+    expect(asTestStore(store).get().tabs).toHaveLength(1);
+    expect(asTestStore(store).get().tabs[0]).toMatchObject({
+      path: targetPath,
+      dirty: false,
+      content: dirtyTab.editContent,
+    });
+  });
+
+  it('TC-3.2f: Save As continues after discarding the conflicting dirty tab', async () => {
+    const targetPath = cleanTab.path;
+    const { api, store } = await renderApp({
+      sessionOverrides: {
+        openTabs: [targetPath, dirtyTab.path],
+        activeTab: dirtyTab.path,
+      },
+      apiOverrides: {
+        saveDialog: vi.fn().mockResolvedValue({ path: targetPath }),
+      },
+    });
+    seedTabState(store, targetPath, {
+      id: 'tab-existing-dirty',
+      filename: 'readme.md',
+      mode: 'edit',
+      editContent: '# Existing dirty',
+      dirty: true,
+      editedSinceLastSave: true,
+    });
+    seedTabState(store, dirtyTab.path, {
+      mode: 'edit',
+      editContent: dirtyTab.editContent,
+      dirty: true,
+      editedSinceLastSave: true,
+    });
+    await flushUi();
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', metaKey: true, shiftKey: true, bubbles: true }),
+    );
+    await flushUi();
+
+    Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
+      .find((button) => button.textContent === 'Discard Changes')
+      ?.click();
+    await flushUi();
+    await flushUi();
+
+    expect(api.saveFile).toHaveBeenCalledTimes(1);
+    expect(api.saveFile).toHaveBeenCalledWith({
+      path: targetPath,
+      content: dirtyTab.editContent,
+      expectedModifiedAt: null,
+    });
+    expect(asTestStore(store).get().unsavedModal).toBeNull();
+    expect(asTestStore(store).get().tabs).toHaveLength(1);
+    expect(asTestStore(store).get().tabs[0]?.path).toBe(targetPath);
+  });
+
   it('TC-4.1a: Tab dirty dot appears when dirty', async () => {
     const { store } = await renderApp({
       sessionOverrides: { openTabs: [dirtyTab.path], activeTab: dirtyTab.path },

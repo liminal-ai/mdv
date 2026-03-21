@@ -1,3 +1,4 @@
+import { ServerWsMessageSchema } from '../../server/schemas/index.js';
 import type { ClientWsMessage, ServerWsMessage } from '../../shared/types.js';
 
 type ServerMessageByType<T extends ServerWsMessage['type']> = Extract<ServerWsMessage, { type: T }>;
@@ -69,7 +70,13 @@ export class WsClient {
       }
 
       try {
-        const message = JSON.parse(event.data) as Partial<ServerWsMessage>;
+        const parsed = JSON.parse(event.data);
+        const result = ServerWsMessageSchema.safeParse(parsed);
+        if (!result.success) {
+          return;
+        }
+
+        const message = result.data;
         if (message.type === 'file-change' || message.type === 'error') {
           this.dispatch(message.type, message as WsClientEventMap[typeof message.type]);
         }
