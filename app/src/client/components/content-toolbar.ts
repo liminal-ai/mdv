@@ -30,10 +30,6 @@ function canExport(store: StateStore): boolean {
   return activeTab?.status === 'ok' && !state.exportState.inProgress;
 }
 
-export function showEditModeComingSoonTooltip(): void {
-  // Deprecated in Epic 5: Edit mode is now active.
-}
-
 export function mountContentToolbar(
   container: HTMLElement,
   store: StateStore,

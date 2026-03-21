@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 interface MockEditorOptions {
   onContentChange: (content: string) => void;
   onCursorChange: (line: number, column: number) => void;
-  shouldSuppressUpdates: () => boolean;
 }
 
 interface MockEditorRecord {
@@ -43,7 +42,6 @@ vi.mock('../../../src/client/components/editor.js', () => ({
         onCursorChange: (line: number, column: number) => {
           options.onCursorChange(line, column);
         },
-        shouldSuppressUpdates: options.shouldSuppressUpdates,
       },
       setContent: vi.fn((nextContent: string) => {
         content = nextContent;

@@ -163,7 +163,7 @@ describe('file save routes', () => {
     expect(response.json()).toEqual({
       error: {
         code: 'CONFLICT',
-        message: `File changed on disk since last load: ${DOCUMENT_PATH}`,
+        message: `File has been modified externally. Expected mtime: ${MODIFIED_AT}, actual: ${NEW_MODIFIED_AT}. Path: ${DOCUMENT_PATH}`,
       },
     });
     expect(vi.mocked(fs.writeFile)).not.toHaveBeenCalled();

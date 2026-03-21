@@ -60,7 +60,9 @@ export class ConflictError extends Error {
   readonly actual: string;
 
   constructor(path: string, expected: string, actual: string) {
-    super(`File changed on disk since last load: ${path}`);
+    super(
+      `File has been modified externally. Expected mtime: ${expected}, actual: ${actual}. Path: ${path}`,
+    );
     this.name = 'ConflictError';
     this.expected = expected;
     this.actual = actual;

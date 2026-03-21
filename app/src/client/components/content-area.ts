@@ -68,6 +68,15 @@ export function mountContentArea(
     return element.scrollTop / maxScroll;
   };
 
+  const setScrollPercentage = (element: HTMLElement | null, percentage: number) => {
+    if (!element) {
+      return;
+    }
+
+    const maxScroll = element.scrollHeight - element.clientHeight;
+    element.scrollTop = Math.max(maxScroll, 0) * percentage;
+  };
+
   const persistEditorState = (
     currentEditor: Editor | null = editor,
     currentEditorTabId: string | null = editorTabId,
@@ -215,7 +224,6 @@ export function mountContentArea(
           cursorPosition: { line, column },
         }));
       },
-      shouldSuppressUpdates: () => false,
     });
 
     return editor;
@@ -349,6 +357,14 @@ export function mountContentArea(
     const renderScrollPercentage =
       activeTab.mode === 'edit' && lastVisibleTabId === activeTab.id && lastVisibleMode === 'render'
         ? getScrollPercentage(container.querySelector<HTMLElement>('.content-area__body'))
+        : null;
+    const editScrollPercentage =
+      activeTab.mode === 'render' &&
+      lastVisibleTabId === activeTab.id &&
+      lastVisibleMode === 'edit' &&
+      editor &&
+      editorTabId === activeTab.id
+        ? editor.getScrollPercentage()
         : null;
 
     const bodyChildren: Array<Node | null> = [];
@@ -534,6 +550,12 @@ export function mountContentArea(
         },
         showError: actions.onLinkError,
       });
+    }
+    if (editScrollPercentage !== null) {
+      setScrollPercentage(
+        container.querySelector<HTMLElement>('.content-area__body'),
+        editScrollPercentage,
+      );
     }
 
     lastVisibleTabId = activeTab.id;

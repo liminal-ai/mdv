@@ -52,11 +52,6 @@
   cursor: default;
 }
 
-.dirty-indicator,
-.cursor-position {
-  color: var(--color-text-secondary);
-}
-
 .content-toolbar__button {
   padding: 4px 10px;
   border: 1px solid var(--color-border);

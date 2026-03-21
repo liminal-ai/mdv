@@ -7,7 +7,6 @@ import { basicSetup } from 'codemirror';
 export interface EditorOptions {
   onContentChange: (content: string) => void;
   onCursorChange: (line: number, column: number) => void;
-  shouldSuppressUpdates: () => boolean;
 }
 
 export class Editor {
@@ -24,7 +23,7 @@ export class Editor {
         markdown(),
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
-          if (this.suppressUpdates || options.shouldSuppressUpdates()) {
+          if (this.suppressUpdates) {
             return;
           }
 

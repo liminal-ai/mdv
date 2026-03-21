@@ -55,6 +55,8 @@ type TestStore = {
   update: (partial: Partial<TestState>, changed: Array<keyof ClientState>) => void;
 };
 
+const renderedStores: TestStore[] = [];
+
 function asTestStore(store: unknown): TestStore {
   return store as TestStore;
 }
@@ -151,6 +153,10 @@ async function renderApp(
   const result = await bootstrapApp(api as never, new MockWsClient() as never);
   await flushUi();
 
+  if ((result as { store?: unknown } | void | undefined)?.store) {
+    renderedStores.push(asTestStore((result as { store: unknown }).store));
+  }
+
   return {
     api,
     store: (result as { store?: unknown } | void as { store?: unknown } | undefined)?.store,
@@ -159,6 +165,10 @@ async function renderApp(
 
 describe('epic 5 keyboard shortcuts', () => {
   afterEach(() => {
+    for (const store of renderedStores) {
+      store.update({ tabs: [] }, ['tabs']);
+    }
+    renderedStores.length = 0;
     document.body.innerHTML = '';
     delete window.__MDV_DISABLE_AUTO_BOOTSTRAP__;
     vi.restoreAllMocks();
@@ -304,5 +314,28 @@ describe('epic 5 keyboard shortcuts', () => {
     await flushUi();
 
     expect(api.saveFile).not.toHaveBeenCalled();
+  });
+
+  it('Non-TC: Cmd+K in render mode is a no-op', async () => {
+    const handler = vi.fn();
+    document.addEventListener('mdv:insert-link', handler as EventListener);
+
+    await renderApp({
+      sessionOverrides: {
+        openTabs: [cleanTab.path],
+        activeTab: cleanTab.path,
+      },
+      readFileOverrides: {
+        [cleanTab.path]: cleanTab,
+      },
+    });
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }),
+    );
+    await flushUi();
+
+    expect(handler).not.toHaveBeenCalled();
+    document.removeEventListener('mdv:insert-link', handler as EventListener);
   });
 });

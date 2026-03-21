@@ -9,7 +9,6 @@ import { emptySession } from '../../fixtures/session.js';
 interface MockEditorOptions {
   onContentChange: (content: string) => void;
   onCursorChange: (line: number, column: number) => void;
-  shouldSuppressUpdates: () => boolean;
 }
 
 interface MockEditorRecord {
@@ -70,7 +69,6 @@ vi.mock('../../../src/client/components/editor.js', () => ({
           options.onContentChange(nextContent);
         },
         onCursorChange: options.onCursorChange,
-        shouldSuppressUpdates: options.shouldSuppressUpdates,
       },
       setContent: vi.fn((nextContent: string) => {
         content = nextContent;

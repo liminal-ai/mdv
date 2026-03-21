@@ -9,7 +9,6 @@ import { emptySession } from '../../fixtures/session.js';
 interface MockEditorOptions {
   onContentChange: (content: string) => void;
   onCursorChange: (line: number, column: number) => void;
-  shouldSuppressUpdates: () => boolean;
 }
 
 interface MockEditorRecord {
@@ -70,7 +69,6 @@ vi.mock('../../../src/client/components/editor.js', () => ({
           options.onContentChange(nextContent);
         },
         onCursorChange: options.onCursorChange,
-        shouldSuppressUpdates: options.shouldSuppressUpdates,
       },
       setContent: vi.fn((nextContent: string) => {
         content = nextContent;
@@ -534,6 +532,53 @@ describe('external change conflict resolution', () => {
     );
     expect(asTestStore(store).get().conflictModal).not.toBeNull();
     expect(getModalTitle()?.textContent).toBe('File changed externally');
+  });
+
+  it('Non-TC: Save Copy aborts if the conflict is dismissed before the dialog resolves', async () => {
+    let resolveSaveDialog: ((value: { path: string } | null) => void) | null = null;
+    const saveDialog = vi.fn(
+      () =>
+        new Promise<{ path: string } | null>((resolve) => {
+          resolveSaveDialog = resolve;
+        }),
+    );
+    const { api, store, wsClient } = await renderApp({
+      sessionOverrides: {
+        openTabs: [dirtyTab.path],
+        activeTab: dirtyTab.path,
+      },
+      readFileOverrides: {
+        [dirtyTab.path]: dirtyTab,
+      },
+      apiOverrides: {
+        saveDialog,
+      },
+    });
+    seedTabState(store, dirtyTab.path, {
+      mode: 'edit',
+      editContent: dirtyTab.editContent,
+      dirty: true,
+      editedSinceLastSave: true,
+    });
+    await flushUi();
+
+    wsClient.emit('file-change', {
+      type: 'file-change',
+      path: dirtyTab.path,
+      event: 'modified',
+    });
+    await flushUi();
+
+    getButtonByText('Save Copy').click();
+    await flushUi();
+
+    asTestStore(store).update({ conflictModal: null }, ['conflictModal']);
+    resolveSaveDialog?.({ path: '/Users/leemoore/code/docs/copy-of-spec.md' });
+    await flushUi();
+
+    expect(api.saveDialog).toHaveBeenCalledTimes(1);
+    expect(api.saveFile).not.toHaveBeenCalled();
+    expect(api.readFile).toHaveBeenCalledTimes(1);
   });
 
   it('TC-6.1g: Conflict while in Render mode still shows modal', async () => {

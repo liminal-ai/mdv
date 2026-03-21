@@ -34,10 +34,11 @@ describe('export save dialog routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/docs',
         defaultFilename: 'architecture.pdf',
+        prompt: 'Export document',
       },
     });
 
@@ -58,10 +59,11 @@ describe('export save dialog routes', () => {
 
     await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/docs',
         defaultFilename: 'architecture.pdf',
+        prompt: 'Export document',
       },
     });
 
@@ -81,10 +83,11 @@ describe('export save dialog routes', () => {
 
     await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/exports',
         defaultFilename: 'architecture.pdf',
+        prompt: 'Export document',
       },
     });
 
@@ -104,10 +107,11 @@ describe('export save dialog routes', () => {
 
     await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/docs',
         defaultFilename: 'readme.docx',
+        prompt: 'Export document',
       },
     });
 
@@ -127,10 +131,11 @@ describe('export save dialog routes', () => {
 
     await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/docs',
         defaultFilename: 'notes.html',
+        prompt: 'Export document',
       },
     });
 
@@ -150,10 +155,11 @@ describe('export save dialog routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/exports',
         defaultFilename: 'architecture.pdf',
+        prompt: 'Export document',
       },
     });
 
@@ -171,10 +177,11 @@ describe('export save dialog routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/docs',
         defaultFilename: 'architecture.pdf',
+        prompt: 'Export document',
       },
     });
 
@@ -190,10 +197,11 @@ describe('export save dialog routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/export/save-dialog',
+      url: '/api/save-dialog',
       payload: {
         defaultPath: '/Users/test/docs',
         defaultFilename: 'architecture.pdf',
+        prompt: 'Export document',
       },
     });
 

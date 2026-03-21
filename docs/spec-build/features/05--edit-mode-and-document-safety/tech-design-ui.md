@@ -426,6 +426,8 @@ function handleSaveSuccess(tab: TabState, newContent: string): void {
 
 The POC's `computeDirty(savedMarkdown, currentMarkdown)` uses simple string equality on every change. Our debounced version is slightly more efficient but converges to the same truth.
 
+Implementation note: the shipped code intentionally deviates here. We use per-keystroke string comparison to keep `dirty` and `editedSinceLastSave` always truthful immediately, including when the user types back to the saved state without waiting for a 300ms debounce window. For our file size limits, that comparison cost is negligible, and the stricter truthfulness is preferable to a transiently stale dirty indicator.
+
 **AC Coverage:** AC-4.1 (tab dirty indicator), AC-4.2 (toolbar dirty indicator), AC-4.3 (per-tab dirty tracking), TC-2.2e (undo back to clean).
 
 ---

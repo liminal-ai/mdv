@@ -8,7 +8,6 @@ import { emptySession } from '../../fixtures/session.js';
 interface MockEditorOptions {
   onContentChange: (content: string) => void;
   onCursorChange: (line: number, column: number) => void;
-  shouldSuppressUpdates: () => boolean;
 }
 
 interface MockEditorRecord {
@@ -63,7 +62,6 @@ vi.mock('../../../src/client/components/editor.js', () => ({
           options.onContentChange(nextContent);
         },
         onCursorChange: options.onCursorChange,
-        shouldSuppressUpdates: options.shouldSuppressUpdates,
       },
       setContent: vi.fn((nextContent: string) => {
         content = nextContent;
@@ -103,6 +101,8 @@ type TestStore = {
   get: () => TestState;
   update: (partial: Partial<TestState>, changed: Array<keyof ClientState>) => void;
 };
+
+const renderedStores: TestStore[] = [];
 
 function asTestStore(store: unknown): TestStore {
   return store as TestStore;
@@ -233,6 +233,8 @@ async function renderApp(
   const result = await bootstrapApp(api as never, wsClient as never);
   await flushUi();
 
+  renderedStores.push(asTestStore((result as { store: unknown }).store));
+
   return {
     api,
     wsClient,
@@ -290,6 +292,10 @@ describe('unsaved changes protection', () => {
   });
 
   afterEach(() => {
+    for (const store of renderedStores) {
+      store.update({ tabs: [], unsavedModal: null }, ['tabs', 'unsavedModal']);
+    }
+    renderedStores.length = 0;
     document.body.innerHTML = '';
     delete window.__MDV_DISABLE_AUTO_BOOTSTRAP__;
     vi.restoreAllMocks();
@@ -402,6 +408,34 @@ describe('unsaved changes protection', () => {
     getTabCloseButton(dirtyTab.filename).click();
     await flushUi();
     getButtonByText('Cancel').click();
+    await flushUi();
+
+    expect(getModalTitle()).toBeNull();
+    expect(getTabLabels()).toEqual([dirtyTab.filename]);
+  });
+
+  it('TC-5.1d: Escape dismisses the unsaved changes modal', async () => {
+    const { store } = await renderApp({
+      sessionOverrides: {
+        openTabs: [dirtyTab.path],
+        activeTab: dirtyTab.path,
+      },
+      readFileOverrides: {
+        [dirtyTab.path]: dirtyTab,
+      },
+    });
+    seedTabState(store, dirtyTab.path, {
+      mode: 'edit',
+      editContent: dirtyTab.editContent,
+      dirty: true,
+      editedSinceLastSave: true,
+    });
+    await flushUi();
+
+    getTabCloseButton(dirtyTab.filename).click();
+    await flushUi();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await flushUi();
 
     expect(getModalTitle()).toBeNull();
@@ -605,6 +639,41 @@ describe('unsaved changes protection', () => {
     });
 
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('beforeunload', expect.any(Function));
+  });
+
+  it('Non-TC: beforeunload protection is removed when the last dirty tab becomes clean', async () => {
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+    const { store } = await renderApp({
+      sessionOverrides: {
+        openTabs: [dirtyTab.path],
+        activeTab: dirtyTab.path,
+      },
+      readFileOverrides: {
+        [dirtyTab.path]: dirtyTab,
+      },
+    });
+    seedTabState(store, dirtyTab.path, {
+      mode: 'edit',
+      editContent: dirtyTab.editContent,
+      dirty: true,
+      editedSinceLastSave: true,
+      modifiedAt: dirtyTab.modifiedAt,
+    });
+    await flushUi();
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', metaKey: true, bubbles: true }),
+    );
+    await flushUi();
+    await flushUi();
+
+    expect(addEventListenerSpy.mock.calls.some(([eventName]) => eventName === 'beforeunload')).toBe(
+      true,
+    );
+    expect(
+      removeEventListenerSpy.mock.calls.some(([eventName]) => eventName === 'beforeunload'),
+    ).toBe(true);
   });
 
   it('Non-TC: Cancel during Close Others stops remaining tab closes', async () => {

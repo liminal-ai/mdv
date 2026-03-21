@@ -216,9 +216,13 @@ export class ApiClient {
     defaultPath: string,
     defaultFilename: string,
   ): Promise<{ path: string } | null> {
-    return this.request('/api/export/save-dialog', {
+    return this.request('/api/save-dialog', {
       method: 'POST',
-      body: { defaultPath, defaultFilename },
+      body: {
+        defaultPath,
+        defaultFilename,
+        prompt: 'Export document',
+      },
     });
   }
 

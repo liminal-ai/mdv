@@ -9,7 +9,6 @@ import { emptySession } from '../../fixtures/session.js';
 interface MockEditorOptions {
   onContentChange: (content: string) => void;
   onCursorChange: (line: number, column: number) => void;
-  shouldSuppressUpdates: () => boolean;
 }
 
 interface MockEditorRecord {
@@ -70,7 +69,6 @@ vi.mock('../../../src/client/components/editor.js', () => ({
           options.onContentChange(nextContent);
         },
         onCursorChange: options.onCursorChange,
-        shouldSuppressUpdates: options.shouldSuppressUpdates,
       },
       setContent: vi.fn((nextContent: string) => {
         content = nextContent;
@@ -297,6 +295,7 @@ describe('cross-epic integration', () => {
     expect(document.body.textContent).toContain('This file has unsaved changes.');
     expect(document.body.textContent).toContain('Save and Export');
     expect(document.body.textContent).toContain('Export Anyway');
+    expect(document.body.textContent).toContain('Cancel');
   });
 
   it('TC-8.1b: Save and Export', async () => {

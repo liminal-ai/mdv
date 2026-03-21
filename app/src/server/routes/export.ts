@@ -7,8 +7,6 @@ import {
   ExportRequestSchema,
   ExportResponseSchema,
   RevealRequestSchema,
-  SaveDialogRequestSchema,
-  SaveDialogResponseSchema,
   SessionStateSchema,
   SetLastExportDirSchema,
 } from '../schemas/index.js';
@@ -21,7 +19,6 @@ import { MermaidSsrService } from '../services/mermaid-ssr.service.js';
 import { PdfService } from '../services/pdf.service.js';
 import { RenderService } from '../services/render.service.js';
 import { SessionService } from '../services/session.service.js';
-import { openSaveDialog } from '../utils/save-dialog.js';
 import {
   ErrorCode,
   ExportInProgressError,
@@ -40,8 +37,6 @@ import {
 
 const RevealResponseSchema = z.object({ ok: z.literal(true) });
 const EXPORT_TIMEOUT_MS = 120_000;
-const SAVE_DIALOG_TIMEOUT_MS = 70_000;
-
 function execFileAsync(
   file: string,
   args: string[],
@@ -195,29 +190,6 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
             ),
           );
       }
-    },
-  );
-
-  typedApp.post(
-    '/api/export/save-dialog',
-    {
-      config: {
-        timeout: SAVE_DIALOG_TIMEOUT_MS,
-      },
-      schema: {
-        body: SaveDialogRequestSchema,
-        response: {
-          200: SaveDialogResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const selected = await openSaveDialog(
-        request.body.defaultPath,
-        request.body.defaultFilename,
-        request.body.prompt ?? 'Export document',
-      );
-      return selected ? { path: selected } : null;
     },
   );
 
