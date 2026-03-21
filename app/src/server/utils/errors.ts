@@ -21,7 +21,8 @@ export const ErrorCode = {
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 export function isPermissionError(err: unknown): boolean {
-  return (err as NodeJS.ErrnoException)?.code === 'EACCES';
+  const code = (err as NodeJS.ErrnoException)?.code;
+  return code === 'EACCES' || code === 'EPERM';
 }
 
 export function isNotFoundError(err: unknown): boolean {
@@ -84,6 +85,37 @@ export class ExportInProgressError extends Error {
   constructor() {
     super('Another export is already in progress');
     this.name = 'ExportInProgressError';
+  }
+}
+
+export class ExportWritePermissionError extends Error {
+  readonly savePath: string;
+
+  constructor(savePath: string) {
+    super(`Could not write export to ${savePath}: permission denied.`);
+    this.name = 'ExportWritePermissionError';
+    this.savePath = savePath;
+  }
+}
+
+export class ExportInsufficientStorageError extends Error {
+  readonly savePath: string;
+
+  constructor(savePath: string) {
+    super(`Could not write export to ${savePath}: insufficient disk space.`);
+    this.name = 'ExportInsufficientStorageError';
+    this.savePath = savePath;
+  }
+}
+
+export class ExportWriteError extends Error {
+  readonly savePath: string;
+
+  constructor(savePath: string, cause?: unknown) {
+    const detail = cause instanceof Error ? cause.message : 'Unknown write failure';
+    super(`Could not write export to ${savePath}: ${detail}`);
+    this.name = 'ExportWriteError';
+    this.savePath = savePath;
   }
 }
 

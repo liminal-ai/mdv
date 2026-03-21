@@ -249,6 +249,32 @@ describe('content toolbar', () => {
     expect(detail?.textContent).toBe('Parse error on line 3: unexpected token');
   });
 
+  it('renders warning line numbers when provided', () => {
+    renderContentToolbar({
+      tabs: [
+        {
+          ...singleTab,
+          warnings: [
+            {
+              type: 'mermaid-error',
+              source: 'mermaid-block-1',
+              line: 42,
+              message: 'Parse error near node B',
+            },
+          ],
+        },
+      ],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    document.querySelector<HTMLButtonElement>('.warning-count')?.click();
+
+    expect(document.querySelector('.warning-panel__detail')?.textContent).toBe(
+      'Line 42: Parse error near node B',
+    );
+  });
+
   it('TC-6.5c: hides the warning indicator when there are no warnings', () => {
     renderContentToolbar({
       tabs: [singleTab],

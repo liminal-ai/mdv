@@ -29,10 +29,8 @@ function getWarningPresentation(warning: RenderWarning): { icon: string; type: s
 }
 
 function getWarningDetail(warning: RenderWarning): string {
-  if (warning.type === 'mermaid-error') {
-    return warning.message;
-  }
-  return warning.source;
+  const detail = warning.type === 'mermaid-error' ? warning.message : warning.source;
+  return warning.line === undefined ? detail : `Line ${warning.line}: ${detail}`;
 }
 
 export function mountWarningPanel(container: HTMLElement, store: StateStore): () => void {

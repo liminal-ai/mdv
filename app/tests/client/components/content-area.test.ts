@@ -1,9 +1,33 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.mock('../../../src/client/utils/mermaid-renderer.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../src/client/utils/mermaid-renderer.js')>();
+  return {
+    ...actual,
+    renderMermaidBlocks: vi.fn(actual.renderMermaidBlocks),
+  };
+});
+
 import { mountContentArea } from '../../../src/client/components/content-area.js';
+import { renderMermaidBlocks } from '../../../src/client/utils/mermaid-renderer.js';
 import { createStore, getButtonByText } from '../support.js';
 import { deletedTab, singleTab } from '../../fixtures/tab-states.js';
+import type { RenderWarning } from '../../../src/shared/types.js';
+
+async function flushAsyncWork(): Promise<void> {
+  await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
+}
 
 function renderContentArea(overrides: Parameters<typeof createStore>[0] = {}) {
   document.body.innerHTML = '<div id="content-area"></div>';
@@ -27,6 +51,7 @@ function renderContentArea(overrides: Parameters<typeof createStore>[0] = {}) {
 describe('content area', () => {
   afterEach(() => {
     document.body.innerHTML = '';
+    vi.clearAllMocks();
   });
 
   it('renders the empty state with open actions', () => {
@@ -113,5 +138,108 @@ describe('content area', () => {
     document.querySelector<HTMLButtonElement>('.content-area__recent-button')?.click();
 
     expect(actions.onOpenRecentFile).toHaveBeenCalledWith('/tmp/docs/guide.md');
+  });
+
+  it('merges server warnings with mermaid warnings instead of replacing or appending stale entries', async () => {
+    const existingWarnings: RenderWarning[] = [
+      {
+        type: 'missing-image',
+        source: './missing-one.png',
+        message: 'Missing image: ./missing-one.png',
+      },
+      {
+        type: 'missing-image',
+        source: './missing-two.png',
+        message: 'Missing image: ./missing-two.png',
+      },
+    ];
+    vi.mocked(renderMermaidBlocks).mockResolvedValue({
+      warnings: [
+        {
+          type: 'mermaid-error',
+          source: 'graph TD\nA -->',
+          message: 'Parse error on line 1',
+        },
+      ],
+    });
+
+    const { store } = renderContentArea({
+      tabs: [{ ...singleTab, warnings: existingWarnings }],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    await flushAsyncWork();
+
+    expect(store.get().tabs[0]?.warnings).toEqual([
+      existingWarnings[0],
+      existingWarnings[1],
+      expect.objectContaining({
+        type: 'mermaid-error',
+        message: 'Parse error on line 1',
+      }),
+    ]);
+  });
+
+  it('ignores stale mermaid warning writes after same-tab content refreshes', async () => {
+    const staleRender = createDeferred<{ warnings: RenderWarning[] }>();
+    const serverWarnings: RenderWarning[] = [
+      {
+        type: 'missing-image',
+        source: './missing-one.png',
+        message: 'Missing image: ./missing-one.png',
+      },
+      {
+        type: 'missing-image',
+        source: './missing-two.png',
+        message: 'Missing image: ./missing-two.png',
+      },
+    ];
+    const staleWarning: RenderWarning = {
+      type: 'mermaid-error',
+      source: 'old graph',
+      message: 'Old parse error',
+    };
+    const freshWarning: RenderWarning = {
+      type: 'mermaid-error',
+      source: 'new graph',
+      message: 'Fresh parse error',
+    };
+
+    vi.mocked(renderMermaidBlocks)
+      .mockImplementationOnce(() => staleRender.promise)
+      .mockResolvedValue({ warnings: [freshWarning] });
+
+    const { store } = renderContentArea({
+      tabs: [{ ...singleTab, warnings: serverWarnings, renderGeneration: 0 }],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    await flushAsyncWork();
+
+    store.update(
+      {
+        tabs: [
+          {
+            ...singleTab,
+            html: '<h1>Fresh</h1>',
+            warnings: serverWarnings,
+            renderGeneration: 1,
+          },
+        ],
+      },
+      ['tabs'],
+    );
+
+    await flushAsyncWork();
+    staleRender.resolve({ warnings: [staleWarning] });
+    await flushAsyncWork();
+
+    expect(store.get().tabs[0]?.warnings).toEqual([
+      serverWarnings[0],
+      serverWarnings[1],
+      freshWarning,
+    ]);
   });
 });

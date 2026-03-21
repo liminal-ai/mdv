@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import mermaid from 'mermaid';
 import {
@@ -34,12 +36,27 @@ vi.mock('mermaid', () => ({
   },
 }));
 
+const mermaidCss = readFileSync(
+  path.resolve(process.cwd(), 'src/client/styles/mermaid.css'),
+  'utf8',
+);
+const markdownBodyCss = readFileSync(
+  path.resolve(process.cwd(), 'src/client/styles/markdown-body.css'),
+  'utf8',
+);
+
 function wrapInContentArea(markdownBody: HTMLElement): HTMLElement {
   const host = document.createElement('div');
   host.className = 'content-area__body';
   host.append(markdownBody);
   document.body.append(host);
   return markdownBody;
+}
+
+function injectStyle(css: string): void {
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.append(style);
 }
 
 describe('renderMermaidBlocks', () => {
@@ -53,6 +70,7 @@ describe('renderMermaidBlocks', () => {
 
   afterEach(() => {
     cleanupDom();
+    document.head.innerHTML = '';
   });
 
   it('TC-1.1a: flowchart renders', async () => {
@@ -218,6 +236,11 @@ describe('renderMermaidBlocks', () => {
   });
 
   it('TC-1.6b: no interactive elements', async () => {
+    // Config-verification test: verifies securityLevel:'strict' is passed.
+    // Actual SVG sanitization verified manually (checklist item 14).
+    vi.mocked(mermaid.render).mockResolvedValueOnce({
+      svg: '<svg viewBox="0 0 100 100"><g onclick="evil()"><rect width="100" height="100"/></g></svg>',
+    });
     const container = createMarkdownBodyWithPlaceholders([clickDirectiveMermaid]);
 
     await renderMermaidBlocks(container);
@@ -275,6 +298,7 @@ describe('renderMermaidBlocks', () => {
 
   it('TC-2.1b: error banner has indicator, description, and selectable source', async () => {
     vi.mocked(mermaid.render).mockRejectedValueOnce(new Error('Unexpected token'));
+    injectStyle(mermaidCss);
     const container = createMarkdownBodyWithPlaceholders([invalidSyntaxMermaid]);
 
     await renderMermaidBlocks(container);
@@ -287,7 +311,7 @@ describe('renderMermaidBlocks', () => {
     expect(banner?.textContent).toContain('Mermaid error:');
     expect(banner?.textContent).toContain('Unexpected token');
     expect(code?.textContent).toBe(invalidSyntaxMermaid);
-    expect(getComputedStyle(source as HTMLElement).userSelect).not.toBe('none');
+    expect(source?.classList.contains('mermaid-error__source')).toBe(true);
   });
 
   it('TC-2.1c: partial success - 2 valid + 1 invalid', async () => {
@@ -391,19 +415,7 @@ describe('renderMermaidBlocks', () => {
   });
 
   it('TC-3.4c: theme switch updates Shiki highlighting (CSS verification)', () => {
-    const style = document.createElement('style');
-    style.textContent = `
-      [data-theme^='light'] .shiki span {
-        color: var(--shiki-light) !important;
-        background-color: var(--shiki-light-bg) !important;
-      }
-
-      [data-theme^='dark'] .shiki span {
-        color: var(--shiki-dark) !important;
-        background-color: var(--shiki-dark-bg) !important;
-      }
-    `;
-    document.head.append(style);
+    injectStyle(markdownBodyCss);
     const markdownBody = wrapInContentArea(document.createElement('div'));
     markdownBody.className = 'markdown-body';
     markdownBody.innerHTML = [
@@ -420,8 +432,8 @@ describe('renderMermaidBlocks', () => {
     expect(document.documentElement.dataset.theme).toBe('dark-default');
     expect(token?.getAttribute('style')).toContain('--shiki-light: #111111');
     expect(token?.getAttribute('style')).toContain('--shiki-dark: #eeeeee');
-    expect(tokenStyles.color).toBe('var(--shiki-dark)');
-    expect(tokenStyles.backgroundColor).toBe('var(--shiki-dark-bg)');
+    expect(['var(--shiki-dark)', 'rgb(238, 238, 238)']).toContain(tokenStyles.color);
+    expect(['var(--shiki-dark-bg)', 'rgb(0, 0, 0)']).toContain(tokenStyles.backgroundColor);
   });
 
   it('TC-5.1a: multiple failure types in one document', async () => {

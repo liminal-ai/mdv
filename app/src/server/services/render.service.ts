@@ -101,6 +101,11 @@ async function createRenderer(
 
   const shikiHighlight = md.options.highlight;
   md.options.highlight = (code, lang, attrs) => {
+    // The tech design proposed transformers[].preprocess for Mermaid exclusion,
+    // but wrapping md.options.highlight is the stable interception point here:
+    // fromHighlighter installs its renderer through that hook before Shiki runs.
+    // If a future Shiki release changes how fromHighlighter wires markdown-it,
+    // this Mermaid bypass may need to move with it.
     const normalizedLang = lang.trim().toLowerCase();
 
     if (!normalizedLang || normalizedLang === 'mermaid') {
@@ -146,7 +151,7 @@ function processMermaidBlocks(html: string): string {
   return html.replace(MERMAID_RE, (_match, content: string) => {
     return (
       '<div class="mermaid-placeholder">' +
-      '<div class="mermaid-placeholder__label">Mermaid diagram (rendering available in a future update)</div>' +
+      '<div class="mermaid-placeholder__label">Mermaid diagram</div>' +
       `<pre><code class="language-mermaid">${content}</code></pre>` +
       '</div>'
     );

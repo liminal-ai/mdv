@@ -80,6 +80,7 @@ export class DocxService {
   th, td { border: 1px solid #ccc; padding: 6px 10px; }
   th { background: #f0f0f0; font-weight: bold; }
   img { max-width: 100%; }
+  summary[data-mdv-static-summary="true"] { font-weight: bold; }
   .image-placeholder { background: #f5f5f5; border: 1px dashed #ccc; padding: 10px; color: #888; }
   .mermaid-error__banner { background: #dc3545; color: white; padding: 5px 10px; }
   .mermaid-error__source { background: #f5f5f5; padding: 10px; font-family: Consolas, monospace; }

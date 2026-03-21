@@ -158,10 +158,24 @@ export class ApiClient {
     outputPath: string;
     warnings: ExportWarning[];
   }> {
-    return this.request('/api/export', {
-      method: 'POST',
-      body: request,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+    try {
+      return await this.request('/api/export', {
+        method: 'POST',
+        body: request,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiError(0, 'EXPORT_TIMEOUT', 'Export timed out after 120 seconds');
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async exportSaveDialog(

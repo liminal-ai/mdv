@@ -16,6 +16,16 @@
   animation: spin 0.6s linear infinite;
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Export result notification */
 .export-result {
   padding: 10px 16px;
@@ -102,5 +112,18 @@
 }
 
 .export-result__warning {
-  padding: 2px 0;
+  padding: 4px 0;
+}
+
+.export-result__warning-title {
+  font-weight: 600;
+}
+
+.export-result__warning-meta {
+  color: var(--color-text-muted);
+  font-size: 0.9em;
+}
+
+.export-result__warning-detail {
+  margin-top: 2px;
 }

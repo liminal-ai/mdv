@@ -2,7 +2,7 @@ export function createPlaceholderHtml(source: string): string {
   const escaped = source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   return (
     '<div class="mermaid-placeholder">' +
-    '<div class="mermaid-placeholder__label">Mermaid diagram (rendering available in a future update)</div>' +
+    '<div class="mermaid-placeholder__label">Mermaid diagram</div>' +
     `<pre><code class="language-mermaid">${escaped}</code></pre>` +
     '</div>'
   );

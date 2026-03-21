@@ -27,6 +27,7 @@ export interface TabState {
   html: string;
   content: string;
   warnings: RenderWarning[];
+  renderGeneration?: number;
   scrollPosition: number;
   loading: boolean;
   modifiedAt: string;

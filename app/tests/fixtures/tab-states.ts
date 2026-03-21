@@ -8,6 +8,7 @@ export const singleTab: TabState = {
   html: '<h1>README</h1>',
   content: '# README',
   warnings: [],
+  renderGeneration: 0,
   scrollPosition: 0,
   loading: false,
   modifiedAt: '2026-03-19T00:00:00Z',

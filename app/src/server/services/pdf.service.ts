@@ -1,10 +1,11 @@
-import puppeteer from 'puppeteer';
+import puppeteer, { type Browser } from 'puppeteer';
 
 export class PdfService {
-  async generate(html: string): Promise<Buffer> {
-    const browser = await puppeteer.launch({ headless: true });
+  async generate(html: string, browser?: Browser): Promise<Buffer> {
+    const activeBrowser = browser ?? (await puppeteer.launch({ headless: true }));
+    const shouldCloseBrowser = browser === undefined;
     try {
-      const page = await browser.newPage();
+      const page = await activeBrowser.newPage();
       try {
         await page.setContent(html, { waitUntil: 'networkidle0' });
         await page.emulateMediaType('print');
@@ -26,7 +27,9 @@ export class PdfService {
         await page.close();
       }
     } finally {
-      await browser.close();
+      if (shouldCloseBrowser) {
+        await activeBrowser.close().catch(() => {});
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
+import puppeteer, { type Browser } from 'puppeteer';
 import type { ExportWarning } from '../schemas/index.js';
 
 const MERMAID_PLACEHOLDER_RE =
@@ -46,17 +46,20 @@ export class MermaidSsrService {
   async renderAll(
     html: string,
     mermaidTheme: string,
+    browser?: Browser,
   ): Promise<{ html: string; warnings: ExportWarning[] }> {
     const matches = Array.from(html.matchAll(MERMAID_PLACEHOLDER_RE));
     if (matches.length === 0) {
       return { html, warnings: [] };
     }
 
-    const browser = await puppeteer.launch({ headless: true });
+    const activeBrowser = browser ?? (await puppeteer.launch({ headless: true }));
     const warnings: ExportWarning[] = [];
+    const shouldCloseBrowser = browser === undefined;
+    let page: Awaited<ReturnType<Browser['newPage']>> | null = null;
 
     try {
-      const page = await browser.newPage();
+      page = await activeBrowser.newPage();
       await page.setContent('<!doctype html><html><body></body></html>');
       await page.addScriptTag({ path: MERMAID_SCRIPT_PATH });
       await page.evaluate((theme) => {
@@ -125,7 +128,10 @@ export class MermaidSsrService {
       nextHtml += html.slice(cursor);
       return { html: nextHtml, warnings };
     } finally {
-      await browser.close();
+      await page?.close().catch(() => {});
+      if (shouldCloseBrowser) {
+        await activeBrowser.close().catch(() => {});
+      }
     }
   }
 }

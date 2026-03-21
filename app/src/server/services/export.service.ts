@@ -1,6 +1,14 @@
 import { rename, unlink, writeFile } from 'node:fs/promises';
+import puppeteer, { type Browser } from 'puppeteer';
 import type { ExportRequest, ExportResponse, ExportWarning } from '../schemas/index.js';
-import { ExportInProgressError } from '../utils/errors.js';
+import {
+  ExportInProgressError,
+  ExportInsufficientStorageError,
+  ExportWriteError,
+  ExportWritePermissionError,
+  isInsufficientStorageError,
+  isPermissionError,
+} from '../utils/errors.js';
 import { AssetService } from './asset.service.js';
 import { DocxService } from './docx.service.js';
 import { FileService } from './file.service.js';
@@ -20,7 +28,44 @@ function getMermaidTheme(themeId: string): 'default' | 'dark' {
 function toExportWarnings(
   warnings: Array<{ type: ExportWarning['type']; source: string; message: string; line?: number }>,
 ): ExportWarning[] {
-  return warnings.map((warning) => ({ ...warning }));
+  return warnings.map((warning) => ({
+    ...warning,
+    source: warning.source.length > 200 ? `${warning.source.slice(0, 197)}...` : warning.source,
+  }));
+}
+
+function setHtmlAttribute(attrs: string | undefined, name: string, value: string): string {
+  const source = attrs ?? '';
+  const attributePattern = new RegExp(`${name}\\s*=\\s*(".*?"|'.*?'|[^\\s>]+)`, 'i');
+
+  if (attributePattern.test(source)) {
+    return source.replace(attributePattern, `${name}="${value}"`);
+  }
+
+  return `${source} ${name}="${value}"`;
+}
+
+function isRelativeMarkdownHref(href: string): boolean {
+  if (
+    href.startsWith('#') ||
+    href.startsWith('/') ||
+    href.startsWith('//') ||
+    /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(href)
+  ) {
+    return false;
+  }
+
+  const [pathname] = href.split(/[?#]/, 1);
+  const normalizedPath = pathname.toLowerCase();
+  return normalizedPath.endsWith('.md') || normalizedPath.endsWith('.markdown');
+}
+
+function flattenRelativeMarkdownLinks(html: string): string {
+  return html.replace(
+    /<a\b([^>]*?)href=(["'])(.*?)\2([^>]*)>([\s\S]*?)<\/a>/gi,
+    (match, _pre, _quote, href: string, _post, content: string) =>
+      isRelativeMarkdownHref(href) ? content : match,
+  );
 }
 
 function expandDetailsElements(html: string): { html: string; warnings: ExportWarning[] } {
@@ -38,7 +83,11 @@ function expandDetailsElements(html: string): { html: string; warnings: ExportWa
   });
 
   return {
-    html: expandedHtml,
+    html: expandedHtml.replace(
+      /<summary([^>]*)>/gi,
+      (_match, attrs: string = '') =>
+        `<summary${setHtmlAttribute(attrs, 'data-mdv-static-summary', 'true')}>`,
+    ),
     warnings,
   };
 }
@@ -63,10 +112,14 @@ export class ExportService {
 
     this.exporting = true;
     const tempPath = `${request.savePath}.tmp`;
+    let browser: Browser | null = null;
 
     try {
       const source = await this.fileService.readFile(request.path);
       const exportTheme = getExportTheme(request);
+      if (request.format === 'pdf') {
+        browser = await puppeteer.launch({ headless: true });
+      }
 
       const renderResult = await this.renderService.renderForExport(
         source.content,
@@ -77,28 +130,29 @@ export class ExportService {
       const mermaidResult = await this.mermaidSsrService.renderAll(
         renderResult.html,
         getMermaidTheme(exportTheme),
+        browser ?? undefined,
       );
 
       const assetResult = await this.assetService.resolveImages(mermaidResult.html, request.path);
-      const detailsResult =
+      const staticContentResult =
         request.format === 'html'
           ? { html: assetResult.html, warnings: [] }
-          : expandDetailsElements(assetResult.html);
+          : expandDetailsElements(flattenRelativeMarkdownLinks(assetResult.html));
       const warnings = toExportWarnings([
         ...renderResult.warnings,
         ...mermaidResult.warnings,
         ...assetResult.warnings,
-        ...detailsResult.warnings,
+        ...staticContentResult.warnings,
       ]);
-      const fullHtml = this.htmlExportService.assemble(detailsResult.html, exportTheme);
+      const fullHtml = this.htmlExportService.assemble(staticContentResult.html, exportTheme);
 
       let output: Buffer | string;
       switch (request.format) {
         case 'pdf':
-          output = await this.pdfService.generate(fullHtml);
+          output = await this.pdfService.generate(fullHtml, browser ?? undefined);
           break;
         case 'docx':
-          output = await this.docxService.generate(detailsResult.html, warnings);
+          output = await this.docxService.generate(staticContentResult.html, warnings);
           break;
         case 'html':
         default:
@@ -106,12 +160,22 @@ export class ExportService {
           break;
       }
 
-      if (typeof output === 'string') {
-        await writeFile(tempPath, output, 'utf8');
-      } else {
-        await writeFile(tempPath, output);
+      try {
+        if (typeof output === 'string') {
+          await writeFile(tempPath, output, 'utf8');
+        } else {
+          await writeFile(tempPath, output);
+        }
+        await rename(tempPath, request.savePath);
+      } catch (error) {
+        if (isPermissionError(error)) {
+          throw new ExportWritePermissionError(request.savePath);
+        }
+        if (isInsufficientStorageError(error)) {
+          throw new ExportInsufficientStorageError(request.savePath);
+        }
+        throw new ExportWriteError(request.savePath, error);
       }
-      await rename(tempPath, request.savePath);
 
       return {
         status: 'success',
@@ -120,6 +184,7 @@ export class ExportService {
       };
     } finally {
       await unlink(tempPath).catch(() => {});
+      await browser?.close().catch(() => {});
       this.exporting = false;
     }
   }

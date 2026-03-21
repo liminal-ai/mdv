@@ -202,6 +202,9 @@ describe('export progress and result components', () => {
     expect(details?.querySelector('summary')?.textContent).toBe('1 warning');
 
     details!.open = true;
+    expect(details?.querySelector('.export-result__warning-title')?.textContent).toBe(
+      'Missing image: ./missing.png',
+    );
     expect(details?.textContent).toContain('Missing image: ./missing.png');
   });
 

@@ -36,6 +36,7 @@ const PRINT_CSS = `
   .image-placeholder { break-inside: avoid; }
   .mermaid-diagram { break-inside: avoid; }
   .mermaid-error { break-inside: avoid; }
+  summary[data-mdv-static-summary="true"] { font-weight: 600; }
 }
 `;
 

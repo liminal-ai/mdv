@@ -168,13 +168,6 @@ export const tableWithFormattingMarkdown = `
 | \`code\` | [link](https://example.com) | normal |
 `;
 
-export const tableWithFormattingAndLinksMarkdown = `
-| Feature | Status | Notes |
-|---------|--------|-------|
-| **Bold** | *italic* | ~~struck~~ |
-| \`code\` | [link](https://example.com) | normal |
-`;
-
 export const wideTableMarkdownEpic3 = `
 | ${Array.from({ length: 15 }, (_, i) => `Col${i + 1}`).join(' | ')} |
 | ${Array.from({ length: 15 }, () => '---').join(' | ')} |

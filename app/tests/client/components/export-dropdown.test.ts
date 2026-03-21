@@ -43,6 +43,7 @@ async function renderApp(
   options: {
     exportDocument?: () => Promise<unknown>;
     readFile?: (path: string) => Promise<unknown>;
+    setLastExportDir?: (dir: string) => Promise<unknown>;
     ws?: ReturnType<typeof createWsStub>;
   } = {},
 ) {
@@ -98,9 +99,13 @@ async function renderApp(
     ),
     exportSaveDialog: vi.fn().mockResolvedValue({ path: '/Users/test/exports/readme.pdf' }),
     reveal: vi.fn().mockResolvedValue({ ok: true }),
-    setLastExportDir: vi
-      .fn()
-      .mockImplementation(async (dir: string) => ({ ...session, lastExportDir: dir })),
+    setLastExportDir: vi.fn().mockImplementation(
+      options.setLastExportDir ??
+        (async (dir: string) => ({
+          ...session,
+          lastExportDir: dir,
+        })),
+    ),
   };
 
   document.body.innerHTML = `
@@ -295,5 +300,46 @@ describe('export dropdown activation', () => {
 
     resolveExport?.();
     await flushUi();
+  });
+
+  it('Non-TC: Export continues if persisting last export dir fails', async () => {
+    const exportDocument = vi.fn().mockResolvedValue({
+      status: 'success',
+      outputPath: '/Users/test/exports/readme.pdf',
+      warnings: [],
+    });
+
+    const { api } = await renderApp(
+      {
+        openTabs: ['/Users/test/docs/readme.md'],
+        activeTab: '/Users/test/docs/readme.md',
+      },
+      {
+        exportDocument,
+        setLastExportDir: async () => {
+          throw new Error('session unavailable');
+        },
+      },
+    );
+
+    openToolbarExportDropdown();
+    document.querySelectorAll<HTMLButtonElement>('.export-dropdown .dropdown__item')[0]?.click();
+    await flushUi();
+
+    expect(exportDocument).toHaveBeenCalled();
+    expect(api.exportSaveDialog).toHaveBeenCalled();
+  });
+
+  it('Non-TC: Export default filename strips the .markdown extension', async () => {
+    const { api } = await renderApp({
+      openTabs: ['/Users/test/docs/guide.markdown'],
+      activeTab: '/Users/test/docs/guide.markdown',
+    });
+
+    openToolbarExportDropdown();
+    document.querySelectorAll<HTMLButtonElement>('.export-dropdown .dropdown__item')[0]?.click();
+    await flushUi();
+
+    expect(api.exportSaveDialog).toHaveBeenCalledWith('/Users/test/docs', 'guide.pdf');
   });
 });

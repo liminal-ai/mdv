@@ -4,6 +4,23 @@ import { createElement } from '../utils/dom.js';
 
 const SUCCESS_DISMISS_MS = 10_000;
 
+function getWarningTypeLabel(type: string): string {
+  switch (type) {
+    case 'missing-image':
+      return 'Missing image';
+    case 'remote-image-blocked':
+      return 'Remote image blocked';
+    case 'unsupported-format':
+      return 'Unsupported format';
+    case 'mermaid-error':
+      return 'Mermaid error';
+    case 'format-degradation':
+      return 'Format degradation';
+    default:
+      return 'Warning';
+  }
+}
+
 function dismissResult(store: StateStore): void {
   const state = store.get();
   store.update(
@@ -63,7 +80,22 @@ export function mountExportResult(container: HTMLElement, store: StateStore): ()
                 children: result.warnings.map((warning) =>
                   createElement('div', {
                     className: 'export-result__warning',
-                    text: warning.message,
+                    children: [
+                      createElement('div', {
+                        className: 'export-result__warning-title',
+                        text: `${getWarningTypeLabel(warning.type)}${warning.source ? `: ${warning.source}` : ''}`,
+                      }),
+                      warning.line
+                        ? createElement('div', {
+                            className: 'export-result__warning-meta',
+                            text: `Line ${warning.line}`,
+                          })
+                        : null,
+                      createElement('div', {
+                        className: 'export-result__warning-detail',
+                        text: warning.message,
+                      }),
+                    ],
                   }),
                 ),
               }),

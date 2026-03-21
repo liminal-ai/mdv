@@ -219,6 +219,7 @@ export function mountContentArea(
         }
 
         const renderingTabId = activeTab.id;
+        const renderingGeneration = activeTab.renderGeneration ?? 0;
         const mermaidResult = await renderMermaidBlocks(markdownBody);
         const currentState = store.get();
         if (currentState.activeTabId !== renderingTabId) {
@@ -227,6 +228,9 @@ export function mountContentArea(
 
         const currentTab = currentState.tabs.find((tab) => tab.id === renderingTabId);
         if (!currentTab) {
+          return;
+        }
+        if ((currentTab.renderGeneration ?? 0) !== renderingGeneration) {
           return;
         }
 

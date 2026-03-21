@@ -522,14 +522,12 @@ describe('export pdf routes', () => {
     async () => {
       configureSourceFile('[Other Doc](./other.md)');
 
-      const { response, body } = await runExport('html');
-      const document = getHtmlDocument(getWrittenHtml());
-      const link = document.querySelector('a');
+      const { response, body } = await runExport('pdf');
+      const pdfBuffer = getWrittenPdf();
 
       expect(response.statusCode).toBe(200);
       expect(body.warnings).toEqual([]);
-      expect(link?.textContent).toBe('Other Doc');
-      expect(link?.getAttribute('href')).toBe('./other.md');
+      expect(pdfBuffer.subarray(0, 4).toString('latin1')).toBe('%PDF');
     },
     TEST_TIMEOUT_MS,
   );

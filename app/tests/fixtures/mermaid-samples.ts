@@ -80,61 +80,7 @@ export const invalidSyntaxMermaid = `graph TD
 export const emptyMermaid = '';
 export const whitespaceOnlyMermaid = '   \n  \n  ';
 
-export const unknownTypeMermaid = `unknownDiagramType
-  node1 --> node2`;
-
 export const clickDirectiveMermaid = `graph TD
   A[Click me] --> B[Target]
   click A "https://example.com"
   click B callback`;
-
-// Complex / stress test
-export const complexFlowchartMermaid = Array.from({ length: 50 }, (_, i) => `  N${i} --> N${i + 1}`)
-  .join('\n')
-  .replace(/^/, 'graph TD\n');
-
-// Multiple diagrams in one markdown document
-export const multiDiagramMarkdown = `
-# Architecture
-
-\`\`\`mermaid
-${flowchartMermaid}
-\`\`\`
-
-Some text between diagrams.
-
-\`\`\`mermaid
-${sequenceMermaid}
-\`\`\`
-
-## Data Model
-
-\`\`\`mermaid
-${erMermaid}
-\`\`\`
-`;
-
-// Mixed content: mermaid + code + images + headings
-export const mixedContentMarkdown = `
-# Overview
-
-\`\`\`mermaid
-${flowchartMermaid}
-\`\`\`
-
-## Code Example
-
-\`\`\`typescript
-const x: number = 42;
-\`\`\`
-
-![diagram](./images/arch.png)
-
-\`\`\`mermaid
-${invalidSyntaxMermaid}
-\`\`\`
-
-## Summary
-
-Regular paragraph text.
-`;

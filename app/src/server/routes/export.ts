@@ -24,6 +24,9 @@ import { SessionService } from '../services/session.service.js';
 import {
   ErrorCode,
   ExportInProgressError,
+  ExportInsufficientStorageError,
+  ExportWriteError,
+  ExportWritePermissionError,
   FileTooLargeError,
   InvalidPathError,
   NotFileError,
@@ -36,30 +39,44 @@ import {
 
 const RevealResponseSchema = z.object({ ok: z.literal(true) });
 const EXPORT_TIMEOUT_MS = 120_000;
+const SAVE_DIALOG_TIMEOUT_MS = 70_000;
 
-async function openSaveDialog(defaultDir: string, defaultName: string): Promise<string | null> {
+function execFileAsync(
+  file: string,
+  args: string[],
+  options: { timeout: number },
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const script =
-      'POSIX path of (choose file name ' +
-      'with prompt "Export document" ' +
-      `default name ${JSON.stringify(defaultName)} ` +
-      `default location POSIX file ${JSON.stringify(defaultDir)})`;
-
-    execFile('osascript', ['-e', script], { timeout: 60_000 }, (error, stdout) => {
+    execFile(file, args, options, (error, stdout, stderr) => {
       if (error) {
-        const errorCode = (error as NodeJS.ErrnoException & { code?: number | string }).code;
-        if (String(errorCode) === '1') {
-          resolve(null);
-          return;
-        }
-
         reject(error);
         return;
       }
 
-      resolve(stdout.trim());
+      resolve({ stdout, stderr });
     });
   });
+}
+
+async function openSaveDialog(defaultDir: string, defaultName: string): Promise<string | null> {
+  const script =
+    'POSIX path of (choose file name ' +
+    'with prompt "Export document" ' +
+    `default name ${JSON.stringify(defaultName)} ` +
+    `default location POSIX file ${JSON.stringify(defaultDir)})`;
+
+  try {
+    const { stdout } = await execFileAsync('osascript', ['-e', script], {
+      timeout: 60_000,
+    });
+    return stdout.trim();
+  } catch (error) {
+    const errorCode = (error as NodeJS.ErrnoException & { code?: number | string }).code;
+    if (String(errorCode) === '1') {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export interface ExportRoutesOptions {
@@ -133,6 +150,18 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
           return reply.code(409).send(toApiError(ErrorCode.EXPORT_IN_PROGRESS, error.message));
         }
 
+        if (error instanceof ExportWritePermissionError) {
+          return reply.code(403).send(toApiError(ErrorCode.PERMISSION_DENIED, error.message));
+        }
+
+        if (error instanceof ExportInsufficientStorageError) {
+          return reply.code(507).send(toApiError(ErrorCode.INSUFFICIENT_STORAGE, error.message));
+        }
+
+        if (error instanceof ExportWriteError) {
+          return reply.code(500).send(toApiError(ErrorCode.EXPORT_ERROR, error.message));
+        }
+
         if (error instanceof InvalidPathError || error instanceof NotFileError) {
           return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, error.message));
         }
@@ -149,14 +178,17 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
           return reply
             .code(403)
             .send(
-              toApiError(ErrorCode.PERMISSION_DENIED, 'You do not have permission to export here.'),
+              toApiError(
+                ErrorCode.PERMISSION_DENIED,
+                `Could not read source file ${request.body.path}: permission denied.`,
+              ),
             );
         }
 
         if (isNotFoundError(error)) {
           return reply
             .code(404)
-            .send(toApiError(ErrorCode.FILE_NOT_FOUND, 'The requested file no longer exists.'));
+            .send(toApiError(ErrorCode.FILE_NOT_FOUND, `Source file not found: ${request.body.path}`));
         }
 
         if (isInsufficientStorageError(error)) {
@@ -165,14 +197,21 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
             .send(
               toApiError(
                 ErrorCode.INSUFFICIENT_STORAGE,
-                'There is not enough free space to complete this export.',
+                `Could not write export to ${request.body.savePath}: insufficient disk space.`,
               ),
             );
         }
 
         return reply
           .code(500)
-          .send(toApiError(ErrorCode.EXPORT_ERROR, 'The export could not be completed.'));
+          .send(
+            toApiError(
+              ErrorCode.EXPORT_ERROR,
+              `Export failed for ${request.body.savePath}: ${
+                error instanceof Error ? error.message : 'Unknown export error'
+              }`,
+            ),
+          );
       }
     },
   );
@@ -180,6 +219,9 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
   typedApp.post(
     '/api/export/save-dialog',
     {
+      config: {
+        timeout: SAVE_DIALOG_TIMEOUT_MS,
+      },
       schema: {
         body: SaveDialogRequestSchema,
         response: {
@@ -202,6 +244,7 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
         response: {
           200: RevealResponseSchema,
           400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
     },
@@ -210,8 +253,21 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
         return reply.code(400).send(toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute'));
       }
 
-      execFile('open', ['-R', request.body.path]);
-      return { ok: true as const };
+      try {
+        await execFileAsync('open', ['-R', request.body.path], { timeout: 15_000 });
+        return { ok: true as const };
+      } catch (error) {
+        return reply
+          .code(500)
+          .send(
+            toApiError(
+              ErrorCode.EXPORT_ERROR,
+              `Could not reveal exported file in Finder: ${
+                error instanceof Error ? error.message : request.body.path
+              }`,
+            ),
+          );
+      }
     },
   );
 

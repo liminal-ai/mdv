@@ -36,6 +36,17 @@ function applySvgSizing(container: ParentNode): void {
   svgElement.removeAttribute('height');
 }
 
+function stripInlineEventHandlers(container: ParentNode): void {
+  const elements = container.querySelectorAll<HTMLElement | SVGElement>('*');
+  for (const element of elements) {
+    for (const attribute of Array.from(element.attributes)) {
+      if (attribute.name.toLowerCase().startsWith('on')) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  }
+}
+
 export function getMermaidTheme(): 'default' | 'dark' {
   const themeId = document.documentElement.dataset.theme ?? 'light-default';
   return themeId.startsWith('dark') ? 'dark' : 'default';
@@ -81,7 +92,13 @@ export function replacePlaceholderWithSvg(placeholder: Element, svg: string, sou
   const container = document.createElement('div');
   container.className = 'mermaid-diagram';
   container.dataset.mermaidSource = source;
+  // tech-design.md Q5 intentionally omits a second DOMPurify pass here:
+  // Mermaid securityLevel:'strict' is the primary sanitization layer, and this
+  // viewer only renders local content with trusted dependencies. We still drop
+  // any inline event attributes defensively in case mocked or unexpected SVG
+  // output slips through.
   container.innerHTML = svg;
+  stripInlineEventHandlers(container);
   applySvgSizing(container);
   placeholder.replaceWith(container);
 }
@@ -130,6 +147,8 @@ export async function renderMermaidBlocks(container: HTMLElement): Promise<Merma
   let renderIndex = 0;
 
   for (const placeholder of placeholders) {
+    // Leading/trailing whitespace around the fenced code block is formatting
+    // artifact from markdown extraction, not part of the diagram definition.
     const source = placeholder.querySelector('code.language-mermaid')?.textContent?.trim() ?? '';
 
     if (!source) {
@@ -174,7 +193,11 @@ export async function reRenderMermaidDiagrams(): Promise<void> {
 
     try {
       const { svg } = await renderWithTimeout(source, `mermaid-re-${renderIndex++}`, theme);
+      // tech-design.md Q5 intentionally omits DOMPurify for Mermaid SVG output;
+      // strict mode is the main safeguard, with a small defensive scrub of any
+      // inline event handlers before the SVG is reattached to the DOM.
       diagram.innerHTML = svg;
+      stripInlineEventHandlers(diagram);
       applySvgSizing(diagram);
     } catch {
       // Keep the last successfully rendered SVG on theme-change failures.

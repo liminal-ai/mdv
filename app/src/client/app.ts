@@ -104,7 +104,7 @@ function directoryName(filePath: string): string {
 
 function exportBaseName(filePath: string): string {
   const name = fileName(filePath);
-  return name.toLowerCase().endsWith('.md') ? name.slice(0, -3) : name;
+  return name.replace(/\.(md|markdown)$/i, '');
 }
 
 function createTabId(): string {
@@ -125,6 +125,7 @@ function createLoadingTab(path: string): TabState {
     html: '',
     content: '',
     warnings: [],
+    renderGeneration: 0,
     scrollPosition: 0,
     loading: true,
     modifiedAt: '',
@@ -142,6 +143,7 @@ function buildLoadedTab(response: FileReadResponse, existing?: TabState): TabSta
     html: response.html,
     content: response.content,
     warnings: response.warnings,
+    renderGeneration: (existing?.renderGeneration ?? -1) + 1,
     scrollPosition: existing?.scrollPosition ?? 0,
     loading: false,
     modifiedAt: response.modifiedAt,
@@ -901,12 +903,14 @@ export async function bootstrapApp(
       return;
     }
 
-    try {
-      applySession(await api.setLastExportDir(directoryName(selection.path)));
-    } catch (error) {
-      setError(error);
-      return;
-    }
+    void api
+      .setLastExportDir(directoryName(selection.path))
+      .then((session) => {
+        applySession(session);
+      })
+      .catch((error) => {
+        console.warn('Failed to persist last export directory', error);
+      });
 
     store.update(
       {

@@ -31,6 +31,12 @@ vi.mock('puppeteer', () => ({
   },
 }));
 
+const htmlToDocxMock = vi.hoisted(() => vi.fn(async () => Buffer.from('PK mock-docx export')));
+
+vi.mock('@turbodocx/html-to-docx', () => ({
+  default: htmlToDocxMock,
+}));
+
 import { buildApp } from '../../../src/server/app.js';
 import {
   exportSamplePath,
@@ -186,7 +192,7 @@ describe('export routes', () => {
     expect(response.json()).toEqual({
       error: {
         code: 'FILE_NOT_FOUND',
-        message: 'The requested file no longer exists.',
+        message: `Source file not found: ${exportSamplePath}`,
       },
     });
 
@@ -271,7 +277,36 @@ describe('export routes', () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(response.json().error.code).toBe('PERMISSION_DENIED');
+    expect(response.json()).toEqual({
+      error: {
+        code: 'PERMISSION_DENIED',
+        message: `Could not write export to ${HTML_SAVE_PATH}: permission denied.`,
+      },
+    });
+
+    await app.close();
+  });
+
+  it('Non-TC: EPERM write failures also return 403', async () => {
+    configureSourceFile(plainTextMarkdown);
+    vi.mocked(fs.writeFile).mockRejectedValue(
+      Object.assign(new Error('Operation not permitted'), { code: 'EPERM' }),
+    );
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest(),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'PERMISSION_DENIED',
+        message: `Could not write export to ${HTML_SAVE_PATH}: permission denied.`,
+      },
+    });
 
     await app.close();
   });
@@ -289,6 +324,7 @@ describe('export routes', () => {
 
     expect(response.statusCode).toBe(500);
     expect(response.json().error.code).toBe('EXPORT_ERROR');
+    expect(response.json().error.message).toContain(`Export failed for ${HTML_SAVE_PATH}:`);
 
     await app.close();
   });
@@ -305,7 +341,12 @@ describe('export routes', () => {
     });
 
     expect(response.statusCode).toBe(507);
-    expect(response.json().error.code).toBe('INSUFFICIENT_STORAGE');
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INSUFFICIENT_STORAGE',
+        message: `Could not write export to ${HTML_SAVE_PATH}: insufficient disk space.`,
+      },
+    });
 
     await app.close();
   });
@@ -489,6 +530,100 @@ describe('export routes', () => {
     await app.close();
   });
 
+  it('Non-TC: PDF export reuses a single browser for Mermaid SSR and PDF generation', async () => {
+    configureSourceFile(withMermaidMarkdown);
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest({ format: 'pdf', savePath: PDF_SAVE_PATH }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(puppeteer.launch).toHaveBeenCalledTimes(1);
+
+    await app.close();
+  });
+
+  it('Non-TC: Relative markdown links are flattened for PDF exports', async () => {
+    configureSourceFile('[Other Doc](./other.md)');
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest({ format: 'pdf', savePath: PDF_SAVE_PATH }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(pageMock.setContent).toHaveBeenCalledWith(
+      expect.not.stringContaining('href="./other.md"'),
+      expect.objectContaining({ waitUntil: 'networkidle0' }),
+    );
+    expect(pageMock.setContent).toHaveBeenCalledWith(
+      expect.stringContaining('Other Doc'),
+      expect.objectContaining({ waitUntil: 'networkidle0' }),
+    );
+
+    await app.close();
+  });
+
+  it('Non-TC: Relative markdown links are flattened for uppercase Markdown extensions', async () => {
+    configureSourceFile('[Other Doc](./README.MD)');
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest({ format: 'pdf', savePath: PDF_SAVE_PATH }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(pageMock.setContent).toHaveBeenCalledWith(
+      expect.not.stringContaining('href="./README.MD"'),
+      expect.objectContaining({ waitUntil: 'networkidle0' }),
+    );
+    expect(pageMock.setContent).toHaveBeenCalledWith(
+      expect.stringContaining('Other Doc'),
+      expect.objectContaining({ waitUntil: 'networkidle0' }),
+    );
+
+    await app.close();
+  });
+
+  it('Non-TC: Static exports emphasize summary elements inside details', async () => {
+    configureSourceFile(
+      '# Details\n\n<details><summary>Expand me</summary><p>Hidden content</p></details>',
+    );
+    const app = await buildApp();
+
+    const pdfResponse = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest({ format: 'pdf', savePath: PDF_SAVE_PATH }),
+    });
+    const docxResponse = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest({ format: 'docx', savePath: DOCX_SAVE_PATH }),
+    });
+
+    expect(pdfResponse.statusCode).toBe(200);
+    expect(pageMock.setContent).toHaveBeenCalledWith(
+      expect.stringContaining('data-mdv-static-summary="true"'),
+      expect.objectContaining({ waitUntil: 'networkidle0' }),
+    );
+    expect(docxResponse.statusCode).toBe(200);
+    expect(htmlToDocxMock).toHaveBeenCalledWith(
+      expect.stringContaining('data-mdv-static-summary="true"'),
+      null,
+      expect.any(Object),
+    );
+
+    await app.close();
+  });
+
   it('Non-TC: Successful HTML export writes file atomically', async () => {
     configureSourceFile(plainTextMarkdown);
     const app = await buildApp();
@@ -529,6 +664,53 @@ describe('export routes', () => {
     expect(Buffer.isBuffer(writeCall?.[1])).toBe(true);
     expect((writeCall?.[1] as Buffer).subarray(0, 2).toString('latin1')).toBe('PK');
     expect(fs.rename).toHaveBeenCalledWith(`${DOCX_SAVE_PATH}.tmp`, DOCX_SAVE_PATH);
+
+    await app.close();
+  });
+
+  it('Non-TC: Relative markdown links are flattened for DOCX exports', async () => {
+    configureSourceFile('[Other Doc](./other.md)');
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest({ format: 'docx', savePath: DOCX_SAVE_PATH }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(htmlToDocxMock).toHaveBeenCalledWith(
+      expect.not.stringContaining('href="./other.md"'),
+      null,
+      expect.any(Object),
+    );
+    expect(htmlToDocxMock).toHaveBeenCalledWith(
+      expect.stringContaining('Other Doc'),
+      null,
+      expect.any(Object),
+    );
+
+    await app.close();
+  });
+
+  it('Non-TC: Warning sources are truncated to 200 characters', async () => {
+    const longBrokenDiagram = ['```mermaid', `graph TD\n${'A-->B\n'.repeat(80)}Broken[broken`, '```'].join(
+      '\n',
+    );
+    configureSourceFile(`# Mermaid\n\n${longBrokenDiagram}`);
+    const app = await buildApp();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/export',
+      payload: buildDefaultRequest(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const warning = response
+      .json()
+      .warnings.find((item: { type: string }) => item.type === 'mermaid-error');
+    expect(warning.source.length).toBeLessThanOrEqual(200);
 
     await app.close();
   });
