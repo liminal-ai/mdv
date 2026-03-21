@@ -342,6 +342,17 @@ function getErrorMessage(error: unknown): { code: string; message: string; timeo
   };
 }
 
+function isFileNotFoundError(error: unknown): boolean {
+  if (error instanceof ApiError) {
+    return error.code === 'FILE_NOT_FOUND' || error.status === 404;
+  }
+
+  return (
+    (error as { code?: string } | undefined)?.code === 'FILE_NOT_FOUND' ||
+    (error as { status?: number } | undefined)?.status === 404
+  );
+}
+
 export async function bootstrapApp(
   api = new ApiClient(),
   wsClient: WsClient | null = shouldAutoBootstrap() ? new WsClient() : null,
@@ -493,6 +504,7 @@ export async function bootstrapApp(
   };
 
   const savePendingTimers = new Map<string, number>();
+  const pendingTabLoads = new Map<string, Promise<{ needsSync: boolean }>>();
 
   const scheduleClearSavePending = (path: string) => {
     const existingTimer = savePendingTimers.get(path);
@@ -681,7 +693,7 @@ export async function bootstrapApp(
           tabs.map((tab) => ({
             path: tab.path,
             mode: tab.mode,
-            scrollPosition: tab.mode === 'render' ? tab.scrollPosition : undefined,
+            scrollPosition: tab.mode === 'edit' ? tab.editScrollPosition : tab.scrollPosition,
           })),
           activeTab?.path ?? null,
         ),
@@ -805,6 +817,7 @@ export async function bootstrapApp(
       ),
       state.activeTabId,
     );
+    void syncTabsToSession();
   };
 
   const pinWorkspace = async () => {
@@ -877,6 +890,11 @@ export async function bootstrapApp(
 
     updateTabsState(nextTabs, tabId, { closeContextMenu: true });
     restoreScrollPosition(targetTab.scrollPosition);
+
+    if (targetTab.loading) {
+      await loadTabContent(tabId);
+    }
+
     await syncTabsToSession();
   };
 
@@ -1093,7 +1111,7 @@ export async function bootstrapApp(
         restoreScrollSnapshot(scrollSnapshot);
       }
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'FILE_NOT_FOUND') {
+      if (isFileNotFoundError(error)) {
         markTabDeleted(path);
         return;
       }
@@ -1120,6 +1138,122 @@ export async function bootstrapApp(
     }
   };
 
+  const loadTabContent = async (tabId: string): Promise<{ needsSync: boolean }> => {
+    const existingRequest = pendingTabLoads.get(tabId);
+    if (existingRequest) {
+      return existingRequest;
+    }
+
+    const state = store.get();
+    const targetTab = state.tabs.find((tab) => tab.id === tabId) ?? null;
+    if (!targetTab || !targetTab.loading) {
+      return { needsSync: false };
+    }
+
+    const loadRequest = (async () => {
+      try {
+        const response = await api.readFile(targetTab.path);
+        const latestState = store.get();
+        const latestTab = latestState.tabs.find((tab) => tab.id === tabId) ?? null;
+        if (!latestTab || !latestTab.loading) {
+          return { needsSync: false };
+        }
+
+        const duplicateTab = latestState.tabs.find(
+          (tab) => tab.id !== tabId && tab.canonicalPath === response.canonicalPath,
+        );
+
+        if (duplicateTab) {
+          unwatchPath(latestTab.path);
+
+          const mergedTabs = disambiguateDisplayNames(
+            latestState.tabs
+              .filter((tab) => tab.id !== tabId)
+              .map((tab) =>
+                tab.id === duplicateTab.id
+                  ? buildLoadedTab(response, tab, latestState.session.defaultOpenMode)
+                  : tab,
+              ),
+          );
+          const nextActiveTabId =
+            latestState.activeTabId === tabId ? duplicateTab.id : latestState.activeTabId;
+
+          updateTabsState(mergedTabs, nextActiveTabId);
+
+          if (latestState.activeTabId === tabId) {
+            restoreScrollPosition(
+              mergedTabs.find((tab) => tab.id === duplicateTab.id)?.scrollPosition ?? 0,
+            );
+          }
+
+          return { needsSync: true };
+        }
+
+        const hydratedTabs = disambiguateDisplayNames(
+          latestState.tabs.map((tab) =>
+            tab.id === tabId
+              ? buildLoadedTab(response, tab, latestState.session.defaultOpenMode)
+              : tab,
+          ),
+        );
+
+        updateTabsState(hydratedTabs, latestState.activeTabId);
+
+        if (latestState.activeTabId === tabId) {
+          restoreScrollPosition(hydratedTabs.find((tab) => tab.id === tabId)?.scrollPosition ?? 0);
+        }
+
+        return { needsSync: false };
+      } catch (error) {
+        const latestState = store.get();
+        if (!latestState.tabs.some((tab) => tab.id === tabId)) {
+          return { needsSync: false };
+        }
+
+        updateTabsState(
+          latestState.tabs.map((tab) => {
+            if (tab.id !== tabId) {
+              return tab;
+            }
+
+            if (isFileNotFoundError(error)) {
+              return {
+                ...tab,
+                loading: false,
+                status: 'deleted',
+                errorMessage: undefined,
+              };
+            }
+
+            return {
+              ...tab,
+              loading: false,
+              status: 'error',
+              errorMessage: getErrorMessage(error).message,
+            };
+          }),
+          latestState.activeTabId,
+        );
+
+        if (!isFileNotFoundError(error)) {
+          setError(error);
+        }
+
+        return { needsSync: false };
+      }
+    })();
+
+    pendingTabLoads.set(tabId, loadRequest);
+
+    try {
+      return await loadRequest;
+    } finally {
+      if (pendingTabLoads.get(tabId) === loadRequest) {
+        pendingTabLoads.delete(tabId);
+      }
+    }
+  };
+
   async function openFile(path: string, anchor?: string): Promise<void> {
     const state = store.get();
     const knownTab = state.tabs.find((tab) => tab.path === path || tab.canonicalPath === path);
@@ -1143,6 +1277,7 @@ export async function bootstrapApp(
     ]);
 
     updateTabsState(nextTabs, loadingTab.id, { closeContextMenu: true });
+    await syncTabsToSession();
     restoreScrollPosition(0);
 
     const removeLoadingTab = () => {
@@ -1518,46 +1653,13 @@ export async function bootstrapApp(
       loadingTabs.find((tab) => tab.path === activeTab)?.id ?? loadingTabs.at(-1)?.id ?? null;
 
     updateTabsState(loadingTabs, initialActiveTabId);
-
-    const restoredTabs: TabState[] = [];
-    let restoredActiveTabId: string | null = null;
-    let needsSync = false;
-
-    for (const loadingTab of loadingTabs) {
-      try {
-        const response = await api.readFile(loadingTab.path);
-        const duplicateTab = restoredTabs.find(
-          (tab) => tab.canonicalPath === response.canonicalPath,
-        );
-
-        if (duplicateTab) {
-          needsSync = true;
-          if (loadingTab.path === activeTab) {
-            restoredActiveTabId = duplicateTab.id;
-          }
-          continue;
-        }
-
-        const restoredTab = buildLoadedTab(response, loadingTab, bootstrap.session.defaultOpenMode);
-        restoredTabs.push(restoredTab);
-
-        if (loadingTab.path === activeTab || response.path === activeTab) {
-          restoredActiveTabId = restoredTab.id;
-        }
-      } catch (error) {
-        needsSync = true;
-        setError(error);
-      }
+    for (const tab of loadingTabs) {
+      watchPath(tab.path);
     }
 
-    const nextTabs = disambiguateDisplayNames(restoredTabs);
-    const nextActiveTabId =
-      nextTabs.find((tab) => tab.id === restoredActiveTabId)?.id ?? nextTabs.at(-1)?.id ?? null;
-
-    updateTabsState(nextTabs, nextActiveTabId);
-    restoreScrollPosition(0);
-    for (const tab of nextTabs) {
-      watchPath(tab.path);
+    let needsSync = false;
+    if (initialActiveTabId) {
+      ({ needsSync } = await loadTabContent(initialActiveTabId));
     }
 
     if (needsSync) {
