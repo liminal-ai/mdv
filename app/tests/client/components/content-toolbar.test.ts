@@ -64,7 +64,7 @@ describe('content toolbar', () => {
     expect(document.querySelector('.content-toolbar')).toBeNull();
   });
 
-  it('TC-6.2a: marks Render active and Edit unavailable', () => {
+  it('TC-6.2a: marks Render active and Edit inactive', () => {
     renderContentToolbar({
       tabs: [singleTab],
       activeTabId: singleTab.id,
@@ -76,12 +76,12 @@ describe('content toolbar', () => {
     const editButton = buttons.find((button) => button.textContent === 'Edit');
 
     expect(renderButton?.className).toContain('mode-toggle--active');
-    expect(editButton?.className).toContain('mode-toggle--disabled');
-    expect(editButton?.getAttribute('aria-disabled')).toBe('true');
+    expect(editButton?.className).not.toContain('mode-toggle--disabled');
+    expect(editButton?.getAttribute('aria-disabled')).toBeNull();
   });
 
-  it('TC-6.2b: clicking Edit shows the coming soon tooltip without changing mode', () => {
-    const { actions } = renderContentToolbar({
+  it('TC-6.2b: clicking Edit switches the active tab into edit mode', () => {
+    const { store } = renderContentToolbar({
       tabs: [singleTab],
       activeTabId: singleTab.id,
       contentToolbarVisible: true,
@@ -91,8 +91,7 @@ describe('content toolbar', () => {
       .find((button) => button.textContent === 'Edit')
       ?.click();
 
-    expect(document.body.textContent).toContain('Edit mode coming soon');
-    expect(actions.onSetDefaultMode).not.toHaveBeenCalled();
+    expect(store.get().tabs[0]?.mode).toBe('edit');
   });
 
   it('TC-6.3a: shows the default mode picker', () => {
@@ -107,7 +106,7 @@ describe('content toolbar', () => {
     ).toBe('Opens in: Render ▾');
   });
 
-  it('TC-6.3b: keeps Edit disabled in the default mode picker and allows Render selection', () => {
+  it('TC-6.3b: enables Edit in the default mode picker and allows selection', () => {
     const { actions } = renderContentToolbar({
       tabs: [singleTab],
       activeTabId: singleTab.id,
@@ -121,15 +120,14 @@ describe('content toolbar', () => {
     const dropdownItems = Array.from(
       document.querySelectorAll<HTMLButtonElement>('.default-mode-picker .dropdown__item'),
     );
-    const renderItem = dropdownItems.find((item) => item.textContent?.includes('Render'));
     const editItem = dropdownItems.find((item) => item.textContent?.includes('Edit'));
 
-    expect(editItem?.disabled).toBe(true);
-    expect(editItem?.textContent).toContain('coming soon');
+    expect(editItem?.disabled).toBe(false);
+    expect(editItem?.textContent).toBe('Edit');
 
-    renderItem?.click();
+    editItem?.click();
 
-    expect(actions.onSetDefaultMode).toHaveBeenCalledWith('render');
+    expect(actions.onSetDefaultMode).toHaveBeenCalledWith('edit');
   });
 
   it('TC-6.4a: shows the export dropdown button', () => {

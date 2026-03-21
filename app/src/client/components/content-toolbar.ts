@@ -11,10 +11,7 @@ export interface ContentToolbarActions {
   onExportFormat: (format: ExportFormat) => void | Promise<void>;
 }
 
-export const SHOW_EDIT_MODE_TOOLTIP_EVENT = 'mdv:content-toolbar-show-edit-mode-tooltip';
 export const TOGGLE_EXPORT_DROPDOWN_EVENT = 'mdv:toggle-export-dropdown';
-
-const EDIT_MODE_TOOLTIP = 'Edit mode coming soon';
 const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html'];
 
 function getActiveTab(store: StateStore) {
@@ -29,7 +26,7 @@ function canExport(store: StateStore): boolean {
 }
 
 export function showEditModeComingSoonTooltip(): void {
-  document.dispatchEvent(new CustomEvent(SHOW_EDIT_MODE_TOOLTIP_EVENT));
+  // Deprecated in Epic 5: Edit mode is now active.
 }
 
 export function mountContentToolbar(
@@ -38,7 +35,6 @@ export function mountContentToolbar(
   actions: ContentToolbarActions,
 ): () => void {
   let openMenuId: OpenMenuId = null;
-  let tooltipVisible = false;
 
   const focusExportTrigger = () => {
     container.querySelector<HTMLButtonElement>('[data-export-trigger="true"]')?.focus();
@@ -58,30 +54,32 @@ export function mountContentToolbar(
   };
 
   const closeTransientUi = () => {
-    if (!openMenuId && !tooltipVisible) {
+    if (!openMenuId) {
       return;
     }
 
     openMenuId = null;
-    tooltipVisible = false;
-    render();
-  };
-
-  const showEditTooltip = () => {
-    const state = store.get();
-    if (!state.contentToolbarVisible || !state.activeTabId) {
-      return;
-    }
-
-    openMenuId = null;
-    tooltipVisible = true;
     render();
   };
 
   const toggleMenu = (menuId: Exclude<OpenMenuId, null>) => {
     openMenuId = openMenuId === menuId ? null : menuId;
-    tooltipVisible = false;
     render();
+  };
+
+  const setActiveTabMode = (mode: 'render' | 'edit') => {
+    const state = store.get();
+    const activeTab = getActiveTab(store);
+    if (!activeTab || activeTab.mode === mode) {
+      return;
+    }
+
+    store.update(
+      {
+        tabs: state.tabs.map((tab) => (tab.id === activeTab.id ? { ...tab, mode } : tab)),
+      },
+      ['tabs'],
+    );
   };
 
   const render = () => {
@@ -90,14 +88,17 @@ export function mountContentToolbar(
 
     if (!state.contentToolbarVisible || !activeTab) {
       openMenuId = null;
-      tooltipVisible = false;
       container.replaceChildren();
       return;
     }
 
-    const warningCount = activeTab.warnings.length;
-    const defaultModeLabel = 'Render';
+    const warningCount = activeTab.mode === 'render' ? activeTab.warnings.length : 0;
+    const defaultModeLabel = state.session.defaultOpenMode === 'edit' ? 'Edit' : 'Render';
     const exportEnabled = canExport(store);
+    const cursorLabel =
+      activeTab.cursorPosition === null
+        ? 'Ln 1, Col 1'
+        : `Ln ${activeTab.cursorPosition.line}, Col ${activeTab.cursorPosition.column}`;
 
     const defaultModeDropdown =
       openMenuId === 'default-mode'
@@ -106,8 +107,11 @@ export function mountContentToolbar(
             attrs: { role: 'menu' },
             children: [
               createElement('button', {
-                className: 'dropdown__item dropdown__item--active',
-                text: '✓ Render',
+                className:
+                  state.session.defaultOpenMode === 'render'
+                    ? 'dropdown__item dropdown__item--active'
+                    : 'dropdown__item',
+                text: state.session.defaultOpenMode === 'render' ? '✓ Render' : 'Render',
                 attrs: { type: 'button', role: 'menuitem' },
                 on: {
                   click: () => {
@@ -118,13 +122,18 @@ export function mountContentToolbar(
                 },
               }),
               createElement('button', {
-                className: 'dropdown__item dropdown__item--disabled',
-                text: 'Edit (coming soon)',
-                attrs: {
-                  type: 'button',
-                  role: 'menuitem',
-                  disabled: true,
-                  title: EDIT_MODE_TOOLTIP,
+                className:
+                  state.session.defaultOpenMode === 'edit'
+                    ? 'dropdown__item dropdown__item--active'
+                    : 'dropdown__item',
+                text: state.session.defaultOpenMode === 'edit' ? '✓ Edit' : 'Edit',
+                attrs: { type: 'button', role: 'menuitem' },
+                on: {
+                  click: () => {
+                    openMenuId = null;
+                    void actions.onSetDefaultMode('edit');
+                    render();
+                  },
                 },
               }),
             ],
@@ -178,35 +187,35 @@ export function mountContentToolbar(
                     className: 'mode-toggle',
                     children: [
                       createElement('button', {
-                        className: 'mode-toggle--active',
+                        className: activeTab.mode === 'render' ? 'mode-toggle--active' : '',
                         text: 'Render',
                         attrs: { type: 'button' },
-                      }),
-                      createElement('button', {
-                        className: 'mode-toggle--disabled',
-                        text: 'Edit',
-                        attrs: {
-                          type: 'button',
-                          'aria-disabled': 'true',
-                          title: EDIT_MODE_TOOLTIP,
-                        },
                         on: {
                           click: () => {
-                            showEditTooltip();
+                            setActiveTabMode('render');
+                          },
+                        },
+                      }),
+                      createElement('button', {
+                        className: activeTab.mode === 'edit' ? 'mode-toggle--active' : '',
+                        text: 'Edit',
+                        attrs: { type: 'button' },
+                        on: {
+                          click: () => {
+                            setActiveTabMode('edit');
                           },
                         },
                       }),
                     ],
                   }),
-                  tooltipVisible
-                    ? createElement('div', {
-                        className: 'content-toolbar__tooltip',
-                        text: EDIT_MODE_TOOLTIP,
-                        attrs: { role: 'tooltip' },
-                      })
-                    : null,
                 ],
               }),
+              activeTab.dirty
+                ? createElement('span', {
+                    className: 'dirty-indicator',
+                    text: '● Modified',
+                  })
+                : null,
               createElement('div', {
                 className: 'content-toolbar__menu default-mode-picker',
                 children: [
@@ -255,30 +264,37 @@ export function mountContentToolbar(
               createElement('div', {
                 className: 'status-area',
                 children:
-                  warningCount > 0
+                  activeTab.mode === 'edit'
                     ? [
-                        createElement('button', {
-                          className: 'warning-count',
-                          text: `⚠ ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
-                          attrs: {
-                            type: 'button',
-                            title: 'Show rendering warnings',
-                          },
-                          on: {
-                            click: (event) => {
-                              const target = event.currentTarget as HTMLElement;
-                              document.dispatchEvent(
-                                new CustomEvent(WARNING_PANEL_TOGGLE_EVENT, {
-                                  detail: {
-                                    anchorRect: target.getBoundingClientRect(),
-                                  },
-                                }),
-                              );
-                            },
-                          },
+                        createElement('span', {
+                          className: 'cursor-position',
+                          text: cursorLabel,
                         }),
                       ]
-                    : [],
+                    : warningCount > 0
+                      ? [
+                          createElement('button', {
+                            className: 'warning-count',
+                            text: `⚠ ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
+                            attrs: {
+                              type: 'button',
+                              title: 'Show rendering warnings',
+                            },
+                            on: {
+                              click: (event) => {
+                                const target = event.currentTarget as HTMLElement;
+                                document.dispatchEvent(
+                                  new CustomEvent(WARNING_PANEL_TOGGLE_EVENT, {
+                                    detail: {
+                                      anchorRect: target.getBoundingClientRect(),
+                                    },
+                                  }),
+                                );
+                              },
+                            },
+                          }),
+                        ]
+                      : [],
               }),
             ],
           }),
@@ -300,10 +316,6 @@ export function mountContentToolbar(
     if (event.key === 'Escape') {
       closeTransientUi();
     }
-  };
-
-  const handleShowTooltip = () => {
-    showEditTooltip();
   };
 
   const handleToggleExportDropdown = () => {
@@ -335,7 +347,6 @@ export function mountContentToolbar(
       event.preventDefault();
       if (openMenuId !== 'export') {
         openMenuId = 'export';
-        tooltipVisible = false;
         render();
       }
 
@@ -378,7 +389,6 @@ export function mountContentToolbar(
     ) {
       if (!state.contentToolbarVisible) {
         openMenuId = null;
-        tooltipVisible = false;
       }
       render();
     }
@@ -386,7 +396,6 @@ export function mountContentToolbar(
 
   document.addEventListener('mousedown', handleDocumentMouseDown);
   document.addEventListener('keydown', handleDocumentKeydown);
-  document.addEventListener(SHOW_EDIT_MODE_TOOLTIP_EVENT, handleShowTooltip);
   document.addEventListener(TOGGLE_EXPORT_DROPDOWN_EVENT, handleToggleExportDropdown);
   container.addEventListener('keydown', handleContainerKeydown);
 
@@ -394,7 +403,6 @@ export function mountContentToolbar(
     unsubscribe();
     document.removeEventListener('mousedown', handleDocumentMouseDown);
     document.removeEventListener('keydown', handleDocumentKeydown);
-    document.removeEventListener(SHOW_EDIT_MODE_TOOLTIP_EVENT, handleShowTooltip);
     document.removeEventListener(TOGGLE_EXPORT_DROPDOWN_EVENT, handleToggleExportDropdown);
     container.removeEventListener('keydown', handleContainerKeydown);
   };

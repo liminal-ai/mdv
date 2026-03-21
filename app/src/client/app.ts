@@ -1,11 +1,7 @@
 import type { ExportFormat, FileReadResponse, SessionState, ThemeInfo } from '../shared/types.js';
 import { ApiClient, ApiError } from './api.js';
 import { mountContentArea } from './components/content-area.js';
-import {
-  mountContentToolbar,
-  showEditModeComingSoonTooltip,
-  TOGGLE_EXPORT_DROPDOWN_EVENT,
-} from './components/content-toolbar.js';
+import { mountContentToolbar, TOGGLE_EXPORT_DROPDOWN_EVENT } from './components/content-toolbar.js';
 import { mountExportProgress } from './components/export-progress.js';
 import { mountExportResult } from './components/export-result.js';
 import { mountContextMenu } from './components/context-menu.js';
@@ -116,7 +112,10 @@ function createTabId(): string {
   return `tab-${Date.now()}-${tabSequence}`;
 }
 
-function createLoadingTab(path: string): TabState {
+function createLoadingTab(
+  path: string,
+  mode: ClientState['session']['defaultOpenMode'] = 'render',
+): TabState {
   return {
     id: createTabId(),
     path,
@@ -131,10 +130,20 @@ function createLoadingTab(path: string): TabState {
     modifiedAt: '',
     size: 0,
     status: 'ok',
+    mode,
+    editContent: null,
+    editScrollPosition: 0,
+    cursorPosition: null,
+    dirty: false,
+    editedSinceLastSave: false,
   };
 }
 
-function buildLoadedTab(response: FileReadResponse, existing?: TabState): TabState {
+function buildLoadedTab(
+  response: FileReadResponse,
+  existing?: TabState,
+  defaultMode: ClientState['session']['defaultOpenMode'] = 'render',
+): TabState {
   return {
     id: existing?.id ?? createTabId(),
     path: existing?.path ?? response.path,
@@ -149,6 +158,12 @@ function buildLoadedTab(response: FileReadResponse, existing?: TabState): TabSta
     modifiedAt: response.modifiedAt,
     size: response.size,
     status: 'ok',
+    mode: existing?.mode ?? defaultMode,
+    editContent: existing?.editContent ?? null,
+    editScrollPosition: existing?.editScrollPosition ?? 0,
+    cursorPosition: existing?.cursorPosition ?? null,
+    dirty: existing?.dirty ?? false,
+    editedSinceLastSave: existing?.editedSinceLastSave ?? false,
   };
 }
 
@@ -522,6 +537,30 @@ export async function bootstrapApp(
     }
   };
 
+  const toggleMode = () => {
+    const state = store.get();
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+    if (!activeTab || activeTab.status !== 'ok') {
+      return;
+    }
+
+    updateTabsState(
+      state.tabs.map((tab) =>
+        tab.id === activeTab.id
+          ? {
+              ...tab,
+              mode: tab.mode === 'edit' ? 'render' : 'edit',
+              cursorPosition:
+                tab.mode === 'render' && tab.cursorPosition === null
+                  ? { line: 1, column: 1 }
+                  : tab.cursorPosition,
+            }
+          : tab,
+      ),
+      state.activeTabId,
+    );
+  };
+
   const pinWorkspace = async () => {
     const root = store.get().session.lastRoot;
     if (!root) {
@@ -768,7 +807,7 @@ export async function bootstrapApp(
     }
 
     const previousActiveTabId = state.activeTabId;
-    const loadingTab = createLoadingTab(path);
+    const loadingTab = createLoadingTab(path, state.session.defaultOpenMode);
     const nextTabs = disambiguateDisplayNames([
       ...saveScrollPosition(state.tabs, state.activeTabId),
       loadingTab,
@@ -822,7 +861,11 @@ export async function bootstrapApp(
         const mergedTabs = disambiguateDisplayNames(
           currentState.tabs
             .filter((tab) => tab.id !== loadingTab.id)
-            .map((tab) => (tab.id === existingTab.id ? buildLoadedTab(response, tab) : tab)),
+            .map((tab) =>
+              tab.id === existingTab.id
+                ? buildLoadedTab(response, tab, currentState.session.defaultOpenMode)
+                : tab,
+            ),
         );
 
         updateTabsState(mergedTabs, existingTab.id, { closeContextMenu: true });
@@ -840,7 +883,9 @@ export async function bootstrapApp(
 
       const hydratedTabs = disambiguateDisplayNames(
         currentState.tabs.map((tab) =>
-          tab.id === loadingTab.id ? buildLoadedTab(response, tab) : tab,
+          tab.id === loadingTab.id
+            ? buildLoadedTab(response, tab, currentState.session.defaultOpenMode)
+            : tab,
         ),
       );
 
@@ -971,7 +1016,9 @@ export async function bootstrapApp(
       return;
     }
 
-    const loadingTabs = disambiguateDisplayNames(openTabs.map((path) => createLoadingTab(path)));
+    const loadingTabs = disambiguateDisplayNames(
+      openTabs.map((path) => createLoadingTab(path, bootstrap.session.defaultOpenMode)),
+    );
     const initialActiveTabId =
       loadingTabs.find((tab) => tab.path === activeTab)?.id ?? loadingTabs.at(-1)?.id ?? null;
 
@@ -996,7 +1043,7 @@ export async function bootstrapApp(
           continue;
         }
 
-        const restoredTab = buildLoadedTab(response, loadingTab);
+        const restoredTab = buildLoadedTab(response, loadingTab, bootstrap.session.defaultOpenMode);
         restoredTabs.push(restoredTab);
 
         if (loadingTab.path === activeTab || response.path === activeTab) {
@@ -1089,6 +1136,7 @@ export async function bootstrapApp(
     onOpenRecentFile: openFile,
     onOpenMarkdownLink: openFile,
     onOpenExternalLink: (path) => api.openExternal(path),
+    onRenderContent: (content, documentPath) => api.render({ content, documentPath }),
     onLinkError: setError,
   });
   mountWarningPanel(warningPanelHost, store);
@@ -1179,9 +1227,7 @@ export async function bootstrapApp(
     shift: true,
     description: 'Toggle Edit Mode',
     action: () => {
-      if (store.get().activeTabId) {
-        showEditModeComingSoonTooltip();
-      }
+      toggleMode();
     },
   });
   keyboardManager.register({

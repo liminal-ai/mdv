@@ -34,12 +34,12 @@ export interface TabState {
   size: number;
   status: 'ok' | 'deleted' | 'error';
   errorMessage?: string;
-  mode?: 'render' | 'edit';
-  editContent?: string | null;
-  editScrollPosition?: number;
-  cursorPosition?: { line: number; column: number } | null;
-  dirty?: boolean;
-  editedSinceLastSave?: boolean;
+  mode: 'render' | 'edit';
+  editContent: string | null;
+  editScrollPosition: number;
+  cursorPosition: { line: number; column: number } | null;
+  dirty: boolean;
+  editedSinceLastSave: boolean;
 }
 
 export interface TabContextMenuState {

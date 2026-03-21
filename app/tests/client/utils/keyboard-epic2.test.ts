@@ -4,6 +4,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { basicFileResponse } from '../../fixtures/file-responses.js';
 import { emptySession } from '../../fixtures/session.js';
 
+vi.mock('../../../src/client/components/editor.js', () => ({
+  Editor: vi.fn().mockImplementation(function MockEditor() {
+    return {
+      setContent: vi.fn(),
+      getContent: vi.fn(() => ''),
+      getSelection: vi.fn(() => ''),
+      insertAtCursor: vi.fn(),
+      replaceSelection: vi.fn(),
+      getScrollTop: vi.fn(() => 0),
+      setScrollTop: vi.fn(),
+      scrollToPercentage: vi.fn(),
+      getScrollPercentage: vi.fn(() => 0),
+      focus: vi.fn(),
+      destroy: vi.fn(),
+    };
+  }),
+}));
+
 const availableThemes = [
   { id: 'light-default', label: 'Light Default', variant: 'light' as const },
   { id: 'light-warm', label: 'Light Warm', variant: 'light' as const },
@@ -37,6 +55,10 @@ async function renderApp(sessionOverrides: Partial<typeof emptySession> = {}) {
       canonicalPath: path,
       filename: path.split('/').filter(Boolean).at(-1) ?? path,
       html: `<h1>${path}</h1>`,
+    })),
+    render: vi.fn().mockImplementation(async ({ content }: { content: string }) => ({
+      html: `<p>${content}</p>`,
+      warnings: [],
     })),
     copyToClipboard: vi.fn().mockResolvedValue(undefined),
     updateTabs: vi
@@ -149,7 +171,7 @@ describe('epic 2 keyboard shortcuts', () => {
     expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('Cmd+Shift+M shows the edit mode coming soon tooltip for an open document', async () => {
+  it('Cmd+Shift+M toggles the active document into edit mode', async () => {
     await renderApp({
       openTabs: ['/a.md'],
       activeTab: '/a.md',
@@ -160,6 +182,10 @@ describe('epic 2 keyboard shortcuts', () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(document.body.textContent).toContain('Edit mode coming soon');
+    expect(
+      Array.from(document.querySelectorAll<HTMLButtonElement>('.mode-toggle button')).find(
+        (button) => button.textContent === 'Edit',
+      )?.className,
+    ).toContain('mode-toggle--active');
   });
 });

@@ -4,6 +4,7 @@ import type {
   FilePickerResponse,
   FileReadResponse,
   FileTreeResponse,
+  RenderFromContentResponse,
   SessionState,
 } from '../shared/types.js';
 
@@ -105,6 +106,16 @@ export class ApiClient {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  async render(request: {
+    content: string;
+    documentPath: string;
+  }): Promise<RenderFromContentResponse> {
+    return this.request('/api/render', {
+      method: 'POST',
+      body: request,
+    });
   }
 
   async pickFile(): Promise<FilePickerResponse> {

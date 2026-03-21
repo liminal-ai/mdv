@@ -1,6 +1,7 @@
 import type { RenderWarning } from '../../shared/types.js';
+import { Editor } from './editor.js';
 import { attach as attachLinkHandler } from '../utils/link-handler.js';
-import type { StateStore } from '../state.js';
+import type { StateStore, TabState } from '../state.js';
 import { createElement } from '../utils/dom.js';
 import { renderMermaidBlocks } from '../utils/mermaid-renderer.js';
 
@@ -32,6 +33,10 @@ export interface ContentAreaActions {
   onOpenRecentFile?: (path: string) => void | Promise<void>;
   onOpenMarkdownLink?: (path: string, anchor?: string) => void | Promise<void>;
   onOpenExternalLink?: (path: string) => Promise<{ ok: true }>;
+  onRenderContent?: (
+    content: string,
+    documentPath: string,
+  ) => Promise<{ html: string; warnings: RenderWarning[] }>;
   onLinkError?: (error: unknown) => void;
 }
 
@@ -40,6 +45,68 @@ export function mountContentArea(
   store: StateStore,
   actions: ContentAreaActions,
 ): () => void {
+  let editor: Editor | null = null;
+  let editorHost: HTMLElement | null = null;
+  const lastRenderedDirtyContent = new Map<string, string>();
+
+  const destroyEditor = () => {
+    if (!editor) {
+      return;
+    }
+
+    editor.destroy();
+    editor = null;
+    editorHost = null;
+  };
+
+  const updateActiveTab = (updateTab: (tab: TabState) => TabState) => {
+    const state = store.get();
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+    if (!activeTab) {
+      return;
+    }
+
+    store.update(
+      {
+        tabs: state.tabs.map((tab) => (tab.id === activeTab.id ? updateTab(activeTab) : tab)),
+      },
+      ['tabs'],
+    );
+  };
+
+  const ensureEditor = (parent: HTMLElement) => {
+    if (editor && editorHost === parent) {
+      return editor;
+    }
+
+    destroyEditor();
+    editorHost = parent;
+    editor = new Editor(parent, {
+      onContentChange: (content) => {
+        updateActiveTab((tab) => ({
+          ...tab,
+          editContent: content,
+          dirty: content !== tab.content,
+          editedSinceLastSave: content !== tab.content,
+        }));
+      },
+      onCursorChange: (line, column) => {
+        updateActiveTab((tab) => ({
+          ...tab,
+          cursorPosition: { line, column },
+        }));
+      },
+      shouldSuppressUpdates: () => false,
+    });
+
+    return editor;
+  };
+
+  const getActiveTab = () => {
+    const state = store.get();
+    return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+  };
+
   const renderEmptyState = () => {
     const { session } = store.get();
     const recentFiles =
@@ -133,9 +200,10 @@ export function mountContentArea(
 
   const render = async () => {
     const state = store.get();
-    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+    const activeTab = getActiveTab();
 
     if (!activeTab) {
+      destroyEditor();
       renderEmptyState();
       return;
     }
@@ -175,6 +243,7 @@ export function mountContentArea(
         }),
       );
     } else if (activeTab.status === 'error') {
+      destroyEditor();
       bodyChildren.push(
         createElement('div', {
           className: 'content-area__error',
@@ -183,11 +252,29 @@ export function mountContentArea(
       );
     } else {
       bodyChildren.push(
-        createElement('article', {
-          className: 'markdown-body',
-          attrs: { 'aria-label': activeTab.filename },
+        createElement('div', {
+          className: 'content-area__document',
+          children: [
+            createElement('article', {
+              className: 'markdown-body',
+              attrs: {
+                'aria-label': activeTab.filename,
+                hidden: activeTab.mode === 'edit',
+              },
+            }),
+            createElement('div', {
+              className: 'editor-container',
+              attrs: {
+                hidden: activeTab.mode !== 'edit',
+              },
+            }),
+          ],
         }),
       );
+    }
+
+    if (activeTab.mode !== 'edit') {
+      destroyEditor();
     }
 
     container.replaceChildren(
@@ -202,60 +289,133 @@ export function mountContentArea(
       }),
     );
 
-    if (!activeTab.loading && activeTab.status !== 'error') {
-      const markdownBody = container.querySelector<HTMLElement>('.markdown-body');
-      if (markdownBody) {
-        markdownBody.innerHTML = activeTab.html;
-        if (actions.onOpenMarkdownLink && actions.onOpenExternalLink && actions.onLinkError) {
-          attachLinkHandler(markdownBody, {
-            tabs: state.tabs,
-            activeTabId: state.activeTabId,
-            openFile: actions.onOpenMarkdownLink,
-            api: {
-              openExternal: actions.onOpenExternalLink,
-            },
-            showError: actions.onLinkError,
-          });
-        }
+    if (activeTab.loading || activeTab.status === 'error') {
+      return;
+    }
 
-        const renderingTabId = activeTab.id;
-        const renderingGeneration = activeTab.renderGeneration ?? 0;
-        const mermaidResult = await renderMermaidBlocks(markdownBody);
-        const currentState = store.get();
-        if (currentState.activeTabId !== renderingTabId) {
-          return;
-        }
+    const markdownBody = container.querySelector<HTMLElement>('.markdown-body');
+    if (!markdownBody) {
+      return;
+    }
 
-        const currentTab = currentState.tabs.find((tab) => tab.id === renderingTabId);
-        if (!currentTab) {
-          return;
-        }
-        if ((currentTab.renderGeneration ?? 0) !== renderingGeneration) {
-          return;
-        }
+    if (activeTab.status === 'deleted') {
+      markdownBody.innerHTML = activeTab.html;
+      return;
+    }
 
-        const serverWarnings = currentTab.warnings.filter(
-          (warning) => warning.type !== 'mermaid-error',
-        );
-        const allWarnings = [...serverWarnings, ...mermaidResult.warnings];
-        if (warningsEqual(currentTab.warnings, allWarnings)) {
-          return;
-        }
+    if (activeTab.mode === 'edit') {
+      const nextEditorHost = container.querySelector<HTMLElement>('.editor-container');
+      if (!nextEditorHost) {
+        return;
+      }
 
+      const currentEditor = ensureEditor(nextEditorHost);
+      const editorContent = activeTab.editContent ?? activeTab.content;
+      if (currentEditor.getContent() !== editorContent) {
+        currentEditor.setContent(editorContent);
+      }
+      currentEditor.setScrollTop(activeTab.editScrollPosition);
+      currentEditor.focus();
+      return;
+    }
+
+    let html = activeTab.html;
+    let serverWarnings = activeTab.warnings.filter((warning) => warning.type !== 'mermaid-error');
+
+    if (
+      activeTab.dirty &&
+      activeTab.editContent &&
+      actions.onRenderContent &&
+      lastRenderedDirtyContent.get(activeTab.id) !== activeTab.editContent
+    ) {
+      const response = await actions.onRenderContent(activeTab.editContent, activeTab.path);
+      const latestTab = getActiveTab();
+      if (!latestTab || latestTab.id !== activeTab.id || latestTab.mode !== 'render') {
+        return;
+      }
+
+      html = response.html;
+      serverWarnings = response.warnings;
+      lastRenderedDirtyContent.set(activeTab.id, activeTab.editContent);
+
+      if (
+        latestTab.html !== response.html ||
+        !warningsEqual(
+          latestTab.warnings.filter((warning) => warning.type !== 'mermaid-error'),
+          response.warnings,
+        )
+      ) {
         store.update(
           {
-            tabs: currentState.tabs.map((tab) =>
-              tab.id === renderingTabId ? { ...tab, warnings: allWarnings } : tab,
-            ),
+            tabs: store
+              .get()
+              .tabs.map((tab) =>
+                tab.id === activeTab.id
+                  ? { ...tab, html: response.html, warnings: response.warnings }
+                  : tab,
+              ),
           },
           ['tabs'],
         );
       }
+    } else if (!activeTab.dirty || !activeTab.editContent) {
+      lastRenderedDirtyContent.delete(activeTab.id);
     }
+
+    markdownBody.innerHTML = html;
+    if (actions.onOpenMarkdownLink && actions.onOpenExternalLink && actions.onLinkError) {
+      attachLinkHandler(markdownBody, {
+        tabs: state.tabs,
+        activeTabId: state.activeTabId,
+        openFile: actions.onOpenMarkdownLink,
+        api: {
+          openExternal: actions.onOpenExternalLink,
+        },
+        showError: actions.onLinkError,
+      });
+    }
+
+    const renderingTabId = activeTab.id;
+    const renderingGeneration = activeTab.renderGeneration ?? 0;
+    const mermaidResult = await renderMermaidBlocks(markdownBody);
+    const currentState = store.get();
+    if (currentState.activeTabId !== renderingTabId) {
+      return;
+    }
+
+    const currentTab = currentState.tabs.find((tab) => tab.id === renderingTabId);
+    if (!currentTab) {
+      return;
+    }
+    if (
+      (currentTab.renderGeneration ?? 0) !== renderingGeneration ||
+      currentTab.mode !== 'render'
+    ) {
+      return;
+    }
+
+    const allWarnings = [...serverWarnings, ...mermaidResult.warnings];
+    if (warningsEqual(currentTab.warnings, allWarnings)) {
+      return;
+    }
+
+    store.update(
+      {
+        tabs: currentState.tabs.map((tab) =>
+          tab.id === renderingTabId ? { ...tab, warnings: allWarnings } : tab,
+        ),
+      },
+      ['tabs'],
+    );
   };
 
   void render();
-  return store.subscribe(() => {
+  const unsubscribe = store.subscribe(() => {
     void render();
   });
+
+  return () => {
+    destroyEditor();
+    unsubscribe();
+  };
 }

@@ -182,4 +182,53 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 
 ## Story Checkpoints
 
-(filled in as stories complete)
+### Story 0: Foundation — ACCEPTED
+
+**Risk tier:** low
+**Commit:** 09867f9
+**CLI evidence:** Implementation session 019d105f-529a-7362-87ce-38107711da36, review session 019d1068-0054-7bd1-95e9-093e61aa1fa8
+**Gate:** `npm run verify` — 510/510 PASS
+**Cumulative tests:** 510 (no new tests expected for Story 0)
+
+**Findings and dispositions:**
+| Finding | Severity | Disposition |
+|---------|----------|-------------|
+| ConflictError message simpler than spec | Minor | accepted-risk — properties carry data |
+| TabState edit fields optional (spec shows required) | Minor | accepted-risk — backward compat, tighten in Story 1-2 |
+| Render stub uses READ_ERROR code | Minor | accepted-risk — temporary 501 stub |
+| Export save-dialog not yet consolidated | Minor | defer — by design, Story 3 |
+
+**Open risks:** none
+
+**Observations:** Clean infrastructure delivery. The story-vs-tech-design discrepancy on save-dialog path (`/api/file/save-dialog` in story vs `/api/save-dialog` in tech design) was correctly resolved in favor of the tech design. CodeMirror deps (7 packages) installed and in package.json. Session test updated for new defaultOpenMode validation. No surprises.
+
+**Process correction:** Orchestrator halted after Story 0 acceptance to ask "ready?" when nothing was blocking. This wastes time. At story transitions with no issues, reload the skill and continue immediately. Only stop for genuine issues or escalations.
+
+**Next:** Story 1 — Mode Switching and Default Mode. Expected +13 tests, target 523 total. RELOAD SKILL BEFORE STARTING.
+
+### Story 1: Mode Switching and Default Mode — ACCEPTED
+
+**Risk tier:** medium
+**Commit:** ebdad75
+**CLI evidence:** Implementation session 019d107c-4049-7be0-a4e5-d5cec7e80f87, review session 019d108f-0c36-7a62-a986-abd6149b1200
+**Gate:** `npm run verify` — 523/523 PASS
+**Cumulative tests:** 523 (+13 new in mode-switching.test.ts)
+
+**Findings and dispositions:**
+| Finding | Severity | Disposition |
+|---------|----------|-------------|
+| renderGeneration not bumped on toggleMode | Minor | accepted-risk — low practical impact, address in Story 2 |
+| editScrollPosition not saved before editor destroy | Minor | defer to Story 2 (editor is skeleton) |
+| TC-1.1e no DOM assertion for render result | Minor | accepted-risk — implementation verified correct |
+| content-area dirty check is per-keystroke not debounced | Minor | defer to Story 3 (dirty state scope) |
+
+**Open risks:** none blocking
+
+**Observations:** Clean implementation. POST /api/render route is now functional (was 501 stub). Editor skeleton matches tech-design API exactly. Content-area uses a `lastRenderedDirtyContent` deduplication map not in the tech design — good optimization. The reviewer's CLI flagged 5 "Major" items; independent assessment downgraded all to minor/accepted. One was a false positive (TC-7.1d flash — code path structurally prevents it). Two items deferred to Story 2 where they naturally belong.
+
+**Boundary inventory update:**
+| Boundary | Status | Change |
+|----------|--------|--------|
+| POST /api/render | integrated | Was stub, now functional |
+
+**Next:** Story 2 — Edit Mode Editor. Expected +11 tests, target 534 total. RELOAD SKILL BEFORE STARTING.

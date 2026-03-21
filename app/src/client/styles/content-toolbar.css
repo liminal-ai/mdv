@@ -32,6 +32,8 @@
   border: none;
   border-radius: 3px;
   cursor: pointer;
+  background: transparent;
+  color: var(--color-text-muted);
 }
 
 .mode-toggle--active {
@@ -39,9 +41,20 @@
   background: var(--color-bg-primary);
 }
 
+.mode-toggle button:hover,
+.mode-toggle button:focus-visible {
+  color: var(--color-text-primary);
+  outline: none;
+}
+
 .mode-toggle--disabled {
   color: var(--color-text-muted);
   cursor: default;
+}
+
+.dirty-indicator,
+.cursor-position {
+  color: var(--color-text-secondary);
 }
 
 .content-toolbar__button {
