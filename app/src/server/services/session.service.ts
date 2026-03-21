@@ -140,6 +140,12 @@ export class SessionService {
     });
   }
 
+  async setLastExportDir(dir: string): Promise<SessionState> {
+    return this.mutate((session) => {
+      session.lastExportDir = dir;
+    });
+  }
+
   private async mutate(mutator: (session: SessionState) => void): Promise<SessionState> {
     const session = await this.readSessionForMutation();
     const nextSession = cloneSession(session);

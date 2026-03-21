@@ -1,5 +1,6 @@
 import type {
   ErrorCode,
+  ExportWarning,
   RenderWarning,
   SessionState,
   ThemeInfo,
@@ -45,6 +46,20 @@ export interface TabContextMenuState {
   }>;
 }
 
+export interface ExportResult {
+  type: 'success' | 'error';
+  outputPath?: string;
+  warnings: ExportWarning[];
+  error?: string;
+  completedAt: string;
+}
+
+export interface ExportState {
+  inProgress: boolean;
+  activeFormat: 'pdf' | 'docx' | 'html' | null;
+  result: ExportResult | null;
+}
+
 export interface ClientState {
   session: SessionState;
   availableThemes: ThemeInfo[];
@@ -60,6 +75,7 @@ export interface ClientState {
   activeTabId: string | null;
   tabContextMenu: TabContextMenuState | null;
   contentToolbarVisible: boolean;
+  exportState: ExportState;
 }
 
 type StateListener = (state: ClientState, changed: Array<keyof ClientState>) => void;

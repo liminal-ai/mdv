@@ -1,8 +1,8 @@
-import type { ThemeInfo } from '../../shared/types.js';
-import type { StateStore } from '../state.js';
+import type { ClientState, StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
 
 type MenuId = 'file' | 'export' | 'view';
+type ExportFormat = 'pdf' | 'docx' | 'html';
 
 interface MenuItem {
   label: string;
@@ -16,16 +16,13 @@ export interface MenuBarActions {
   onBrowse: () => void | Promise<void>;
   onToggleSidebar: () => void | Promise<void>;
   onSetTheme: (themeId: string) => void | Promise<void>;
+  onExportFormat: (format: ExportFormat) => void | Promise<void>;
 }
 
 const MENU_ORDER: MenuId[] = ['file', 'export', 'view'];
+const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html'];
 
-function getMenuItems(
-  menuId: MenuId,
-  themeItems: ThemeInfo[],
-  activeTheme: string,
-  actions: MenuBarActions,
-): MenuItem[] {
+function getMenuItems(menuId: MenuId, state: ClientState, actions: MenuBarActions): MenuItem[] {
   if (menuId === 'file') {
     return [
       { label: 'Open File', shortcut: 'Cmd+O', action: actions.onOpenFile },
@@ -34,17 +31,23 @@ function getMenuItems(
   }
 
   if (menuId === 'export') {
-    return [
-      { label: 'PDF', disabled: true },
-      { label: 'DOCX', disabled: true },
-      { label: 'HTML', disabled: true },
-    ];
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+    const exportEnabled = activeTab?.status === 'ok' && !state.exportState.inProgress;
+
+    return EXPORT_FORMATS.map((format) => ({
+      label: format.toUpperCase(),
+      disabled: !exportEnabled,
+      action: exportEnabled ? () => actions.onExportFormat(format) : undefined,
+    }));
   }
 
   return [
     { label: 'Toggle Sidebar', shortcut: 'Cmd+B', action: actions.onToggleSidebar },
-    ...themeItems.map((theme) => ({
-      label: theme.id === activeTheme ? `Theme: ${theme.label} (Current)` : `Theme: ${theme.label}`,
+    ...state.availableThemes.map((theme) => ({
+      label:
+        theme.id === state.session.theme
+          ? `Theme: ${theme.label} (Current)`
+          : `Theme: ${theme.label}`,
       action: () => actions.onSetTheme(theme.id),
     })),
   ];
@@ -104,7 +107,6 @@ export function mountMenuBar(
     const triggerMenuId = target.dataset.menuTrigger as MenuId | undefined;
     const itemKey = target.dataset.menuItem;
     const activeMenuId = store.get().activeMenuId as MenuId | null;
-    const themeItems = store.get().availableThemes;
 
     if (triggerMenuId) {
       if (event.key === 'ArrowDown' || event.key === 'Enter') {
@@ -136,9 +138,7 @@ export function mountMenuBar(
     }
 
     const [menuId, indexText] = itemKey.split(':') as [MenuId, string];
-    const items = getMenuItems(menuId, themeItems, store.get().session.theme, actions).filter(
-      (item) => !item.disabled,
-    );
+    const items = getMenuItems(menuId, store.get(), actions).filter((item) => !item.disabled);
     const currentIndex = Number(indexText);
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -200,15 +200,7 @@ export function mountMenuBar(
               click: () => openMenu(menuId),
             },
           }),
-          activeMenuId === menuId
-            ? createDropdown(
-                menuId,
-                state.availableThemes,
-                state.session.theme,
-                actions,
-                closeMenus,
-              )
-            : null,
+          activeMenuId === menuId ? createDropdown(menuId, state, actions, closeMenus) : null,
         ],
       });
     });
@@ -292,8 +284,7 @@ export function mountMenuBar(
 
 function createDropdown(
   menuId: MenuId,
-  themes: ThemeInfo[],
-  activeTheme: string,
+  state: ClientState,
   actions: MenuBarActions,
   closeMenus: () => void,
 ): HTMLElement {
@@ -333,11 +324,11 @@ function createDropdown(
               className: 'menu-bar__submenu-label',
               text: 'Theme',
             }),
-            ...themes.map((theme) => {
+            ...state.availableThemes.map((theme) => {
               enabledIndex += 1;
               return createElement('button', {
                 className: 'menu-bar__item',
-                text: theme.id === activeTheme ? `${theme.label} ✓` : theme.label,
+                text: theme.id === state.session.theme ? `${theme.label} ✓` : theme.label,
                 attrs: {
                   type: 'button',
                   role: 'menuitem',
@@ -370,7 +361,7 @@ function createDropdown(
     children: (() => {
       let enabledIndex = -1;
 
-      return getMenuItems(menuId, themes, activeTheme, actions).map((item) => {
+      return getMenuItems(menuId, state, actions).map((item) => {
         const menuItemIndex = item.disabled ? null : ++enabledIndex;
 
         return createElement('button', {

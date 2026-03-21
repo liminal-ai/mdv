@@ -1,5 +1,6 @@
 import type {
   AppBootstrapResponse,
+  ExportWarning,
   FilePickerResponse,
   FileReadResponse,
   FileTreeResponse,
@@ -144,6 +145,46 @@ export class ApiClient {
     return this.request('/api/session/recent-files', {
       method: 'DELETE',
       body: { path },
+    });
+  }
+
+  async exportDocument(request: {
+    path: string;
+    format: string;
+    savePath: string;
+    theme: string;
+  }): Promise<{
+    status: string;
+    outputPath: string;
+    warnings: ExportWarning[];
+  }> {
+    return this.request('/api/export', {
+      method: 'POST',
+      body: request,
+    });
+  }
+
+  async exportSaveDialog(
+    defaultPath: string,
+    defaultFilename: string,
+  ): Promise<{ path: string } | null> {
+    return this.request('/api/export/save-dialog', {
+      method: 'POST',
+      body: { defaultPath, defaultFilename },
+    });
+  }
+
+  async reveal(filePath: string): Promise<{ ok: true }> {
+    return this.request('/api/export/reveal', {
+      method: 'POST',
+      body: { path: filePath },
+    });
+  }
+
+  async setLastExportDir(dir: string): Promise<SessionState> {
+    return this.request('/api/session/last-export-dir', {
+      method: 'PUT',
+      body: { path: dir },
     });
   }
 

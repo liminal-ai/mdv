@@ -4,18 +4,28 @@ import { createElement } from '../utils/dom.js';
 import { WARNING_PANEL_TOGGLE_EVENT } from './warning-panel.js';
 
 type OpenMenuId = 'default-mode' | 'export' | null;
+type ExportFormat = 'pdf' | 'docx' | 'html';
 
 export interface ContentToolbarActions {
   onSetDefaultMode: (mode: SessionState['defaultOpenMode']) => void | Promise<void>;
+  onExportFormat: (format: ExportFormat) => void | Promise<void>;
 }
 
 export const SHOW_EDIT_MODE_TOOLTIP_EVENT = 'mdv:content-toolbar-show-edit-mode-tooltip';
+export const TOGGLE_EXPORT_DROPDOWN_EVENT = 'mdv:toggle-export-dropdown';
 
 const EDIT_MODE_TOOLTIP = 'Edit mode coming soon';
+const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html'];
 
 function getActiveTab(store: StateStore) {
   const state = store.get();
   return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+}
+
+function canExport(store: StateStore): boolean {
+  const state = store.get();
+  const activeTab = getActiveTab(store);
+  return activeTab?.status === 'ok' && !state.exportState.inProgress;
 }
 
 export function showEditModeComingSoonTooltip(): void {
@@ -29,6 +39,23 @@ export function mountContentToolbar(
 ): () => void {
   let openMenuId: OpenMenuId = null;
   let tooltipVisible = false;
+
+  const focusExportTrigger = () => {
+    container.querySelector<HTMLButtonElement>('[data-export-trigger="true"]')?.focus();
+  };
+
+  const focusExportItem = (index: number) => {
+    container.querySelector<HTMLButtonElement>(`[data-export-item="${index}"]`)?.focus();
+  };
+
+  const scheduleFocus = (callback: () => void) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(callback);
+      return;
+    }
+
+    queueMicrotask(callback);
+  };
 
   const closeTransientUi = () => {
     if (!openMenuId && !tooltipVisible) {
@@ -70,6 +97,7 @@ export function mountContentToolbar(
 
     const warningCount = activeTab.warnings.length;
     const defaultModeLabel = 'Render';
+    const exportEnabled = canExport(store);
 
     const defaultModeDropdown =
       openMenuId === 'default-mode'
@@ -108,16 +136,29 @@ export function mountContentToolbar(
         ? createElement('div', {
             className: 'dropdown',
             attrs: { role: 'menu' },
-            children: ['PDF', 'DOCX', 'HTML'].map((format) =>
+            children: EXPORT_FORMATS.map((format, index) =>
               createElement('button', {
-                className: 'dropdown__item dropdown__item--disabled',
-                text: `${format} (coming soon)`,
+                className: exportEnabled
+                  ? 'dropdown__item'
+                  : 'dropdown__item dropdown__item--disabled',
+                text: format.toUpperCase(),
                 attrs: {
                   type: 'button',
                   role: 'menuitem',
-                  disabled: true,
-                  title: `${format} export coming soon`,
+                  ...(exportEnabled
+                    ? { 'data-export-item': String(index) }
+                    : { 'aria-disabled': 'true', disabled: true }),
                 },
+                dataset: exportEnabled ? { exportItem: String(index) } : undefined,
+                on: exportEnabled
+                  ? {
+                      click: () => {
+                        openMenuId = null;
+                        render();
+                        void actions.onExportFormat(format);
+                      },
+                    }
+                  : undefined,
               }),
             ),
           })
@@ -199,7 +240,9 @@ export function mountContentToolbar(
                     attrs: {
                       type: 'button',
                       'aria-expanded': String(openMenuId === 'export'),
+                      'data-export-trigger': 'true',
                     },
+                    dataset: { exportTrigger: 'true' },
                     on: {
                       click: () => {
                         toggleMenu('export');
@@ -263,6 +306,66 @@ export function mountContentToolbar(
     showEditTooltip();
   };
 
+  const handleToggleExportDropdown = () => {
+    const activeTab = getActiveTab(store);
+    if (!store.get().contentToolbarVisible || activeTab?.status !== 'ok') {
+      return;
+    }
+
+    toggleMenu('export');
+    if (openMenuId === 'export' && canExport(store)) {
+      scheduleFocus(() => focusExportItem(0));
+    }
+  };
+
+  const handleContainerKeydown = (event: KeyboardEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    const itemIndex = target.dataset.exportItem;
+    const isTrigger = target.dataset.exportTrigger === 'true';
+
+    if (isTrigger && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      if (!canExport(store)) {
+        return;
+      }
+
+      event.preventDefault();
+      if (openMenuId !== 'export') {
+        openMenuId = 'export';
+        tooltipVisible = false;
+        render();
+      }
+
+      scheduleFocus(() =>
+        focusExportItem(event.key === 'ArrowDown' ? 0 : EXPORT_FORMATS.length - 1),
+      );
+      return;
+    }
+
+    if (itemIndex === undefined) {
+      return;
+    }
+
+    const currentIndex = Number(itemIndex);
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      const nextIndex = (currentIndex + delta + EXPORT_FORMATS.length) % EXPORT_FORMATS.length;
+      focusExportItem(nextIndex);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      openMenuId = null;
+      render();
+      scheduleFocus(focusExportTrigger);
+    }
+  };
+
   render();
 
   const unsubscribe = store.subscribe((state, changed) => {
@@ -270,7 +373,8 @@ export function mountContentToolbar(
       changed.includes('tabs') ||
       changed.includes('activeTabId') ||
       changed.includes('contentToolbarVisible') ||
-      changed.includes('session')
+      changed.includes('session') ||
+      changed.includes('exportState')
     ) {
       if (!state.contentToolbarVisible) {
         openMenuId = null;
@@ -283,11 +387,15 @@ export function mountContentToolbar(
   document.addEventListener('mousedown', handleDocumentMouseDown);
   document.addEventListener('keydown', handleDocumentKeydown);
   document.addEventListener(SHOW_EDIT_MODE_TOOLTIP_EVENT, handleShowTooltip);
+  document.addEventListener(TOGGLE_EXPORT_DROPDOWN_EVENT, handleToggleExportDropdown);
+  container.addEventListener('keydown', handleContainerKeydown);
 
   return () => {
     unsubscribe();
     document.removeEventListener('mousedown', handleDocumentMouseDown);
     document.removeEventListener('keydown', handleDocumentKeydown);
     document.removeEventListener(SHOW_EDIT_MODE_TOOLTIP_EVENT, handleShowTooltip);
+    document.removeEventListener(TOGGLE_EXPORT_DROPDOWN_EVENT, handleToggleExportDropdown);
+    container.removeEventListener('keydown', handleContainerKeydown);
   };
 }

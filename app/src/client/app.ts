@@ -1,9 +1,10 @@
-import type { FileReadResponse, SessionState, ThemeInfo } from '../shared/types.js';
+import type { ExportFormat, FileReadResponse, SessionState, ThemeInfo } from '../shared/types.js';
 import { ApiClient, ApiError } from './api.js';
 import { mountContentArea } from './components/content-area.js';
 import {
   mountContentToolbar,
   showEditModeComingSoonTooltip,
+  TOGGLE_EXPORT_DROPDOWN_EVENT,
 } from './components/content-toolbar.js';
 import { mountContextMenu } from './components/context-menu.js';
 import { mountErrorNotification } from './components/error-notification.js';
@@ -92,6 +93,16 @@ function fileName(filePath: string): string {
 
 function formatMegabytes(size: number): string {
   return (size / LARGE_FILE_CONFIRM_MIN_BYTES).toFixed(1);
+}
+
+function directoryName(filePath: string): string {
+  const lastSlash = filePath.lastIndexOf('/');
+  return lastSlash > 0 ? filePath.slice(0, lastSlash) : '/';
+}
+
+function exportBaseName(filePath: string): string {
+  const name = fileName(filePath);
+  return name.toLowerCase().endsWith('.md') ? name.slice(0, -3) : name;
 }
 
 function createTabId(): string {
@@ -307,6 +318,11 @@ export async function bootstrapApp(
     activeTabId: null,
     tabContextMenu: null,
     contentToolbarVisible: false,
+    exportState: {
+      inProgress: false,
+      activeFormat: null,
+      result: null,
+    },
   };
 
   const store = new StateStore(initialState);
@@ -861,6 +877,88 @@ export async function bootstrapApp(
     await switchTab(state.tabs[nextIndex]!.id);
   };
 
+  const handleExportClick = async (format: ExportFormat) => {
+    const state = store.get();
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+    if (!activeTab || activeTab.status !== 'ok' || state.exportState.inProgress) {
+      return;
+    }
+
+    const defaultDir = state.session.lastExportDir ?? directoryName(activeTab.path);
+    const defaultFilename = `${exportBaseName(activeTab.path)}.${format}`;
+
+    let selection: { path: string } | null;
+    try {
+      selection = await api.exportSaveDialog(defaultDir, defaultFilename);
+    } catch (error) {
+      setError(error);
+      return;
+    }
+
+    if (!selection) {
+      return;
+    }
+
+    try {
+      applySession(await api.setLastExportDir(directoryName(selection.path)));
+    } catch (error) {
+      setError(error);
+      return;
+    }
+
+    store.update(
+      {
+        exportState: {
+          inProgress: true,
+          activeFormat: format,
+          result: null,
+        },
+      },
+      ['exportState'],
+    );
+
+    try {
+      const result = await api.exportDocument({
+        path: activeTab.path,
+        format,
+        savePath: selection.path,
+        theme: store.get().session.theme,
+      });
+
+      store.update(
+        {
+          exportState: {
+            inProgress: false,
+            activeFormat: null,
+            result: {
+              type: 'success',
+              outputPath: result.outputPath,
+              warnings: result.warnings,
+              completedAt: new Date().toISOString(),
+            },
+          },
+        },
+        ['exportState'],
+      );
+    } catch (error) {
+      store.update(
+        {
+          exportState: {
+            inProgress: false,
+            activeFormat: null,
+            result: {
+              type: 'error',
+              warnings: [],
+              error: getErrorMessage(error).message,
+              completedAt: new Date().toISOString(),
+            },
+          },
+        },
+        ['exportState'],
+      );
+    }
+  };
+
   const restoreTabsFromSession = async () => {
     const { openTabs, activeTab } = bootstrap.session;
     if (!openTabs.length) {
@@ -946,6 +1044,7 @@ export async function bootstrapApp(
     onBrowse: browseForFolder,
     onToggleSidebar: toggleSidebar,
     onSetTheme: setTheme,
+    onExportFormat: handleExportClick,
   });
   mountSidebar(sidebarHost, store, {
     onToggleWorkspacesCollapsed: toggleWorkspacesCollapsed,
@@ -966,6 +1065,7 @@ export async function bootstrapApp(
   });
   mountContentToolbar(contentToolbarHost, store, {
     onSetDefaultMode: setDefaultMode,
+    onExportFormat: handleExportClick,
   });
   mountContentArea(contentAreaHost, store, {
     onBrowse: browseForFolder,
@@ -1065,6 +1165,19 @@ export async function bootstrapApp(
     action: () => {
       if (store.get().activeTabId) {
         showEditModeComingSoonTooltip();
+      }
+    },
+  });
+  keyboardManager.register({
+    key: 'e',
+    meta: true,
+    shift: true,
+    description: 'Export',
+    action: () => {
+      const { tabs, activeTabId } = store.get();
+      const activeTab = tabs.find((tab) => tab.id === activeTabId);
+      if (activeTab && activeTab.status === 'ok') {
+        document.dispatchEvent(new CustomEvent(TOGGLE_EXPORT_DROPDOWN_EVENT));
       }
     },
   });

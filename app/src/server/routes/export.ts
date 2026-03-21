@@ -1,3 +1,4 @@
+import { exec } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
@@ -11,12 +12,44 @@ import {
   SessionStateSchema,
   SetLastExportDirSchema,
 } from '../schemas/index.js';
+import { SessionService } from '../services/session.service.js';
 import { toApiError } from '../utils/errors.js';
 
 const RevealResponseSchema = z.object({ ok: z.literal(true) });
 
-export async function exportRoutes(app: FastifyInstance) {
+async function openSaveDialog(defaultDir: string, defaultName: string): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    const script =
+      'POSIX path of (choose file name ' +
+      'with prompt "Export document" ' +
+      `default name ${JSON.stringify(defaultName)} ` +
+      `default location POSIX file ${JSON.stringify(defaultDir)})`;
+
+    exec(`osascript -e '${script}'`, { timeout: 60_000 }, (error, stdout) => {
+      if (error) {
+        const errorCode = (error as NodeJS.ErrnoException & { code?: number | string }).code;
+        if (String(errorCode) === '1') {
+          resolve(null);
+          return;
+        }
+
+        reject(error);
+        return;
+      }
+
+      resolve(stdout.trim());
+    });
+  });
+}
+
+export interface ExportRoutesOptions {
+  sessionService?: SessionService;
+  sessionDir?: string;
+}
+
+export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptions) {
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
+  const sessionService = opts.sessionService ?? new SessionService(opts.sessionDir);
 
   typedApp.post(
     '/api/export',
@@ -41,12 +74,12 @@ export async function exportRoutes(app: FastifyInstance) {
         body: SaveDialogRequestSchema,
         response: {
           200: SaveDialogResponseSchema,
-          501: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => {
-      return reply.code(501).send(toApiError('NOT_IMPLEMENTED', 'Save dialog not yet implemented'));
+    async (request) => {
+      const selected = await openSaveDialog(request.body.defaultPath, request.body.defaultFilename);
+      return selected ? { path: selected } : null;
     },
   );
 
@@ -57,30 +90,33 @@ export async function exportRoutes(app: FastifyInstance) {
         body: RevealRequestSchema,
         response: {
           200: RevealResponseSchema,
-          501: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => {
-      return reply.code(501).send(toApiError('NOT_IMPLEMENTED', 'Reveal not yet implemented'));
+    async (request) => {
+      exec(`open -R ${JSON.stringify(request.body.path)}`);
+      return { ok: true as const };
     },
   );
 
   typedApp.put(
     '/api/session/last-export-dir',
     {
+      attachValidation: true,
       schema: {
         body: SetLastExportDirSchema,
         response: {
           200: SessionStateSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => {
-      return reply
-        .code(501)
-        .send(toApiError('NOT_IMPLEMENTED', 'Last export dir not yet implemented'));
+    async (request, reply) => {
+      if (request.validationError) {
+        return reply.code(400).send(toApiError('INVALID_PATH', 'Path must be absolute'));
+      }
+
+      return sessionService.setLastExportDir(request.body.path);
     },
   );
 }
