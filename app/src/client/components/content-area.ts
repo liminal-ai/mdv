@@ -47,16 +47,76 @@ export function mountContentArea(
 ): () => void {
   let editor: Editor | null = null;
   let editorHost: HTMLElement | null = null;
+  let editorTabId: string | null = null;
+  let lastVisibleTabId: string | null = null;
+  let lastVisibleMode: TabState['mode'] | null = null;
   const lastRenderedDirtyContent = new Map<string, string>();
 
-  const destroyEditor = () => {
+  const getScrollPercentage = (element: HTMLElement | null): number => {
+    if (!element) {
+      return 0;
+    }
+
+    const maxScroll = element.scrollHeight - element.clientHeight;
+    if (maxScroll <= 0) {
+      return 0;
+    }
+
+    return element.scrollTop / maxScroll;
+  };
+
+  const persistEditorState = (
+    currentEditor: Editor | null = editor,
+    currentEditorTabId: string | null = editorTabId,
+  ) => {
+    if (!currentEditor || !currentEditorTabId) {
+      return;
+    }
+
+    const state = store.get();
+    const targetTab = state.tabs.find((tab) => tab.id === currentEditorTabId) ?? null;
+    if (!targetTab) {
+      return;
+    }
+
+    const nextContent = currentEditor.getContent();
+    const nextScrollTop = currentEditor.getScrollTop();
+    if (targetTab.editContent === nextContent && targetTab.editScrollPosition === nextScrollTop) {
+      return;
+    }
+
+    store.update(
+      {
+        tabs: state.tabs.map((tab) =>
+          tab.id === currentEditorTabId
+            ? {
+                ...tab,
+                editContent: nextContent,
+                editScrollPosition: nextScrollTop,
+              }
+            : tab,
+        ),
+      },
+      ['tabs'],
+    );
+  };
+
+  const destroyEditor = (options: { persist?: boolean } = {}) => {
     if (!editor) {
       return;
     }
 
-    editor.destroy();
+    const currentEditor = editor;
+    const currentEditorTabId = editorTabId;
     editor = null;
     editorHost = null;
+    editorTabId = null;
+
+    if (options.persist !== false) {
+      persistEditorState(currentEditor, currentEditorTabId);
+    }
+
+    currentEditor.destroy();
   };
 
   const updateActiveTab = (updateTab: (tab: TabState) => TabState) => {
@@ -74,13 +134,14 @@ export function mountContentArea(
     );
   };
 
-  const ensureEditor = (parent: HTMLElement) => {
+  const ensureEditor = (parent: HTMLElement, tabId: string) => {
     if (editor && editorHost === parent) {
       return editor;
     }
 
     destroyEditor();
     editorHost = parent;
+    editorTabId = tabId;
     editor = new Editor(parent, {
       onContentChange: (content) => {
         updateActiveTab((tab) => ({
@@ -204,9 +265,33 @@ export function mountContentArea(
 
     if (!activeTab) {
       destroyEditor();
+      lastVisibleTabId = null;
+      lastVisibleMode = null;
       renderEmptyState();
       return;
     }
+
+    if (
+      activeTab.mode === 'edit' &&
+      !activeTab.loading &&
+      activeTab.status === 'ok' &&
+      editor &&
+      editorTabId === activeTab.id &&
+      editorHost?.isConnected &&
+      lastVisibleTabId === activeTab.id &&
+      lastVisibleMode === 'edit'
+    ) {
+      const editorContent = activeTab.editContent ?? activeTab.content;
+      if (editor.getContent() !== editorContent) {
+        editor.setContent(editorContent);
+      }
+      return;
+    }
+
+    const renderScrollPercentage =
+      activeTab.mode === 'edit' && lastVisibleTabId === activeTab.id && lastVisibleMode === 'render'
+        ? getScrollPercentage(container.querySelector<HTMLElement>('.content-area__body'))
+        : null;
 
     const bodyChildren: Array<Node | null> = [];
 
@@ -290,6 +375,10 @@ export function mountContentArea(
     );
 
     if (activeTab.loading || activeTab.status === 'error') {
+      if (activeTab.status === 'error') {
+        lastVisibleTabId = null;
+        lastVisibleMode = null;
+      }
       return;
     }
 
@@ -300,6 +389,8 @@ export function mountContentArea(
 
     if (activeTab.status === 'deleted') {
       markdownBody.innerHTML = activeTab.html;
+      lastVisibleTabId = activeTab.id;
+      lastVisibleMode = 'render';
       return;
     }
 
@@ -309,18 +400,25 @@ export function mountContentArea(
         return;
       }
 
-      const currentEditor = ensureEditor(nextEditorHost);
+      const currentEditor = ensureEditor(nextEditorHost, activeTab.id);
       const editorContent = activeTab.editContent ?? activeTab.content;
       if (currentEditor.getContent() !== editorContent) {
         currentEditor.setContent(editorContent);
       }
-      currentEditor.setScrollTop(activeTab.editScrollPosition);
+      if (renderScrollPercentage !== null) {
+        currentEditor.scrollToPercentage(renderScrollPercentage);
+      } else {
+        currentEditor.setScrollTop(activeTab.editScrollPosition);
+      }
       currentEditor.focus();
+      lastVisibleTabId = activeTab.id;
+      lastVisibleMode = 'edit';
       return;
     }
 
     let html = activeTab.html;
     let serverWarnings = activeTab.warnings.filter((warning) => warning.type !== 'mermaid-error');
+    const renderingGeneration = activeTab.renderGeneration ?? 0;
 
     if (
       activeTab.dirty &&
@@ -330,7 +428,12 @@ export function mountContentArea(
     ) {
       const response = await actions.onRenderContent(activeTab.editContent, activeTab.path);
       const latestTab = getActiveTab();
-      if (!latestTab || latestTab.id !== activeTab.id || latestTab.mode !== 'render') {
+      if (
+        !latestTab ||
+        latestTab.id !== activeTab.id ||
+        latestTab.mode !== 'render' ||
+        (latestTab.renderGeneration ?? 0) !== renderingGeneration
+      ) {
         return;
       }
 
@@ -375,8 +478,10 @@ export function mountContentArea(
       });
     }
 
+    lastVisibleTabId = activeTab.id;
+    lastVisibleMode = 'render';
+
     const renderingTabId = activeTab.id;
-    const renderingGeneration = activeTab.renderGeneration ?? 0;
     const mermaidResult = await renderMermaidBlocks(markdownBody);
     const currentState = store.get();
     if (currentState.activeTabId !== renderingTabId) {
@@ -415,7 +520,7 @@ export function mountContentArea(
   });
 
   return () => {
-    destroyEditor();
     unsubscribe();
+    destroyEditor();
   };
 }

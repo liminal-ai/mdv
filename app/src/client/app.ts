@@ -550,6 +550,7 @@ export async function bootstrapApp(
           ? {
               ...tab,
               mode: tab.mode === 'edit' ? 'render' : 'edit',
+              renderGeneration: (tab.renderGeneration ?? -1) + 1,
               cursorPosition:
                 tab.mode === 'render' && tab.cursorPosition === null
                   ? { line: 1, column: 1 }

@@ -76,7 +76,15 @@ export function mountContentToolbar(
 
     store.update(
       {
-        tabs: state.tabs.map((tab) => (tab.id === activeTab.id ? { ...tab, mode } : tab)),
+        tabs: state.tabs.map((tab) =>
+          tab.id === activeTab.id
+            ? {
+                ...tab,
+                mode,
+                renderGeneration: (tab.renderGeneration ?? -1) + 1,
+              }
+            : tab,
+        ),
       },
       ['tabs'],
     );

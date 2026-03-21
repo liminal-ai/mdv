@@ -18,9 +18,13 @@ const editorInstances: Array<{
 
 vi.mock('../../../src/client/components/editor.js', () => ({
   Editor: vi.fn().mockImplementation(function MockEditor() {
+    let content = '';
+
     const instance = {
-      setContent: vi.fn(),
-      getContent: vi.fn(() => ''),
+      setContent: vi.fn((nextContent: string) => {
+        content = nextContent;
+      }),
+      getContent: vi.fn(() => content),
       getSelection: vi.fn(() => ''),
       insertAtCursor: vi.fn(),
       replaceSelection: vi.fn(),
