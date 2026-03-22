@@ -22,6 +22,7 @@ import { mountWarningPanel } from './components/warning-panel.js';
 import { mermaidCache } from './components/mermaid-cache.js';
 import { StateStore, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
+import { getElectronBridge } from './utils/electron-bridge.js';
 import { INSERT_LINK_EVENT, KeyboardManager } from './utils/keyboard.js';
 import { reRenderMermaidDiagrams } from './utils/mermaid-renderer.js';
 import { clearSavePending, isSavePending, markSavePending, WsClient } from './utils/ws.js';
@@ -357,6 +358,11 @@ export async function bootstrapApp(
   api = new ApiClient(),
   wsClient: WsClient | null = shouldAutoBootstrap() ? new WsClient() : null,
 ): Promise<{ store: StateStore; api: ApiClient; wsClient: WsClient | null }> {
+  // Electron detection: hide HTML menu bar in Electron mode.
+  if (new URLSearchParams(location.search).has('electron')) {
+    document.body.classList.add('electron');
+  }
+
   const cachedTheme = readCachedTheme();
   let bootstrap = createFallbackBootstrap();
   let bootstrapError: unknown = null;
@@ -2073,6 +2079,124 @@ export async function bootstrapApp(
 
   if (bootstrapError) {
     setError(bootstrapError);
+  }
+
+  const handleElectronQuit = async (
+    dirtyTabs: TabState[],
+    electronBridge: NonNullable<ReturnType<typeof getElectronBridge>>,
+  ) => {
+    const firstDirty = dirtyTabs[0];
+    if (!firstDirty) {
+      electronBridge.confirmQuit();
+      return;
+    }
+
+    const choice = await showUnsavedModal(firstDirty, 'quit');
+
+    if (choice === 'cancel') {
+      electronBridge.cancelQuit();
+      return;
+    }
+
+    if (choice === 'save') {
+      for (const tab of dirtyTabs) {
+        const saved = await saveTab(tab.id);
+        if (!saved) {
+          electronBridge.cancelQuit();
+          return;
+        }
+      }
+    }
+
+    electronBridge.confirmQuit();
+  };
+
+  // Electron bridge wiring.
+  const bridge = getElectronBridge();
+  if (bridge) {
+    bridge.onMenuAction((action, args) => {
+      switch (action) {
+        case 'open-file':
+          void pickAndOpenFile();
+          break;
+        case 'open-folder':
+          void browseForFolder();
+          break;
+        case 'save':
+          void saveCurrentTab();
+          break;
+        case 'save-as':
+          void saveCurrentTabAs();
+          break;
+        case 'close-tab': {
+          const activeTabId = store.get().activeTabId;
+          if (activeTabId) {
+            void closeTab(activeTabId);
+          }
+          break;
+        }
+        case 'export-pdf':
+          void handleExportClick('pdf');
+          break;
+        case 'export-docx':
+          void handleExportClick('docx');
+          break;
+        case 'export-html':
+          void handleExportClick('html');
+          break;
+        case 'toggle-sidebar':
+          toggleSidebar();
+          break;
+        case 'toggle-mode':
+          toggleMode();
+          break;
+        case 'set-theme':
+          if (typeof args === 'string') {
+            void setTheme(args);
+          }
+          break;
+      }
+    });
+
+    bridge.onOpenFile((path) => {
+      void openFile(path);
+    });
+
+    bridge.onQuitRequest(() => {
+      const dirtyTabs = store.get().tabs.filter((tab) => tab.dirty);
+      if (dirtyTabs.length === 0) {
+        bridge.confirmQuit();
+        return;
+      }
+
+      void handleElectronQuit(dirtyTabs, bridge);
+    });
+
+    const sendMenuState = () => {
+      const state = store.get();
+      const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+      bridge.sendMenuState({
+        hasDocument: state.tabs.length > 0,
+        hasDirtyTab: state.tabs.some((tab) => tab.dirty),
+        activeTabDirty: activeTab?.dirty ?? false,
+        activeTheme: state.session.theme,
+        activeMode: activeTab?.mode ?? 'render',
+        defaultMode: state.session.defaultOpenMode,
+      });
+    };
+
+    let menuStateTimer: ReturnType<typeof setTimeout> | null = null;
+    store.subscribe(() => {
+      if (menuStateTimer) {
+        clearTimeout(menuStateTimer);
+      }
+
+      menuStateTimer = setTimeout(() => {
+        sendMenuState();
+      }, 50);
+    });
+
+    sendMenuState();
   }
 
   return { store, api, wsClient };

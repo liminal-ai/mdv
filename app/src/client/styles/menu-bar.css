@@ -161,3 +161,7 @@
     padding-bottom: 0.15rem;
   }
 }
+
+body.electron #menu-bar {
+  display: none;
+}

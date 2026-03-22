@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import { createMainWindow } from './window.js';
 import { registerIpcHandlers } from './ipc.js';
 import { setupFileHandler } from './file-handler.js';
+import { buildMenu } from './menu.js';
 
 let mainWindow: BrowserWindow | null = null;
 let serverUrl: string | null = null;
@@ -23,17 +24,22 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', (_event, argv) => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
+    const targetWindow = mainWindow ?? BrowserWindow.getAllWindows()[0] ?? null;
+
+    if (targetWindow) {
+      mainWindow = targetWindow;
+
+      if (targetWindow.isMinimized()) {
+        targetWindow.restore();
       }
-      mainWindow.focus();
+
+      targetWindow.focus();
       const filePath = argv.find((arg) => arg.endsWith('.md') || arg.endsWith('.markdown'));
       if (filePath) {
-        if (mainWindow.webContents.isLoading()) {
+        if (targetWindow.webContents.isLoading()) {
           pendingFilePath = filePath;
         } else {
-          mainWindow.webContents.send('app:open-file', { path: filePath });
+          targetWindow.webContents.send('app:open-file', { path: filePath });
         }
       }
     }
@@ -51,6 +57,11 @@ if (!gotLock) {
       serverUrl = `http://localhost:${port}`;
 
       mainWindow = createMainWindow(serverUrl);
+      try {
+        buildMenu(mainWindow);
+      } catch {
+        // Keep the app window usable even if menu setup fails in a constrained environment.
+      }
       registerIpcHandlers(mainWindow);
       setupFileHandler(
         mainWindow,
