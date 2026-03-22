@@ -691,12 +691,13 @@ export async function bootstrapApp(
 
   const syncTabsToSession = async () => {
     const { tabs, activeTabId } = store.get();
-    const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
+    const persistedTabs = tabs.filter((tab) => tab.status === 'ok');
+    const activeTab = persistedTabs.find((tab) => tab.id === activeTabId) ?? null;
 
     try {
       applySession(
         await api.updateTabs(
-          tabs.map((tab) => ({
+          persistedTabs.map((tab) => ({
             path: tab.path,
             mode: tab.mode,
             scrollPosition: tab.mode === 'edit' ? tab.editScrollPosition : tab.scrollPosition,

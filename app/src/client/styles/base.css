@@ -59,6 +59,10 @@ a {
   overflow: hidden;
 }
 
+body.electron #app {
+  grid-template-rows: 0 minmax(0, 1fr);
+}
+
 #main {
   position: relative;
   display: grid;

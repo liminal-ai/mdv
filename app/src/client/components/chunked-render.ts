@@ -1,5 +1,5 @@
 const BLOCK_BOUNDARY_PATTERN =
-  /<\/(?:div|p|h[1-6]|pre|table|blockquote|ul|ol|li|section|article|hr)\s*>/gi;
+  /<\/(?:div|p|h[1-6]|pre|table|blockquote|ul|ol|li|section|article)\s*>/gi;
 const SMALL_DOCUMENT_BLOCK_THRESHOLD = 200;
 
 export interface ChunkedRenderOptions {

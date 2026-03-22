@@ -1,13 +1,37 @@
 import { app, BrowserWindow } from 'electron';
+import type { FastifyInstance } from 'fastify';
 import { createMainWindow } from './window.js';
 import { registerIpcHandlers } from './ipc.js';
 import { setupFileHandler } from './file-handler.js';
 import { buildMenu } from './menu.js';
 
 let mainWindow: BrowserWindow | null = null;
+let fastify: FastifyInstance | null = null;
 let serverUrl: string | null = null;
 let pendingFilePath: string | null = null;
+let quittingWithServerShutdown = false;
 const serverModulePath = '../server/index.js';
+
+function wireMainWindow(win: BrowserWindow, currentServerUrl: string | null): void {
+  if (!currentServerUrl) {
+    return;
+  }
+
+  try {
+    buildMenu(win);
+  } catch {
+    // Keep the app window usable even if menu setup fails in a constrained environment.
+  }
+
+  registerIpcHandlers(win);
+  setupFileHandler(
+    win,
+    () => pendingFilePath,
+    () => {
+      pendingFilePath = null;
+    },
+  );
+}
 
 app.on('open-file', (event, path) => {
   event.preventDefault();
@@ -48,7 +72,7 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     try {
       const { startServer } = await import(serverModulePath);
-      const fastify = await startServer({
+      fastify = await startServer({
         openUrl: async () => {},
         preferredPort: 0,
       });
@@ -57,28 +81,39 @@ if (!gotLock) {
       serverUrl = `http://localhost:${port}`;
 
       mainWindow = createMainWindow(serverUrl);
-      try {
-        buildMenu(mainWindow);
-      } catch {
-        // Keep the app window usable even if menu setup fails in a constrained environment.
-      }
-      registerIpcHandlers(mainWindow);
-      setupFileHandler(
-        mainWindow,
-        () => pendingFilePath,
-        () => {
-          pendingFilePath = null;
-        },
-      );
-    } catch {
+      wireMainWindow(mainWindow, serverUrl);
+    } catch (error) {
+      console.error('Server failed to start:', error);
       mainWindow = createMainWindow(null);
     }
   });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0 && serverUrl) {
+    if (BrowserWindow.getAllWindows().length === 0) {
       mainWindow = createMainWindow(serverUrl);
+      wireMainWindow(mainWindow, serverUrl);
     }
+  });
+
+  app.on('before-quit', (event) => {
+    if (quittingWithServerShutdown || !fastify) {
+      return;
+    }
+
+    event.preventDefault();
+    quittingWithServerShutdown = true;
+
+    const server = fastify;
+    fastify = null;
+
+    void server
+      .close()
+      .catch((error) => {
+        console.error('Failed to close server:', error);
+      })
+      .finally(() => {
+        app.quit();
+      });
   });
 
   app.on('window-all-closed', () => {

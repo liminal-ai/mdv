@@ -53,16 +53,6 @@ export class MermaidCache {
     }
   }
 
-  invalidateTheme(themeId: string): void {
-    const suffix = `:${themeId}`;
-
-    for (const [key] of this.cache) {
-      if (key.endsWith(suffix)) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
   clear(): void {
     this.cache.clear();
   }
