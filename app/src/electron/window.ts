@@ -25,7 +25,7 @@ export function createMainWindow(serverUrl: string | null): BrowserWindow {
     minWidth: 980,
     minHeight: 620,
     show: false,
-    title: 'MD Viewer',
+    title: 'mdv',
     webPreferences: {
       preload: fileURLToPath(new URL('./preload.js', import.meta.url)),
       contextIsolation: true,
@@ -37,7 +37,7 @@ export function createMainWindow(serverUrl: string | null): BrowserWindow {
   state.manage(win);
 
   if (serverUrl) {
-    win.loadURL(`${serverUrl}?electron=1`);
+    win.loadURL(`${serverUrl}/?electron=1`);
   } else {
     win.loadURL(
       'data:text/html,<h1>Server failed to start</h1><p>Check the console for errors.</p>',

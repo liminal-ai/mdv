@@ -341,7 +341,7 @@ export function mountContentArea(
       createElement('section', {
         className: 'content-area__empty-state',
         children: [
-          createElement('p', { className: 'content-area__eyebrow', text: 'MD Viewer' }),
+          createElement('p', { className: 'content-area__eyebrow', text: 'mdv' }),
           createElement('h1', {
             className: 'content-area__title',
             text: 'Open a markdown file to begin.',

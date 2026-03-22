@@ -139,14 +139,14 @@ describe('client bootstrap api injection', () => {
     const api = await renderApp();
 
     expect(api.bootstrap).toHaveBeenCalledTimes(1);
-    expect(document.body.textContent).toContain('MD Viewer');
+    expect(document.body.textContent).toContain('mdv');
     expect(document.body.textContent).toContain('No documents open');
   });
 
   it('TC-1.2c (integration): Bootstrap with default session renders clean state', async () => {
     await renderApp(emptySession);
 
-    expect(document.body.textContent).toContain('MD Viewer');
+    expect(document.body.textContent).toContain('mdv');
     expect(document.body.textContent).toContain('No documents open');
     expect(document.querySelector('[role="alert"]')).toBeNull();
     expect(document.documentElement.dataset.theme).toBe('light-default');
@@ -515,7 +515,7 @@ describe('client bootstrap api injection', () => {
       bootstrap: vi.fn().mockRejectedValue(new Error('Bootstrap failed')),
     });
 
-    expect(document.body.textContent).toContain('MD Viewer');
+    expect(document.body.textContent).toContain('mdv');
     expect(document.body.textContent).toContain('No documents open');
     expect(document.querySelector('[role="alert"]')).toBeTruthy();
     expect(document.body.textContent).toContain('Bootstrap failed');

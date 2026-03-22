@@ -15,3 +15,4 @@ await build({
 
 await cp('src/client/index.html', 'dist/client/index.html');
 await cp('src/client/styles', 'dist/client/styles', { recursive: true });
+await cp('assets/icon', 'dist/client/assets/icon', { recursive: true });

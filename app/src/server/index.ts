@@ -54,7 +54,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Fas
     log.error(error);
   }
 
-  log.log(`MD Viewer running at ${localUrl}`);
+  log.log(`mdv running at ${localUrl}`);
 
   return app;
 }

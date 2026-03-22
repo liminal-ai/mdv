@@ -2,10 +2,9 @@
 set -euo pipefail
 
 INSTALL_DIR="$HOME/Applications"
-APP_NAME="MD Viewer.app"
+APP_NAME="mdv.app"
 
 echo "Building MD Viewer..."
-npm run build
 npm run build:electron
 
 echo "Packaging..."

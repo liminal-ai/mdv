@@ -49,7 +49,7 @@ describe('electron/menu', () => {
   beforeEach(async () => {
     vi.resetModules();
 
-    mockApp = { name: 'MD Viewer' };
+    mockApp = { name: 'mdv' };
     mockMenu = createMockMenu();
     mockIpcMain = createMockIpcMain();
     mockWin = createMockBrowserWindow();

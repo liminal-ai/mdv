@@ -119,7 +119,7 @@ describe('electron main process', () => {
     const { createdWindows } = await loadMain({ port: 3456 });
 
     expect(createdWindows[0]?.instance.loadURL).toHaveBeenCalledWith(
-      'http://localhost:3456?electron=1',
+      'http://localhost:3456/?electron=1',
     );
   });
 

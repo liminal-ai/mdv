@@ -1,8 +1,9 @@
 appId: com.leemoore.mdviewer
-productName: MD Viewer
+productName: mdv
 directories:
   output: dist/electron
 mac:
+  icon: assets/icon/mdv.icns
   category: public.app-category.productivity
   target:
     - target: dir
@@ -20,6 +21,8 @@ fileAssociations:
     role: Viewer
     rank: Default
 asar: true
+asarUnpack:
+  - dist/client/**/*
 files:
   - dist/**/*
   - src/client/**/*.html

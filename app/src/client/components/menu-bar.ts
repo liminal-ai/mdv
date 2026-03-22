@@ -256,7 +256,7 @@ export function mountMenuBar(
           createElement('div', {
             className: 'menu-bar__brand',
             children: [
-              createElement('strong', { className: 'menu-bar__brand-mark', text: 'MD Viewer' }),
+              createElement('strong', { className: 'menu-bar__brand-mark', text: 'mdv' }),
               createElement('span', {
                 className: 'menu-bar__brand-copy',
                 text: 'Markdown workspace shell',
