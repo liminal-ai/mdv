@@ -29,6 +29,10 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.send('app:quit-cancelled');
   },
 
+  sendRendererReady: () => {
+    ipcRenderer.send('app:renderer-ready');
+  },
+
   sendMenuState: (state: {
     hasDocument: boolean;
     hasDirtyTab: boolean;

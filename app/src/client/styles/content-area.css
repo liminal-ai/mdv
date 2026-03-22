@@ -1,7 +1,41 @@
 #content-area {
+  position: relative;
   min-height: 0;
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
+}
+
+#content-area.rendering-in-progress::before,
+#content-area.rendering-in-progress::after {
+  position: absolute;
+  z-index: 2;
+}
+
+#content-area.rendering-in-progress::before {
+  content: '';
+  top: 1.1rem;
+  right: 7.1rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: content-spin 0.75s linear infinite;
+}
+
+#content-area.rendering-in-progress::after {
+  content: 'Rendering...';
+  top: 0.7rem;
+  right: 1rem;
+  padding: 0.3rem 0.75rem 0.3rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-bg-secondary) 92%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 .content-area__view {

@@ -54,8 +54,6 @@ const FALLBACK_THEMES: ThemeInfo[] = [
 
 const WS_DISCONNECTED_ERROR_CODE = 'WS_DISCONNECTED';
 const WS_SERVER_ERROR_CODE = 'WS_SERVER_ERROR';
-const LARGE_FILE_CONFIRM_MIN_BYTES = 1_048_576;
-const LARGE_FILE_CONFIRM_MAX_BYTES = 5_242_880;
 const SAVE_PENDING_CLEAR_DELAY_MS = 500;
 
 let tabSequence = 0;
@@ -102,10 +100,6 @@ function applyTheme(themeId: string, options: { persist?: boolean } = {}): void 
 function fileName(filePath: string): string {
   const parts = filePath.split('/').filter(Boolean);
   return parts.at(-1) ?? filePath;
-}
-
-function formatMegabytes(size: number): string {
-  return (size / LARGE_FILE_CONFIRM_MIN_BYTES).toFixed(1);
 }
 
 function directoryName(filePath: string): string {
@@ -591,9 +585,10 @@ export async function bootstrapApp(
   };
 
   const showUnsavedModal = (
-    tab: TabState,
+    tabs: TabState | TabState[],
     context: UnsavedModalContext,
   ): Promise<UnsavedChoice> => {
+    const targetTabs = Array.isArray(tabs) ? tabs : [tabs];
     if (resolveUnsavedChoice) {
       resolveUnsavedChoice('cancel');
       resolveUnsavedChoice = null;
@@ -602,8 +597,8 @@ export async function bootstrapApp(
     store.update(
       {
         unsavedModal: {
-          tabId: tab.id,
-          filename: tab.filename,
+          tabId: targetTabs.length === 1 ? (targetTabs[0]?.id ?? null) : null,
+          filenames: targetTabs.map((tab) => tab.filename),
           context,
         },
       },
@@ -913,12 +908,18 @@ export async function bootstrapApp(
     }
 
     const closingTab = state.tabs[tabIndex] ?? null;
+    const nextTabsWithScroll = saveScrollPosition(state.tabs, state.activeTabId);
     if (closingTab) {
-      mermaidCache.invalidateForTab(extractMermaidSources(closingTab.html));
+      const remainingSources = new Set(
+        nextTabsWithScroll
+          .filter((tab) => tab.id !== tabId)
+          .flatMap((tab) => extractMermaidSources(tab.html)),
+      );
+
+      mermaidCache.invalidateForTab(extractMermaidSources(closingTab.html), remainingSources);
       unwatchPath(closingTab.path);
     }
 
-    const nextTabsWithScroll = saveScrollPosition(state.tabs, state.activeTabId);
     const remainingTabs = disambiguateDisplayNames(
       nextTabsWithScroll.filter((tab) => tab.id !== tabId),
     );
@@ -1309,15 +1310,6 @@ export async function bootstrapApp(
 
     try {
       const response = await api.readFile(path);
-
-      if (
-        response.size >= LARGE_FILE_CONFIRM_MIN_BYTES &&
-        response.size <= LARGE_FILE_CONFIRM_MAX_BYTES &&
-        !window.confirm(`This file is ${formatMegabytes(response.size)} MB. Open anyway?`)
-      ) {
-        removeLoadingTab();
-        return;
-      }
 
       const currentState = store.get();
       if (!currentState.tabs.some((tab) => tab.id === loadingTab.id)) {
@@ -2086,13 +2078,12 @@ export async function bootstrapApp(
     dirtyTabs: TabState[],
     electronBridge: NonNullable<ReturnType<typeof getElectronBridge>>,
   ) => {
-    const firstDirty = dirtyTabs[0];
-    if (!firstDirty) {
+    if (dirtyTabs.length === 0) {
       electronBridge.confirmQuit();
       return;
     }
 
-    const choice = await showUnsavedModal(firstDirty, 'quit');
+    const choice = await showUnsavedModal(dirtyTabs, 'quit');
 
     if (choice === 'cancel') {
       electronBridge.cancelQuit();
@@ -2198,6 +2189,7 @@ export async function bootstrapApp(
     });
 
     sendMenuState();
+    bridge.sendRendererReady();
   }
 
   return { store, api, wsClient };

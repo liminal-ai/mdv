@@ -42,12 +42,13 @@ export class MermaidCache {
     this.evictIfNeeded();
   }
 
-  invalidateForTab(sources: string[]): void {
+  invalidateForTab(sources: string[], remainingSources: Iterable<string>): void {
     const sourceHashes = new Set(sources.map((source) => fnv1a(source)));
+    const stillNeededHashes = new Set(Array.from(remainingSources, (source) => fnv1a(source)));
 
     for (const [key] of this.cache) {
       const sourceHash = key.split(':')[0];
-      if (sourceHash && sourceHashes.has(sourceHash)) {
+      if (sourceHash && sourceHashes.has(sourceHash) && !stillNeededHashes.has(sourceHash)) {
         this.cache.delete(key);
       }
     }

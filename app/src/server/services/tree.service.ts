@@ -57,6 +57,7 @@ async function scanDir(
 
   let realDir: string;
   try {
+    throwIfAborted(signal, rootPath);
     realDir = await realpath(dirPath);
   } catch (error) {
     if (error instanceof ScanTimeoutError) {
@@ -96,6 +97,7 @@ async function scanDir(
 
     if (entry.isSymbolicLink()) {
       try {
+        throwIfAborted(signal, rootPath);
         const targetStat = await stat(entryPath);
         isDir = targetStat.isDirectory();
         isFile = targetStat.isFile();
@@ -183,17 +185,18 @@ export async function scanTree(
   } = {},
 ): Promise<TreeNode[]> {
   const { timeoutMs = 10_000, maxDepth = 100 } = options;
-  const rootStat = await stat(rootPath);
-  if (!rootStat.isDirectory()) {
-    const err = new Error(`Not a directory: ${rootPath}`);
-    (err as NodeJS.ErrnoException).code = 'ENOTDIR';
-    throw err;
-  }
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    throwIfAborted(controller.signal, rootPath);
+    const rootStat = await stat(rootPath);
+    if (!rootStat.isDirectory()) {
+      const err = new Error(`Not a directory: ${rootPath}`);
+      (err as NodeJS.ErrnoException).code = 'ENOTDIR';
+      throw err;
+    }
+
     const rootEntries = await readDirWithTimeout(rootPath, controller.signal, rootPath);
     const visited = new Set<string>();
     return scanDir(rootPath, visited, {

@@ -74,8 +74,8 @@ export interface ConflictModalState {
 }
 
 export interface UnsavedModalState {
-  tabId: string;
-  filename: string;
+  tabId: string | null;
+  filenames: string[];
   context: 'close-tab' | 'close-others' | 'close-right' | 'quit' | 'save-as-replace';
 }
 

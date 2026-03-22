@@ -441,42 +441,37 @@ describe('client bootstrap api injection', () => {
     }
   });
 
-  it('prompts before opening files between 1 MB and 5 MB and removes the loading tab on cancel', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('opens files between 1 MB and 5 MB without a confirm gate', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    const api = await renderApp(
+      {
+        ...emptySession,
+        lastRoot: '/root',
+      },
+      {
+        getTree: vi.fn().mockResolvedValue({
+          root: '/root',
+          tree: [{ name: 'large.md', path: '/root/large.md', type: 'file' as const }],
+        }),
+        readFile: vi.fn().mockResolvedValue({
+          ...basicFileResponse,
+          path: '/root/large.md',
+          canonicalPath: '/root/large.md',
+          filename: 'large.md',
+          html: '<h1>large</h1>',
+          size: 1_572_864,
+        }),
+      },
+    );
 
-    try {
-      const api = await renderApp(
-        {
-          ...emptySession,
-          lastRoot: '/root',
-        },
-        {
-          getTree: vi.fn().mockResolvedValue({
-            root: '/root',
-            tree: [{ name: 'large.md', path: '/root/large.md', type: 'file' as const }],
-          }),
-          readFile: vi.fn().mockResolvedValue({
-            ...basicFileResponse,
-            path: '/root/large.md',
-            canonicalPath: '/root/large.md',
-            filename: 'large.md',
-            html: '<h1>large</h1>',
-            size: 1_572_864,
-          }),
-        },
-      );
+    document.querySelector<HTMLElement>('[data-type="file"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-      document.querySelector<HTMLElement>('[data-type="file"]')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(confirmSpy).toHaveBeenCalledWith('This file is 1.5 MB. Open anyway?');
-      expect(api.touchRecentFile).not.toHaveBeenCalled();
-      expect(document.querySelectorAll('.tab')).toHaveLength(0);
-      expect(document.querySelector('.tab--loading')).toBeNull();
-      expect(document.body.textContent).toContain('No documents open');
-    } finally {
-      confirmSpy.mockRestore();
-    }
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(api.touchRecentFile).toHaveBeenCalledWith('/root/large.md');
+    expect(document.querySelectorAll('.tab')).toHaveLength(1);
+    expect(document.querySelector('.tab--loading')).toBeNull();
+    expect(document.querySelector('.tab--active')?.getAttribute('title')).toBe('/root/large.md');
   });
 
   it('removes stale recent files and refreshes the tree when an opened file returns 404', async () => {
@@ -586,7 +581,7 @@ describe('client bootstrap api injection', () => {
 
       expect(document.querySelector('.tab--loading')).toBeTruthy();
 
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(10_000);
       await Promise.resolve();
 
       expect(api.readFile).toHaveBeenCalledWith('/root/slow.md');

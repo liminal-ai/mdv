@@ -190,6 +190,66 @@ describe('chunked render', () => {
     expect(markdownBody?.querySelectorAll('p')).toHaveLength(300);
   });
 
+  it('TC-1.2b: slow mode switch shows a delayed rendering indicator', async () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    document.body.innerHTML = '<div id="content-area"></div>';
+    const largeRenderedHtml = createLargeHtml(300);
+    const store = createStore({
+      tabs: [
+        {
+          ...singleTab,
+          mode: 'edit' as const,
+          editContent: '# large',
+          html: largeRenderedHtml,
+          size: 600_000,
+        },
+      ],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    mountContentArea(document.querySelector<HTMLElement>('#content-area')!, store, {
+      onBrowse: vi.fn(),
+      onOpenFile: vi.fn(),
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const contentArea = document.querySelector<HTMLElement>('#content-area')!;
+    expect(contentArea.classList.contains('rendering-in-progress')).toBe(false);
+
+    store.update(
+      {
+        tabs: [
+          {
+            ...store.get().tabs[0]!,
+            mode: 'render',
+          },
+        ],
+      },
+      ['tabs'],
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const delayedIndicatorCall = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 500);
+    const delayedIndicator = delayedIndicatorCall?.[0];
+    expect(typeof delayedIndicator).toBe('function');
+    if (typeof delayedIndicator === 'function') {
+      delayedIndicator();
+    }
+
+    expect(contentArea.classList.contains('rendering-in-progress')).toBe(true);
+
+    raf.flushAll();
+    await flushAsyncWork();
+
+    expect(contentArea.classList.contains('rendering-in-progress')).toBe(false);
+  });
+
   it('Abort cancels remaining batches', () => {
     const container = document.createElement('article');
     const controller = new AbortController();

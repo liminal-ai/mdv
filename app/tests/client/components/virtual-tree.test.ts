@@ -213,6 +213,34 @@ describe('virtual tree', () => {
     tree.destroy();
   });
 
+  it('Viewport height shrinks when the container shrinks', () => {
+    const container = document.createElement('div');
+    const height = { value: 10 * 28 };
+    setClientHeight(container, height);
+
+    const tree = new VirtualTree<TreeNode>({
+      container,
+      rowHeight: 28,
+      overscan: 20,
+      renderRow: (flatNode) => {
+        const row = document.createElement('div');
+        row.className = 'tree-node__row';
+        row.textContent = flatNode.node.name;
+        return row;
+      },
+      onNodeClick: vi.fn(),
+    });
+
+    tree.setNodes(createFlatNodes(100));
+    expect(container.querySelectorAll('.tree-node__row')).toHaveLength(50);
+
+    height.value = 5 * 28;
+    MockResizeObserver.instances[0]?.trigger(container);
+
+    expect(container.querySelectorAll('.tree-node__row')).toHaveLength(45);
+    tree.destroy();
+  });
+
   it('Keyboard nav scrolls to focused row', () => {
     document.body.innerHTML = '<div id="tree"></div>';
     const container = document.querySelector<HTMLElement>('#tree')!;

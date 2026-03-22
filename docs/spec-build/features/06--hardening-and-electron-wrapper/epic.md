@@ -605,7 +605,7 @@ produce visible feedback.
 - **TC-13.1b: Tree scan timeout**
   - Given: A root directory is extremely large or on a very slow filesystem
   - When: The tree scan exceeds a reasonable timeout
-  - Then: A partial tree is shown (what was scanned so far) with an indicator that the scan was incomplete. The user can retry.
+  - Then: A timeout error is shown with an option to retry the scan. The app does not crash or hang.
 
 **AC-13.2:** Electron-specific errors are handled gracefully
 

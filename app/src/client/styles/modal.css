@@ -31,6 +31,16 @@
   line-height: 1.5;
 }
 
+.modal__list {
+  margin: -0.5rem 0 1.25rem;
+  padding-left: 1.25rem;
+  color: var(--color-text-primary);
+}
+
+.modal__list-item + .modal__list-item {
+  margin-top: 0.35rem;
+}
+
 .modal__actions {
   display: flex;
   gap: 8px;

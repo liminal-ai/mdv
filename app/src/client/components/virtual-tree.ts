@@ -169,10 +169,6 @@ export class VirtualTree<TNode = unknown> {
   }
 
   private getViewportHeight(): number {
-    return Math.max(
-      this.options.container.clientHeight,
-      this.viewportHeight,
-      this.options.rowHeight,
-    );
+    return Math.max(this.options.container.clientHeight, this.options.rowHeight);
   }
 }

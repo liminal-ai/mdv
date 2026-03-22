@@ -555,7 +555,7 @@ describe('save and dirty state integration', () => {
     expect(api.saveFile).not.toHaveBeenCalled();
     expect(asTestStore(store).get().unsavedModal).toEqual({
       tabId: 'tab-existing-dirty',
-      filename: 'readme.md',
+      filenames: ['readme.md'],
       context: 'save-as-replace',
     });
   });

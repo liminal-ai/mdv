@@ -111,4 +111,16 @@ describe('electron/ipc', () => {
     mockWin.emit('close', event2);
     expect(event2.preventDefault).not.toHaveBeenCalled();
   });
+
+  it('registers the global quit IPC listeners only once', () => {
+    registerIpcHandlers(mockWin);
+    registerIpcHandlers(createMockBrowserWindow());
+
+    const channels = (mockIpcMain.on.mock.calls as Array<[string, unknown]>).map(
+      ([channel]) => channel,
+    );
+
+    expect(channels.filter((channel) => channel === 'app:quit-confirmed')).toHaveLength(1);
+    expect(channels.filter((channel) => channel === 'app:quit-cancelled')).toHaveLength(1);
+  });
 });

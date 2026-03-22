@@ -229,4 +229,38 @@ describe('electron/menu', () => {
     expect(darkCool?.checked).toBe(true);
     expect(lightDefault?.checked).toBe(false);
   });
+
+  it('shows the current render mode with a checkmark', () => {
+    buildMenu(mockWin);
+
+    const stateHandler = getStateHandler(mockIpcMain);
+    stateHandler?.(
+      {},
+      {
+        hasDocument: true,
+        hasDirtyTab: false,
+        activeTabDirty: false,
+        activeTheme: 'light-default',
+        activeMode: 'edit',
+        defaultMode: 'render',
+      },
+    );
+
+    const lastTemplate = getTemplate(mockMenu);
+    const viewMenu = lastTemplate.find((item) => item.label === 'View');
+    const renderModeItem = viewMenu?.submenu?.find((item) => item.label === 'Render Mode');
+
+    expect(renderModeItem?.checked).toBe(false);
+  });
+
+  it('registers the menu state listener only once across rebuilds', () => {
+    buildMenu(mockWin);
+    buildMenu(createMockBrowserWindow());
+
+    const menuStateRegistrations = (mockIpcMain.on.mock.calls as Array<[string, unknown]>).filter(
+      ([channel]) => channel === 'menu:state-update',
+    );
+
+    expect(menuStateRegistrations).toHaveLength(1);
+  });
 });

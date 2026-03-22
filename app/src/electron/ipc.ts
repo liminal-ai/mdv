@@ -1,22 +1,40 @@
 import { ipcMain, BrowserWindow } from 'electron';
 
+let activeWindow: BrowserWindow | null = null;
+let quitPending = false;
+let ipcHandlersRegistered = false;
+const wiredWindows = new WeakSet<BrowserWindow>();
+
 export function registerIpcHandlers(win: BrowserWindow): void {
-  let quitPending = false;
+  activeWindow = win;
+  quitPending = false;
 
-  win.on('close', (event) => {
-    if (quitPending) {
-      return;
-    }
-    event.preventDefault();
-    win.webContents.send('app:quit-request');
-  });
+  if (!wiredWindows.has(win)) {
+    win.on('close', (event) => {
+      if (quitPending) {
+        return;
+      }
 
-  ipcMain.on('app:quit-confirmed', () => {
-    quitPending = true;
-    win.close();
-  });
+      event.preventDefault();
+      win.webContents.send('app:quit-request');
+    });
+    wiredWindows.add(win);
+  }
 
-  ipcMain.on('app:quit-cancelled', () => {
-    // Window stays open
-  });
+  if (!ipcHandlersRegistered) {
+    ipcMain.on('app:quit-confirmed', () => {
+      if (!activeWindow) {
+        return;
+      }
+
+      quitPending = true;
+      activeWindow.close();
+    });
+
+    ipcMain.on('app:quit-cancelled', () => {
+      // Window stays open
+    });
+
+    ipcHandlersRegistered = true;
+  }
 }

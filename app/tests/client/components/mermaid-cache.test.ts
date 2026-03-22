@@ -64,7 +64,7 @@ describe('mermaid cache', () => {
     expect(cache.get('flowchart LR\nA200-->B200', 'default')).toBe('<svg>200</svg>');
   });
 
-  it('TC-6.3b: invalidateForTab removes entries', () => {
+  it('TC-6.3b: invalidateForTab removes entries no longer needed by open tabs', () => {
     const cache = new MermaidCache();
 
     const sourceA = 'flowchart LR\nA-->B';
@@ -76,10 +76,10 @@ describe('mermaid cache', () => {
     cache.set(sourceB, 'default', '<svg>b-light</svg>');
     cache.set(sourceC, 'default', '<svg>c-light</svg>');
 
-    cache.invalidateForTab([sourceA, sourceB]);
+    cache.invalidateForTab([sourceA, sourceB], [sourceA]);
 
-    expect(cache.get(sourceA, 'default')).toBeNull();
-    expect(cache.get(sourceA, 'dark')).toBeNull();
+    expect(cache.get(sourceA, 'default')).toBe('<svg>a-light</svg>');
+    expect(cache.get(sourceA, 'dark')).toBe('<svg>a-dark</svg>');
     expect(cache.get(sourceB, 'default')).toBeNull();
     expect(cache.get(sourceC, 'default')).toBe('<svg>c-light</svg>');
   });

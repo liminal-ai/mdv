@@ -66,6 +66,7 @@ export function mountContentArea(
   actions: ContentAreaActions,
 ): () => void {
   const dirtyTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  let renderingIndicatorTimer: ReturnType<typeof setTimeout> | null = null;
   let editor: Editor | null = null;
   let editorHost: HTMLElement | null = null;
   let editorTabId: string | null = null;
@@ -76,6 +77,23 @@ export function mountContentArea(
     const controller = activeChunkedRenderControllers.get(container);
     controller?.abort();
     activeChunkedRenderControllers.delete(container);
+  };
+
+  const clearRenderingIndicator = () => {
+    if (renderingIndicatorTimer) {
+      clearTimeout(renderingIndicatorTimer);
+      renderingIndicatorTimer = null;
+    }
+
+    container.classList.remove('rendering-in-progress');
+  };
+
+  const scheduleRenderingIndicator = () => {
+    clearRenderingIndicator();
+    renderingIndicatorTimer = setTimeout(() => {
+      renderingIndicatorTimer = null;
+      container.classList.add('rendering-in-progress');
+    }, 500);
   };
 
   const shouldKeepDeletedEditorVisible = (tab: TabState): boolean =>
@@ -355,6 +373,7 @@ export function mountContentArea(
     const activeTab = getActiveTab();
 
     abortPendingChunkedRender();
+    clearRenderingIndicator();
 
     if (!activeTab) {
       destroyEditor();
@@ -549,6 +568,11 @@ export function mountContentArea(
     let html = activeTab.html;
     let serverWarnings = activeTab.warnings.filter((warning) => warning.type !== 'mermaid-error');
     const renderingGeneration = activeTab.renderGeneration ?? 0;
+    const showSlowModeSwitchIndicator =
+      activeTab.mode === 'render' &&
+      lastVisibleTabId === activeTab.id &&
+      lastVisibleMode === 'edit' &&
+      activeTab.size > LARGE_FILE_CHUNKED_RENDER_THRESHOLD_BYTES;
 
     if (
       activeTab.dirty &&
@@ -598,6 +622,9 @@ export function mountContentArea(
     if (activeTab.size > LARGE_FILE_CHUNKED_RENDER_THRESHOLD_BYTES) {
       const chunkedRenderController = new AbortController();
       activeChunkedRenderControllers.set(container, chunkedRenderController);
+      if (showSlowModeSwitchIndicator) {
+        scheduleRenderingIndicator();
+      }
 
       const completed = await new Promise<boolean>((resolve) => {
         let settled = false;
@@ -624,6 +651,8 @@ export function mountContentArea(
       if (activeChunkedRenderControllers.get(container) === chunkedRenderController) {
         activeChunkedRenderControllers.delete(container);
       }
+
+      clearRenderingIndicator();
 
       if (!completed || chunkedRenderController.signal.aborted) {
         return;
@@ -741,6 +770,7 @@ export function mountContentArea(
     document.removeEventListener(INSERT_LINK_EVENT, handleInsertLink);
     document.removeEventListener(INSERT_TABLE_EVENT, handleInsertTable);
     abortPendingChunkedRender();
+    clearRenderingIndicator();
     for (const timer of dirtyTimers.values()) {
       clearTimeout(timer);
     }

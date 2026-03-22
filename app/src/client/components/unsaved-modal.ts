@@ -12,6 +12,27 @@ export function mountUnsavedModal(
   store: StateStore,
   actions: UnsavedModalActions,
 ): () => void {
+  const getActionLabels = (modal: NonNullable<ReturnType<typeof store.get>['unsavedModal']>) => {
+    if (modal.context !== 'quit') {
+      return {
+        save: 'Save and Close',
+        discard: 'Discard Changes',
+      };
+    }
+
+    if (modal.filenames.length > 1) {
+      return {
+        save: 'Save All and Quit',
+        discard: 'Discard All and Quit',
+      };
+    }
+
+    return {
+      save: 'Save and Quit',
+      discard: 'Discard and Quit',
+    };
+  };
+
   const render = () => {
     const modal = store.get().unsavedModal;
 
@@ -19,6 +40,9 @@ export function mountUnsavedModal(
     if (!modal) {
       return;
     }
+
+    const labels = getActionLabels(modal);
+    const isMultiFile = modal.filenames.length > 1;
 
     container.replaceChildren(
       createElement('div', {
@@ -39,14 +63,27 @@ export function mountUnsavedModal(
               }),
               createElement('p', {
                 className: 'modal__message',
-                text: `You have unsaved changes in ${modal.filename}.`,
+                text: isMultiFile
+                  ? 'You have unsaved changes in these files:'
+                  : `You have unsaved changes in ${modal.filenames[0] ?? 'this file'}.`,
               }),
+              isMultiFile
+                ? createElement('ul', {
+                    className: 'modal__list',
+                    children: modal.filenames.map((filename) =>
+                      createElement('li', {
+                        className: 'modal__list-item',
+                        text: filename,
+                      }),
+                    ),
+                  })
+                : null,
               createElement('div', {
                 className: 'modal__actions',
                 children: [
                   createElement('button', {
                     className: 'button--primary',
-                    text: 'Save and Close',
+                    text: labels.save,
                     attrs: { type: 'button' },
                     on: {
                       click: () => {
@@ -56,7 +93,7 @@ export function mountUnsavedModal(
                   }),
                   createElement('button', {
                     className: 'button--danger',
-                    text: 'Discard Changes',
+                    text: labels.discard,
                     attrs: { type: 'button' },
                     on: {
                       click: () => {

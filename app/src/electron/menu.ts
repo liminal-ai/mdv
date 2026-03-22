@@ -18,6 +18,9 @@ let currentState: MenuState = {
   defaultMode: 'render',
 };
 
+let activeWindow: BrowserWindow | null = null;
+let menuStateListenerRegistered = false;
+
 const THEMES = [
   { id: 'light-default', label: 'Light Default' },
   { id: 'light-warm', label: 'Light Warm' },
@@ -34,120 +37,138 @@ function sendAction(win: BrowserWindow, action: string, args?: unknown): void {
   win.webContents.send('menu:action', action, args);
 }
 
+function sendActionToActiveWindow(action: string, args?: unknown): void {
+  if (!activeWindow) {
+    return;
+  }
+
+  sendAction(activeWindow, action, args);
+}
+
+function rebuildMenu(): void {
+  if (!Menu?.buildFromTemplate || !Menu?.setApplicationMenu || !activeWindow) {
+    return;
+  }
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Open File',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => sendActionToActiveWindow('open-file'),
+        },
+        {
+          label: 'Open Folder',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => sendActionToActiveWindow('open-folder'),
+        },
+        { type: 'separator' },
+        {
+          label: 'Save',
+          accelerator: 'CmdOrCtrl+S',
+          enabled: currentState.activeTabDirty,
+          click: () => sendActionToActiveWindow('save'),
+        },
+        {
+          label: 'Save As…',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          enabled: currentState.hasDocument,
+          click: () => sendActionToActiveWindow('save-as'),
+        },
+        { type: 'separator' },
+        {
+          label: 'Close Tab',
+          accelerator: 'CmdOrCtrl+W',
+          enabled: currentState.hasDocument,
+          click: () => sendActionToActiveWindow('close-tab'),
+        },
+      ],
+    },
+    {
+      label: 'Export',
+      submenu: [
+        {
+          label: 'PDF',
+          accelerator: 'CmdOrCtrl+Shift+E',
+          enabled: currentState.hasDocument,
+          click: () => sendActionToActiveWindow('export-pdf'),
+        },
+        {
+          label: 'DOCX',
+          enabled: currentState.hasDocument,
+          click: () => sendActionToActiveWindow('export-docx'),
+        },
+        {
+          label: 'HTML',
+          enabled: currentState.hasDocument,
+          click: () => sendActionToActiveWindow('export-html'),
+        },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Toggle Sidebar',
+          accelerator: 'CmdOrCtrl+\\',
+          click: () => sendActionToActiveWindow('toggle-sidebar'),
+        },
+        { type: 'separator' },
+        {
+          label: 'Theme',
+          submenu: THEMES.map((theme) => ({
+            label: theme.label,
+            type: 'checkbox' as const,
+            checked: currentState.activeTheme === theme.id,
+            click: () => sendActionToActiveWindow('set-theme', theme.id),
+          })),
+        },
+        { type: 'separator' },
+        {
+          label: 'Render Mode',
+          accelerator: 'CmdOrCtrl+Shift+M',
+          type: 'checkbox',
+          checked: currentState.activeMode === 'render',
+          click: () => sendActionToActiveWindow('toggle-mode'),
+        },
+        { type: 'separator' },
+        { role: 'toggleDevTools' },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 export function buildMenu(win: BrowserWindow): void {
   if (!Menu?.buildFromTemplate || !Menu?.setApplicationMenu) {
     return;
   }
 
-  function rebuild(): void {
-    const template: Electron.MenuItemConstructorOptions[] = [
-      {
-        label: app.name,
-        submenu: [
-          { role: 'about' },
-          { type: 'separator' },
-          { role: 'services' },
-          { type: 'separator' },
-          { role: 'hide' },
-          { role: 'hideOthers' },
-          { role: 'unhide' },
-          { type: 'separator' },
-          { role: 'quit' },
-        ],
-      },
-      {
-        label: 'File',
-        submenu: [
-          {
-            label: 'Open File',
-            accelerator: 'CmdOrCtrl+O',
-            click: () => sendAction(win, 'open-file'),
-          },
-          {
-            label: 'Open Folder',
-            accelerator: 'CmdOrCtrl+Shift+O',
-            click: () => sendAction(win, 'open-folder'),
-          },
-          { type: 'separator' },
-          {
-            label: 'Save',
-            accelerator: 'CmdOrCtrl+S',
-            enabled: currentState.activeTabDirty,
-            click: () => sendAction(win, 'save'),
-          },
-          {
-            label: 'Save As…',
-            accelerator: 'CmdOrCtrl+Shift+S',
-            enabled: currentState.hasDocument,
-            click: () => sendAction(win, 'save-as'),
-          },
-          { type: 'separator' },
-          {
-            label: 'Close Tab',
-            accelerator: 'CmdOrCtrl+W',
-            enabled: currentState.hasDocument,
-            click: () => sendAction(win, 'close-tab'),
-          },
-        ],
-      },
-      {
-        label: 'Export',
-        submenu: [
-          {
-            label: 'PDF',
-            accelerator: 'CmdOrCtrl+Shift+E',
-            enabled: currentState.hasDocument,
-            click: () => sendAction(win, 'export-pdf'),
-          },
-          {
-            label: 'DOCX',
-            enabled: currentState.hasDocument,
-            click: () => sendAction(win, 'export-docx'),
-          },
-          {
-            label: 'HTML',
-            enabled: currentState.hasDocument,
-            click: () => sendAction(win, 'export-html'),
-          },
-        ],
-      },
-      {
-        label: 'View',
-        submenu: [
-          {
-            label: 'Toggle Sidebar',
-            accelerator: 'CmdOrCtrl+\\',
-            click: () => sendAction(win, 'toggle-sidebar'),
-          },
-          { type: 'separator' },
-          {
-            label: 'Theme',
-            submenu: THEMES.map((theme) => ({
-              label: theme.label,
-              type: 'checkbox' as const,
-              checked: currentState.activeTheme === theme.id,
-              click: () => sendAction(win, 'set-theme', theme.id),
-            })),
-          },
-          { type: 'separator' },
-          {
-            label: 'Render Mode',
-            accelerator: 'CmdOrCtrl+Shift+M',
-            click: () => sendAction(win, 'toggle-mode'),
-          },
-          { type: 'separator' },
-          { role: 'toggleDevTools' },
-        ],
-      },
-    ];
+  activeWindow = win;
+  rebuildMenu();
 
-    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  if (!menuStateListenerRegistered) {
+    ipcMain.on('menu:state-update', (_event, state: MenuState) => {
+      currentState = state;
+      rebuildMenu();
+    });
+    menuStateListenerRegistered = true;
   }
-
-  rebuild();
-
-  ipcMain.on('menu:state-update', (_event, state: MenuState) => {
-    currentState = state;
-    rebuild();
-  });
 }

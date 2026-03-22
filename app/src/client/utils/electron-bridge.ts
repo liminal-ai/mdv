@@ -5,6 +5,7 @@ interface ElectronBridge {
   onQuitRequest: (callback: () => void) => void;
   confirmQuit: () => void;
   cancelQuit: () => void;
+  sendRendererReady: () => void;
   sendMenuState: (state: MenuState) => void;
 }
 

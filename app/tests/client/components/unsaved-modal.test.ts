@@ -484,6 +484,51 @@ describe('unsaved changes protection', () => {
     expect(getModalTitle()?.textContent ?? '').toContain('Unsaved changes');
   });
 
+  it('renders quit copy for a single dirty file', async () => {
+    const { store } = await renderApp();
+
+    asTestStore(store).update(
+      {
+        unsavedModal: {
+          tabId: 'tab-quit',
+          filenames: ['draft.md'],
+          context: 'quit',
+        },
+      },
+      ['unsavedModal'],
+    );
+    await flushUi();
+
+    expect(document.body.textContent).toContain('You have unsaved changes in draft.md.');
+    expect(getButtonByText('Save and Quit')).toBeDefined();
+    expect(getButtonByText('Discard and Quit')).toBeDefined();
+    expect(getButtonByText('Cancel')).toBeDefined();
+  });
+
+  it('renders all dirty filenames for quit with bulk-action labels', async () => {
+    const { store } = await renderApp();
+
+    asTestStore(store).update(
+      {
+        unsavedModal: {
+          tabId: null,
+          filenames: ['a.md', 'b.md', 'c.md'],
+          context: 'quit',
+        },
+      },
+      ['unsavedModal'],
+    );
+    await flushUi();
+
+    expect(document.body.textContent).toContain('You have unsaved changes in these files:');
+    expect(document.body.textContent).toContain('a.md');
+    expect(document.body.textContent).toContain('b.md');
+    expect(document.body.textContent).toContain('c.md');
+    expect(getButtonByText('Save All and Quit')).toBeDefined();
+    expect(getButtonByText('Discard All and Quit')).toBeDefined();
+    expect(getButtonByText('Cancel')).toBeDefined();
+  });
+
   it('TC-5.2a: Close Others prompts sequentially for dirty tabs', async () => {
     const tabA = {
       ...dirtyTab,
