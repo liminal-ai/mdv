@@ -6,6 +6,7 @@ export function createMockBrowserWindow() {
     send: vi.fn(),
     on: vi.fn(),
     once: vi.fn(),
+    isLoading: vi.fn().mockReturnValue(false),
   };
 
   return {
@@ -15,7 +16,9 @@ export function createMockBrowserWindow() {
     hide: vi.fn(),
     close: vi.fn(),
     destroy: vi.fn(),
+    focus: vi.fn(),
     isDestroyed: vi.fn().mockReturnValue(false),
+    isMinimized: vi.fn().mockReturnValue(false),
     on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       const current = listeners.get(event) ?? [];
       listeners.set(event, [...current, handler]);
@@ -24,6 +27,7 @@ export function createMockBrowserWindow() {
       const current = listeners.get(event) ?? [];
       listeners.set(event, [...current, handler]);
     }),
+    restore: vi.fn(),
     emit(event: string, ...args: unknown[]) {
       for (const handler of listeners.get(event) ?? []) {
         handler(...args);
