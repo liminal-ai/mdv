@@ -188,20 +188,19 @@ describe('tab restore', () => {
     expect(restoredActiveTab?.path).toBe(activeTab);
   });
 
-  it('TC-11.1b: active tab loads eagerly, others lazy', async () => {
+  it('TC-11.1b: all restored tabs load eagerly', async () => {
     const openTabs = createPersistedTabs(10);
     const activeTab = openTabs[6]!.path;
     const { api, store } = await bootstrapWithSession({ openTabs, activeTab });
 
     const state = store.get();
 
-    expect(state.tabs.find((tab) => tab.path === activeTab)).toMatchObject({
-      loading: false,
-      status: 'ok',
-    });
-    expect(state.tabs.filter((tab) => tab.path !== activeTab && tab.loading)).toHaveLength(9);
-    expect(api.readFile).toHaveBeenCalledTimes(1);
-    expect(api.readFile).toHaveBeenCalledWith(activeTab);
+    expect(state.tabs).toHaveLength(10);
+    expect(state.tabs.every((tab) => tab.loading === false && tab.status === 'ok')).toBe(true);
+    expect(api.readFile).toHaveBeenCalledTimes(10);
+    expect(new Set(api.readFile.mock.calls.map(([path]) => path))).toEqual(
+      new Set(openTabs.map((tab) => tab.path)),
+    );
   });
 
   it('TC-11.1c: per-tab mode restored', async () => {
@@ -284,10 +283,10 @@ describe('tab restore', () => {
     expect(store.get().tabs).toHaveLength(LEGACY_TABS_STRINGS.length);
     expect(store.get().tabs.every((tab) => tab.mode === 'edit')).toBe(true);
     expect(store.get().tabs.map((tab) => tab.path)).toEqual(LEGACY_TABS_STRINGS);
-    expect(api.readFile).toHaveBeenCalledTimes(1);
+    expect(api.readFile).toHaveBeenCalledTimes(LEGACY_TABS_STRINGS.length);
   });
 
-  it('loads a lazy tab on first switch and marks it deleted when the file is missing', async () => {
+  it('restores inactive missing tabs as deleted without waiting for first switch', async () => {
     const openTabs = [
       { path: '/root/readme.md', mode: 'render' as const },
       { path: '/root/deleted.md', mode: 'render' as const },
@@ -302,6 +301,14 @@ describe('tab restore', () => {
 
         return createFileResponse(path);
       },
+    });
+
+    const restoredDeletedTab = store.get().tabs.find((tab) => tab.path === '/root/deleted.md');
+
+    expect(api.readFile).toHaveBeenCalledTimes(2);
+    expect(restoredDeletedTab).toMatchObject({
+      loading: false,
+      status: 'deleted',
     });
 
     document.querySelectorAll<HTMLElement>('.tab')[1]?.click();
@@ -320,7 +327,7 @@ describe('tab restore', () => {
     );
   });
 
-  it('collapses lazy tabs that resolve to a duplicate canonical path on first switch', async () => {
+  it('collapses restored tabs that resolve to a duplicate canonical path', async () => {
     const openTabs = [
       { path: '/root/real.md', mode: 'render' as const },
       { path: '/root/link.md', mode: 'edit' as const },
@@ -333,9 +340,6 @@ describe('tab restore', () => {
           canonicalPath: path === '/root/link.md' ? '/root/real.md' : path,
         }),
     });
-
-    document.querySelectorAll<HTMLElement>('.tab')[1]?.click();
-    await flushUi();
 
     const state = store.get();
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);

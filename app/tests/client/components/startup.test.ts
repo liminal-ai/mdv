@@ -173,7 +173,7 @@ describe('startup', () => {
       loading: false,
       status: 'ok',
     });
-    expect(state.tabs.filter((tab) => tab.path !== activeTab && tab.loading)).toHaveLength(9);
-    expect(api.readFile).toHaveBeenCalledTimes(1);
+    expect(state.tabs.every((tab) => tab.loading === false && tab.status === 'ok')).toBe(true);
+    expect(api.readFile).toHaveBeenCalledTimes(10);
   });
 });

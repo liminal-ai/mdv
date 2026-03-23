@@ -221,6 +221,21 @@ describe('menu bar', () => {
       expect(lightButton.textContent).not.toContain('✓');
     });
 
+    it('theme submenu click closes the view menu after applying a theme', () => {
+      const { store, actions } = renderMenuBar();
+
+      actions.onSetTheme.mockImplementation((themeId: string) => {
+        store.update({ session: { ...store.get().session, theme: themeId } }, ['session']);
+      });
+
+      getButtonByText('View').click();
+      getButtonByText('Dark Cool').click();
+
+      expect(actions.onSetTheme).toHaveBeenCalledWith('dark-cool');
+      expect(store.get().activeMenuId).toBeNull();
+      expect(document.body.textContent).not.toContain('Toggle Sidebar');
+    });
+
     it('TC-7.4a: Adding a theme definition makes it appear in menu', () => {
       renderMenuBar({
         availableThemes: [
