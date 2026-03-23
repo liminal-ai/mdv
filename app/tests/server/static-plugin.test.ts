@@ -5,7 +5,8 @@ describe('static plugin client root resolution', () => {
   it('prefers unpacked client assets for packaged Electron apps', () => {
     const baseDir = '/Applications/mdv.app/Contents/Resources/app.asar/dist/server/plugins';
     const exists = (target: string) =>
-      target === '/Applications/mdv.app/Contents/Resources/app.asar.unpacked/dist/client/index.html';
+      target ===
+      '/Applications/mdv.app/Contents/Resources/app.asar.unpacked/dist/client/index.html';
 
     expect(resolveClientRoot(baseDir, exists)).toBe(
       '/Applications/mdv.app/Contents/Resources/app.asar.unpacked/dist/client',
