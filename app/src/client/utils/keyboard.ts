@@ -1,6 +1,7 @@
 export interface ShortcutDefinition {
   key: string;
   meta?: boolean;
+  ctrl?: boolean;
   shift?: boolean;
   alt?: boolean;
   action: () => void;
@@ -64,6 +65,7 @@ export class KeyboardManager {
     return (
       event.key.toLowerCase() === shortcut.key.toLowerCase() &&
       event.metaKey === Boolean(shortcut.meta) &&
+      event.ctrlKey === Boolean(shortcut.ctrl) &&
       event.shiftKey === Boolean(shortcut.shift) &&
       event.altKey === Boolean(shortcut.alt)
     );

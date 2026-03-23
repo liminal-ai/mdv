@@ -728,6 +728,7 @@ export async function bootstrapApp(
       try {
         const treeResponse = await api.getTree(path);
         applyTree(treeResponse.tree);
+        wsClient?.send({ type: 'watch-root', path });
       } catch (error) {
         if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
           setInvalidRoot(error);
@@ -1906,6 +1907,10 @@ export async function bootstrapApp(
         store.update({ error: null }, ['error']);
       }
       rewatchAllOpenTabs();
+      const currentRoot = store.get().session.lastRoot;
+      if (currentRoot) {
+        wsClient?.send({ type: 'watch-root', path: currentRoot });
+      }
     });
     wsClient.on('close', () => {
       setClientError(
@@ -1935,6 +1940,12 @@ export async function bootstrapApp(
       }
 
       void refreshWatchedFile(message.path);
+    });
+    wsClient.on('tree-change', (message) => {
+      const currentRoot = store.get().session.lastRoot;
+      if (currentRoot && currentRoot === message.root) {
+        void refreshTree();
+      }
     });
     wsClient.connect();
   }
@@ -2040,6 +2051,31 @@ export async function bootstrapApp(
   keyboardManager.register({
     key: '[',
     meta: true,
+    shift: true,
+    description: 'Previous Tab',
+    action: () => {
+      void activateRelativeTab(-1);
+    },
+  });
+  keyboardManager.register({
+    key: 'e',
+    meta: true,
+    description: 'Toggle Edit/Render Mode',
+    action: () => {
+      toggleMode();
+    },
+  });
+  keyboardManager.register({
+    key: 'Tab',
+    ctrl: true,
+    description: 'Next Tab',
+    action: () => {
+      void activateRelativeTab(1);
+    },
+  });
+  keyboardManager.register({
+    key: 'Tab',
+    ctrl: true,
     shift: true,
     description: 'Previous Tab',
     action: () => {

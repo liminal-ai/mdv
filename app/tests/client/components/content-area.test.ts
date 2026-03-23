@@ -57,7 +57,7 @@ describe('content area', () => {
   it('renders the empty state with open actions', () => {
     const { actions } = renderContentArea();
 
-    expect(document.body.textContent).toContain('mdv');
+    expect(document.body.textContent).toContain('MD Viewer');
 
     getButtonByText('Open File').click();
     getButtonByText('Open Folder').click();

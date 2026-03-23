@@ -172,11 +172,17 @@ export const FileChangeEventSchema = z.object({
 export const ClientWsMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('watch'), path: AbsolutePathSchema }),
   z.object({ type: z.literal('unwatch'), path: AbsolutePathSchema }),
+  z.object({ type: z.literal('watch-root'), path: AbsolutePathSchema }),
+  z.object({ type: z.literal('unwatch-root') }),
 ]);
 
 export const ServerWsMessageSchema = z.discriminatedUnion('type', [
   FileChangeEventSchema.extend({
     type: z.literal('file-change'),
+  }),
+  z.object({
+    type: z.literal('tree-change'),
+    root: AbsolutePathSchema,
   }),
   z.object({
     type: z.literal('error'),

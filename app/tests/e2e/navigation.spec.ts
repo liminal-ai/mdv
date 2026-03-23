@@ -61,9 +61,7 @@ test('TC-2.1b: empty state displayed without workspace', async ({ page }) => {
   await expect(page.locator('.content-area__empty-state')).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.locator('.content-area__title')).toContainText(
-    'Open a markdown file to begin.',
-  );
+  await expect(page.locator('.content-area__title')).toContainText('MD Viewer');
   await expect(page.locator('.content-area__actions')).toContainText('Open File');
   await expect(page.locator('.content-area__actions')).toContainText('Open Folder');
 });

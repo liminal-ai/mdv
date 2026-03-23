@@ -107,7 +107,7 @@ test('TC-4.3b: close last remaining tab shows empty state', async ({ page }) => 
 
   await expect(page.locator('.tab[data-tab-id]')).toHaveCount(0);
   await expect(page.locator('.markdown-body')).toHaveCount(0);
-  await expect(page.locator('#content-area')).toContainText('Open a markdown file to begin.');
+  await expect(page.locator('#content-area')).toContainText('MD Viewer');
 });
 
 test('TC-5.1a: enter edit mode', async ({ page }) => {

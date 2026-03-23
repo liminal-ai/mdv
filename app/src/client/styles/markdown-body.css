@@ -1,5 +1,5 @@
 .markdown-body {
-  max-width: 900px;
+  max-width: 1050px;
   margin: 0 auto;
   padding: 1.25em 2em;
   color: var(--color-text-primary);
@@ -73,8 +73,7 @@
 .markdown-body table {
   display: block;
   overflow-x: auto;
-  width: max-content;
-  min-width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
 }
 

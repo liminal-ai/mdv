@@ -341,10 +341,10 @@ export function mountContentArea(
       createElement('section', {
         className: 'content-area__empty-state',
         children: [
-          createElement('p', { className: 'content-area__eyebrow', text: 'mdv' }),
+          createElement('p', { className: 'content-area__eyebrow', text: 'welcome' }),
           createElement('h1', {
             className: 'content-area__title',
-            text: 'Open a markdown file to begin.',
+            text: 'MD Viewer',
           }),
           createElement('p', {
             className: 'content-area__copy',

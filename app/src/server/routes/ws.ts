@@ -60,6 +60,12 @@ export async function wsRoutes(app: FastifyInstance) {
           case 'unwatch':
             watchService.unwatch(parsed.path, socket as WebSocket);
             break;
+          case 'watch-root':
+            watchService.watchRoot(parsed.path, socket as WebSocket);
+            break;
+          case 'unwatch-root':
+            watchService.unwatchRoot(socket as WebSocket);
+            break;
         }
       } catch {
         socket.send(

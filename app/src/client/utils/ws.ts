@@ -7,6 +7,7 @@ type WsClientEventMap = {
   open: { type: 'open' };
   close: { type: 'close' };
   'file-change': ServerMessageByType<'file-change'>;
+  'tree-change': ServerMessageByType<'tree-change'>;
   error: ServerMessageByType<'error'>;
 };
 
@@ -77,7 +78,11 @@ export class WsClient {
         }
 
         const message = result.data;
-        if (message.type === 'file-change' || message.type === 'error') {
+        if (
+          message.type === 'file-change' ||
+          message.type === 'tree-change' ||
+          message.type === 'error'
+        ) {
           this.dispatch(message.type, message as WsClientEventMap[typeof message.type]);
         }
       } catch {

@@ -47,6 +47,74 @@ export class WatchService {
     for (const filePath of [...this.subscribers.keys()]) {
       this.unwatch(filePath, ws);
     }
+    this.unwatchRoot(ws);
+  }
+
+  watchRoot(root: string, ws: WebSocket): void {
+    this.unwatchRoot(ws);
+
+    const key = `root:${root}`;
+    let subscribers = this.subscribers.get(key);
+    if (!subscribers) {
+      subscribers = new Set();
+      this.subscribers.set(key, subscribers);
+    }
+    subscribers.add(ws);
+
+    if (this.watchers.has(key)) {
+      return;
+    }
+
+    this.createRootWatcher(root, key);
+  }
+
+  unwatchRoot(ws: WebSocket): void {
+    for (const key of [...this.subscribers.keys()]) {
+      if (!key.startsWith('root:')) {
+        continue;
+      }
+      const subscribers = this.subscribers.get(key);
+      if (!subscribers) {
+        continue;
+      }
+      subscribers.delete(ws);
+      if (subscribers.size === 0) {
+        this.subscribers.delete(key);
+        this.destroyWatcher(key);
+      }
+    }
+  }
+
+  private createRootWatcher(root: string, key: string): void {
+    try {
+      const watcher = chokidarWatch(root, {
+        persistent: true,
+        ignoreInitial: true,
+        depth: 20,
+        ignored: /(^|[/\\])(node_modules|\.git)([/\\]|$)/,
+      });
+
+      const debouncedNotify = () => {
+        const existingTimer = this.debounceTimers.get(key);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+        }
+        const timer = setTimeout(() => {
+          this.debounceTimers.delete(key);
+          this.notifySubscribers(key, { type: 'tree-change', root });
+        }, WATCH_DEBOUNCE_MS);
+        this.debounceTimers.set(key, timer);
+      };
+
+      watcher.on('add', debouncedNotify);
+      watcher.on('unlink', debouncedNotify);
+      watcher.on('addDir', debouncedNotify);
+      watcher.on('unlinkDir', debouncedNotify);
+
+      this.watchers.set(key, watcher);
+    } catch {
+      // Ignore root watch errors — file watches still work.
+    }
   }
 
   private createWatcher(filePath: string): void {

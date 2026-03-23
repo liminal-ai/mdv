@@ -48,10 +48,12 @@ function createTreeRow(flatNode: FlatTreeNode<TreeNode>, expandedSet: Set<string
     attrs: {
       tabindex: -1,
       role: 'treeitem',
+      'aria-level': String(depth + 1),
       'aria-expanded': isDir ? String(isExpanded) : null,
       'data-path': node.path,
       'data-type': node.type,
-      style: `padding-left: ${depth * 1.2}rem`,
+      'data-depth': String(depth),
+      style: `padding-left: ${depth * 1}rem`,
     },
     dataset: { path: node.path, type: node.type },
     children: [
