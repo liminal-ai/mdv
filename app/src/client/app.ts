@@ -2,6 +2,7 @@ import type {
   ExportFormat,
   FileReadResponse,
   PersistedTab,
+  RenderWarning,
   SessionState,
   ThemeInfo,
 } from '../shared/types.js';
@@ -527,6 +528,8 @@ export async function bootstrapApp(
       canonicalPath?: string;
       filename?: string;
       content: string;
+      html?: string;
+      warnings?: RenderWarning[];
       modifiedAt: string;
       size: number;
     },
@@ -537,6 +540,8 @@ export async function bootstrapApp(
     filename: options.filename ?? tab.filename,
     content: options.content,
     editContent: options.content,
+    html: options.html ?? tab.html,
+    warnings: options.warnings ?? tab.warnings,
     modifiedAt: options.modifiedAt,
     size: options.size,
     dirty: false,
@@ -954,6 +959,21 @@ export async function bootstrapApp(
         content: contentToSave,
         expectedModifiedAt: tabToSave.status === 'deleted' ? null : tabToSave.modifiedAt,
       });
+      let renderedContent: { html: string; warnings: RenderWarning[] } | null = null;
+
+      try {
+        const renderResponse = await api.render({
+          content: contentToSave,
+          documentPath: tabToSave.path,
+        });
+
+        renderedContent = {
+          html: renderResponse.html,
+          warnings: renderResponse.warnings,
+        };
+      } catch (error) {
+        setError(error);
+      }
 
       const latestState = store.get();
       const nextTabs = disambiguateDisplayNames(
@@ -961,8 +981,10 @@ export async function bootstrapApp(
           tab.id === tabToSave.id
             ? buildSavedTab(tab, {
                 content: contentToSave,
+                html: renderedContent?.html,
                 modifiedAt: response.modifiedAt,
                 size: response.size,
+                warnings: renderedContent?.warnings,
               })
             : tab,
         ),
