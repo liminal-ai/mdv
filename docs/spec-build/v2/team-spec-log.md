@@ -188,3 +188,37 @@ Dual verification: Opus verifier with Codex dispatch (correct process). Codex ca
 **Total fixes:** 4 Major, 6 Minor. All applied by tech designer across two batches. No re-verification needed — all fixes were documentation/precision changes, no architectural redesign.
 
 **Phase 2 ACCEPTED.** Tech design ready for Phase 3 (Publish Epic).
+
+### Phase 3: Publish Epic
+
+Tech designer produced both artifacts: story file (805 lines, 5 stories, 50 TCs mapped) and business epic (237 lines, 0 code blocks, grouped ACs with story references). Coverage gate confirmed: 27 ACs, 50 TCs, all mapped to exactly one story, no orphans. Integration path trace: 3 critical paths, no gaps.
+
+### Phase 4: Final Verification
+
+Cross-artifact coherence check by fresh Opus verifier with Codex dispatch. Three Major issues found and fixed directly by the verifier:
+
+1. AC-2.1 chunk/story boundary mismatch between tech design and story file — fixed (moved AC-2.1 to Chunk 0)
+2. TC-1.1d behavior conflict between epic's single-outcome wording and tech design's dual-outcome — fixed (aligned story to reflect both possibilities)
+3. TC-1.4c verify vs verify-all — already documented as deliberate deviation, confirmed adequate
+
+One Minor fix: `getRenderedContent` helper missing from Story 0 scope — added.
+
+**PASS.** All 4 artifacts are internally consistent and mutually coherent. Coverage complete. Business epic accurately compresses the detailed epic.
+
+---
+
+## Epic 7 Pipeline Complete
+
+**Artifacts delivered:**
+- `docs/spec-build/v2/epics/07--e2e-testing-framework/epic.md` — detailed epic (27 ACs, 50 TCs)
+- `docs/spec-build/v2/epics/07--e2e-testing-framework/tech-design.md` — tech design (1,306 lines)
+- `docs/spec-build/v2/epics/07--e2e-testing-framework/stories.md` — story file (5 stories, 805 lines)
+- `docs/spec-build/v2/epics/07--e2e-testing-framework/business-epic.md` — business epic (237 lines)
+
+**Pipeline stats:**
+- 4 phases, 2 verification rounds on epic, 1 on tech design, 1 final coherence
+- 3 teammates spawned across pipeline (drafter, 2 verifiers + tech designer)
+- Codex subagent used in 3 verification passes
+- 2 process failures identified and logged (Codex dispatch ownership, unresearched technology choices)
+- 1 technology research conducted (E2E testing landscape, 30+ sources)
+- Ready for implementation via ls-team-impl
