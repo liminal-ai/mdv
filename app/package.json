@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "bin": {
+    "mdvpkg": "dist/pkg/cli.js"
+  },
   "scripts": {
     "start": "node dist/server/index.js",
     "dev": "node --watch dist/server/index.js",
@@ -44,6 +47,7 @@
     "@types/ws": "^8.18.1",
     "chokidar": "^5.0.0",
     "codemirror": "^6.0.2",
+    "commander": "^14.0.3",
     "electron-window-state": "^5.0.3",
     "fastify": "^5.8.0",
     "fastify-type-provider-zod": "^6.0.0",
@@ -55,6 +59,7 @@
     "mermaid": "^11.13.0",
     "puppeteer": "^24.40.0",
     "shiki": "^4.0.2",
+    "tar-stream": "^3.1.8",
     "zod": "^4.0.0"
   },
   "devDependencies": {
@@ -62,6 +67,7 @@
     "@playwright/test": "^1.58.2",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^22.0.0",
+    "@types/tar-stream": "^3.1.4",
     "electron": "^41.0.0",
     "electron-builder": "^26.8.0",
     "esbuild": "^0.27.0",

@@ -17,6 +17,6 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src/server/**/*.ts", "src/shared/**/*.ts"],
+  "include": ["src/server/**/*.ts", "src/shared/**/*.ts", "src/pkg/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
