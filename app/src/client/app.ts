@@ -1679,10 +1679,13 @@ export async function bootstrapApp(
       watchPath(tab.path);
     }
 
-    let needsSync = false;
-    if (initialActiveTabId) {
-      ({ needsSync } = await loadTabContent(initialActiveTabId));
-    }
+    const loadResults = await Promise.all([
+      ...(initialActiveTabId ? [loadTabContent(initialActiveTabId)] : []),
+      ...loadingTabs
+        .filter((tab) => tab.id !== initialActiveTabId)
+        .map((tab) => loadTabContent(tab.id)),
+    ]);
+    const needsSync = loadResults.some((result) => result.needsSync);
 
     if (needsSync) {
       await syncTabsToSession();

@@ -356,12 +356,7 @@ packages in scripts and automation.
 - Library API: all CLI operations backed by a library usable
   programmatically. The core rendering pipeline (markdown-to-HTML with
   Mermaid and syntax highlighting) is also accessible as a library for
-  external use. Note: rendering-library exposure is an additive concern
-  within this epic, subordinate to the package core work. Package core
-  (format spec, tar, manifest, CLI) is the critical path and gating
-  output for Epic 9. Rendering-library exposure must not delay
-  package-core completion. If the two concerns start to blur during
-  planning, split them.
+  external use.
 
 ### Out of Scope
 
@@ -918,6 +913,14 @@ format makes this seamless.
 
 Spec packages could be shared, versioned, or published. A registry or
 exchange mechanism for spec packages. Far future.
+
+### Document Outline / Table of Contents
+
+A collapsible outline panel or heading dropdown extracted from the current
+document. Long documents with many headings need a way to jump between
+sections. Headings already have proper IDs for anchor linking — the UI
+to navigate them is missing. Standard feature for any markdown viewer.
+Identified during gorilla testing.
 
 ### Liminal Spec Skill Updates
 

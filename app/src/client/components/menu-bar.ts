@@ -287,8 +287,22 @@ export function mountMenuBar(
   container.addEventListener('keydown', handleKeydown);
   document.addEventListener('mousedown', handleOutsidePointer);
 
+  const MENU_BAR_KEYS: ReadonlySet<keyof ClientState> = new Set([
+    'activeMenuId',
+    'tabs',
+    'activeTabId',
+    'session',
+    'availableThemes',
+    'sidebarVisible',
+    'exportState',
+  ]);
+
   render();
-  const unsubscribe = store.subscribe(render);
+  const unsubscribe = store.subscribe((_state, changed) => {
+    if (changed.some((key) => MENU_BAR_KEYS.has(key))) {
+      render();
+    }
+  });
 
   return () => {
     unsubscribe();
@@ -308,6 +322,11 @@ function createDropdown(
     return createElement('div', {
       className: 'menu-bar__dropdown',
       attrs: { role: 'menu' },
+      on: {
+        mousedown: (event) => {
+          event.stopPropagation();
+        },
+      },
       children: [
         createElement('button', {
           className: 'menu-bar__item',
@@ -341,6 +360,7 @@ function createDropdown(
             }),
             ...state.availableThemes.map((theme) => {
               enabledIndex += 1;
+              const themeAction = () => actions.onSetTheme(theme.id);
               return createElement('button', {
                 className: 'menu-bar__item',
                 text: theme.id === state.session.theme ? `${theme.label} ✓` : theme.label,
@@ -352,13 +372,13 @@ function createDropdown(
                 dataset: { menuItem: `${menuId}:${enabledIndex}` },
                 on: {
                   click: () => {
-                    activateMenuAction(() => actions.onSetTheme(theme.id), closeMenus);
+                    activateMenuAction(themeAction, closeMenus);
                   },
                   keydown: (event) => {
                     if (event.key === 'Enter') {
                       event.preventDefault();
                       event.stopPropagation();
-                      activateMenuAction(() => actions.onSetTheme(theme.id), closeMenus);
+                      activateMenuAction(themeAction, closeMenus);
                     }
                   },
                 },
@@ -373,6 +393,11 @@ function createDropdown(
   return createElement('div', {
     className: 'menu-bar__dropdown',
     attrs: { role: 'menu' },
+    on: {
+      mousedown: (event) => {
+        event.stopPropagation();
+      },
+    },
     children: (() => {
       let enabledIndex = -1;
 

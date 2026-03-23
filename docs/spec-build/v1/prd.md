@@ -124,7 +124,7 @@ The user launches the app and points it at a local directory. They see a filtere
 - Content area: empty state only (app name, Open File / Open Folder prompts, recent files). The content toolbar (mode toggle, export dropdown, status) does not appear until a document is open and is owned by Epic 2.
 - Sidebar with three sections:
   - **Workspaces**: collapsible list of saved root paths with labels, full-path tooltips, x-to-remove. Clicking a workspace switches the root.
-  - **Root line**: single non-collapsible row showing current root path with browse (folder picker), pin-as-workspace, copy-path, and refresh actions.
+  - **Root line**: single non-collapsible row showing current root path with browse (folder picker). Pin-as-workspace, copy-path, and refresh actions were considered but intentionally reduced from scope — the browse button is the primary action; pin is handled via right-click context menu, and refresh is handled by file watching.
   - **File tree**: non-collapsible, markdown-only filtered directory listing with expand/collapse, expand-all (expands only to last markdown file on each branch).
 - Right-click context menus: Copy Path on files and directories, Make Root and Save as Workspace on directories.
 - Keyboard shortcuts for common operations (open folder, toggle sidebar). Note: The Open File quick-action icon is present but disabled in Feature 1 (matching the Export disabled pattern). The Cmd+O shortcut is not registered until Feature 2 — registering a shortcut with no handler would eat the browser's native behavior. Both activate in Feature 2.
