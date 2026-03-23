@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { createConnection } from 'node:net';
 import { startServer } from '../../../dist/server/index.js';
 
 export interface ServerManagerState {
@@ -10,6 +11,51 @@ export interface ServerManagerState {
 export interface ServerStartOptions {
   sessionDir: string;
   preferredPort?: number;
+}
+
+declare global {
+  var __MDV_E2E_WORKER_SERVER_MANAGER__: ServerManager | undefined;
+}
+
+const PORT_RELEASE_TIMEOUT_MS = 5_000;
+const PORT_RELEASE_POLL_MS = 50;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function isPortOpen(port: number, host = '127.0.0.1'): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection({ port, host });
+
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+
+    socket.once('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+  });
+}
+
+async function waitForPortRelease(port: number, host = '127.0.0.1'): Promise<void> {
+  const deadline = Date.now() + PORT_RELEASE_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    if (!(await isPortOpen(port, host))) {
+      return;
+    }
+
+    await delay(PORT_RELEASE_POLL_MS);
+  }
+
+  throw new Error(
+    `ServerManager: port ${port} did not release within ${PORT_RELEASE_TIMEOUT_MS}ms`,
+  );
 }
 
 /**
@@ -71,6 +117,7 @@ export class ServerManager {
     const sessionDir = this.sessionDir;
 
     await this.stop();
+    await waitForPortRelease(port);
     return this.start({ sessionDir, preferredPort: port });
   }
 
@@ -80,5 +127,20 @@ export class ServerManager {
       throw new Error('ServerManager: server not started');
     }
     return this.state;
+  }
+}
+
+export function getGlobalServerManager(): ServerManager {
+  globalThis.__MDV_E2E_WORKER_SERVER_MANAGER__ ??= new ServerManager();
+  return globalThis.__MDV_E2E_WORKER_SERVER_MANAGER__;
+}
+
+export async function ensureGlobalServer(options: ServerStartOptions): Promise<ServerManagerState> {
+  const serverManager = getGlobalServerManager();
+
+  try {
+    return serverManager.getState();
+  } catch {
+    return serverManager.start(options);
   }
 }

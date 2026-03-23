@@ -2,14 +2,22 @@ import { expect, test } from '@playwright/test';
 import {
   expandDirectory,
   getRenderedContent,
+  installConsoleErrorMonitoring,
+  loadE2EState,
   openFile,
   setWorkspaceAndNavigate,
 } from '../utils/e2e/helpers.js';
-import { readE2EState } from '../utils/e2e/state.js';
+import type { E2EState } from '../utils/e2e/state.js';
 
-const state = readE2EState();
+let state: E2EState;
 
-test('smoke: app loads and #app renders', async ({ page }) => {
+installConsoleErrorMonitoring(test);
+
+test.beforeAll(async () => {
+  state = await loadE2EState();
+});
+
+test('TC-1.1a: server is reachable and app shell renders', async ({ page }) => {
   await page.goto(state.baseURL);
   await expect(page.locator('#app')).toBeVisible();
 });
@@ -56,6 +64,8 @@ test('TC-2.1b: empty state displayed without workspace', async ({ page }) => {
   await expect(page.locator('.content-area__title')).toContainText(
     'Open a markdown file to begin.',
   );
+  await expect(page.locator('.content-area__actions')).toContainText('Open File');
+  await expect(page.locator('.content-area__actions')).toContainText('Open Folder');
 });
 
 test('TC-2.2a: file tree shows markdown files', async ({ page }) => {

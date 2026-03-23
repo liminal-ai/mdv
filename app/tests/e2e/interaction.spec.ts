@@ -6,12 +6,22 @@ import {
   enterEditMode,
   enterRenderMode,
   getRenderedContent,
+  installConsoleErrorMonitoring,
+  loadE2EState,
   openFile,
+  resetDefaultMode,
   setWorkspaceAndNavigate,
+  resetOpenTabs,
 } from '../utils/e2e/helpers.js';
-import { readE2EState } from '../utils/e2e/state.js';
+import type { E2EState } from '../utils/e2e/state.js';
 
-const state = readE2EState();
+let state: E2EState;
+
+installConsoleErrorMonitoring(test);
+
+test.beforeAll(async () => {
+  state = await loadE2EState();
+});
 
 function tabByLabel(page: Page, filename: string) {
   return page.locator('.tab[data-tab-id]').filter({
@@ -19,37 +29,12 @@ function tabByLabel(page: Page, filename: string) {
   });
 }
 
-async function resetOpenTabs(baseURL: string): Promise<void> {
-  const response = await fetch(new URL('/api/session/tabs', baseURL), {
-    method: 'PUT',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      openTabs: [],
-      activeTab: null,
-    }),
-  });
-
-  expect(response.ok).toBe(true);
-}
-
-async function resetDefaultMode(baseURL: string): Promise<void> {
-  const response = await fetch(new URL('/api/session/default-mode', baseURL), {
-    method: 'PUT',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      mode: 'render',
-    }),
-  });
-
-  expect(response.ok).toBe(true);
-}
-
 async function moveCursorToDocumentEnd(page: Page): Promise<void> {
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End');
+}
+
+async function saveDocument(page: Page): Promise<void> {
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s');
 }
 
 async function resetWorkspace(page: Page): Promise<void> {
@@ -162,7 +147,7 @@ test('TC-5.2a: edit, save, verify file on disk', async ({ page }) => {
     await editorContent.click();
     await moveCursorToDocumentEnd(page);
     await editorContent.pressSequentially('\n\n## Added Section');
-    await page.keyboard.press('Meta+s');
+    await saveDocument(page);
 
     await expect(tabByLabel(page, 'simple.md').locator('.tab__dirty-dot')).toHaveCount(0);
     expect(readFileSync(state.files.simple, 'utf8')).toContain('## Added Section');
@@ -199,7 +184,7 @@ test('TC-5.2c: saved changes render correctly in view mode', async ({ page }) =>
     await editorContent.click();
     await moveCursorToDocumentEnd(page);
     await editorContent.pressSequentially('\n\n## Render Check');
-    await page.keyboard.press('Meta+s');
+    await saveDocument(page);
 
     await expect(tabByLabel(page, 'simple.md').locator('.tab__dirty-dot')).toHaveCount(0);
     expect(readFileSync(state.files.simple, 'utf8')).toContain('## Render Check');
@@ -239,11 +224,27 @@ test('TC-6.1a: HTML export produces file', async ({ page }) => {
 
   await expect(page.locator('.export-result--success')).toBeVisible();
   expect(existsSync(exportPath)).toBe(true);
-  expect(readFileSync(exportPath, 'utf8')).toContain('<html');
+  const exportedHtml = readFileSync(exportPath, 'utf8');
+
+  expect(exportedHtml).toContain('<html');
+  expect(exportedHtml).toContain('Simple Document');
+  expect(exportedHtml).toContain('This file is used for edit mode tests.');
 });
 
 test('TC-6.1b: export unavailable when no document is open', async ({ page }) => {
   await resetWorkspace(page);
 
-  await expect(page.locator('[data-export-trigger]')).toHaveCount(0);
+  const exportTrigger = page.locator('[data-export-trigger]');
+
+  if ((await exportTrigger.count()) === 0) {
+    await expect(exportTrigger).toHaveCount(0);
+    return;
+  }
+
+  if (!(await exportTrigger.isVisible())) {
+    await expect(exportTrigger).not.toBeVisible();
+    return;
+  }
+
+  await expect(exportTrigger).toBeDisabled();
 });

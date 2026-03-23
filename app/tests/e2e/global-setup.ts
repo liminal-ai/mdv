@@ -3,22 +3,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import {
-  cleanupFixtures,
-  createFixtureWorkspace,
-  type FixtureWorkspace,
-} from '../utils/e2e/fixtures.js';
+import { createFixtureWorkspace } from '../utils/e2e/fixtures.js';
 import { ServerManager } from '../utils/e2e/server-manager.js';
-import { writeE2EState } from '../utils/e2e/state.js';
-
-interface RuntimeState {
-  serverManager: ServerManager;
-  workspace: FixtureWorkspace;
-}
-
-declare global {
-  var __MDV_E2E_RUNTIME__: RuntimeState | undefined;
-}
+import { setE2EStatePath, writeE2EState } from '../utils/e2e/state.js';
 
 async function verifyPortConflictHandling(): Promise<void> {
   const occupiedServer = createServer();
@@ -82,49 +69,21 @@ async function verifyPortConflictHandling(): Promise<void> {
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   await verifyPortConflictHandling();
+  setE2EStatePath();
 
   const workspace = await createFixtureWorkspace();
-  const serverManager = new ServerManager();
 
-  try {
-    const { baseURL, port } = await serverManager.start({
-      sessionDir: workspace.sessionDir,
-      preferredPort: 0,
-    });
-
-    const response = await fetch(new URL('/api/session/root', baseURL), {
-      method: 'PUT',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ root: workspace.rootPath }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to set workspace root: ${response.status} ${response.statusText}`);
-    }
-
-    writeE2EState({
-      baseURL,
-      port,
-      fixtureDir: workspace.rootPath,
-      sessionDir: workspace.sessionDir,
-      exportDir: workspace.exportDir,
-      files: {
-        kitchenSink: workspace.files.kitchenSink,
-        invalidMermaid: workspace.files.invalidMermaid,
-        simple: workspace.files.simple,
-        nested: workspace.files.nested,
-      },
-    });
-
-    globalThis.__MDV_E2E_RUNTIME__ = {
-      serverManager,
-      workspace,
-    };
-  } catch (error) {
-    await serverManager.stop();
-    await cleanupFixtures(workspace);
-    throw error;
-  }
+  writeE2EState({
+    baseURL: '',
+    port: 0,
+    fixtureDir: workspace.rootPath,
+    sessionDir: workspace.sessionDir,
+    exportDir: workspace.exportDir,
+    files: {
+      kitchenSink: workspace.files.kitchenSink,
+      invalidMermaid: workspace.files.invalidMermaid,
+      simple: workspace.files.simple,
+      nested: workspace.files.nested,
+    },
+  });
 }

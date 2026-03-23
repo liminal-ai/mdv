@@ -1,11 +1,17 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { openFile, setWorkspaceAndNavigate } from '../utils/e2e/helpers.js';
-import { ServerManager } from '../utils/e2e/server-manager.js';
-import { readE2EState } from '../utils/e2e/state.js';
+import {
+  installConsoleErrorMonitoring,
+  loadE2EState,
+  openFile,
+  resetOpenTabs,
+  setWorkspaceAndNavigate,
+} from '../utils/e2e/helpers.js';
+import { getGlobalServerManager } from '../utils/e2e/server-manager.js';
+import type { E2EState } from '../utils/e2e/state.js';
 
-const state = readE2EState();
+let state: E2EState;
 
 const DEFAULT_THEME = 'light-default';
 const THEME_LABELS = {
@@ -15,28 +21,23 @@ const THEME_LABELS = {
   'dark-cool': 'Dark Cool',
 } as const;
 const TREE_ROW_SELECTOR = '#sidebar .tree-node__row[data-path]';
+const THEME_MENU_ITEM_PATTERN = new RegExp(
+  `^(?:${Object.values(THEME_LABELS)
+    .map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')})(?:\\s*✓)?$`,
+);
 
 test.describe.configure({ mode: 'serial' });
+installConsoleErrorMonitoring(test);
+
+test.beforeAll(async () => {
+  state = await loadE2EState();
+});
 
 test.afterEach(async () => {
   await resetOpenTabs(state.baseURL);
   await setTheme(state.baseURL, DEFAULT_THEME);
 });
-
-async function resetOpenTabs(baseURL: string): Promise<void> {
-  const response = await fetch(new URL('/api/session/tabs', baseURL), {
-    method: 'PUT',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      openTabs: [],
-      activeTab: null,
-    }),
-  });
-
-  expect(response.ok).toBe(true);
-}
 
 async function setTheme(baseURL: string, theme: string): Promise<void> {
   const response = await fetch(new URL('/api/session/theme', baseURL), {
@@ -51,7 +52,6 @@ async function setTheme(baseURL: string, theme: string): Promise<void> {
 }
 
 async function prepareWorkspace(page: Page, baseURL: string): Promise<void> {
-  await resetOpenTabs(baseURL);
   await setTheme(baseURL, DEFAULT_THEME);
   await setWorkspaceAndNavigate(page, baseURL, state.fixtureDir);
 }
@@ -62,7 +62,9 @@ async function openViewMenu(page: Page): Promise<void> {
 }
 
 function themeOptions(page: Page) {
-  return page.locator('.menu-bar__submenu .menu-bar__item');
+  return page.locator('.menu-bar__submenu .menu-bar__item').filter({
+    hasText: THEME_MENU_ITEM_PATTERN,
+  });
 }
 
 function themeIdFromMenuText(text: string): string | null {
@@ -143,105 +145,74 @@ test('TC-7.1b: multiple themes available', async ({ page }) => {
   await openViewMenu(page);
 
   const options = themeOptions(page);
+  const optionLabels = ((await options.allTextContents()) ?? []).map((label) =>
+    label.replace(/\s*✓\s*$/, '').trim(),
+  );
+  const distinctThemeIds = new Set(
+    optionLabels
+      .map(
+        (label) =>
+          Object.entries(THEME_LABELS).find(([, themeLabel]) => themeLabel === label)?.[0] ?? null,
+      )
+      .filter((themeId): themeId is string => themeId !== null),
+  );
 
-  expect(await options.count()).toBeGreaterThanOrEqual(2);
+  expect(distinctThemeIds.size).toBeGreaterThanOrEqual(2);
   await expect(options.first()).toBeVisible();
   await expect(options.nth(1)).toBeVisible();
 });
 
 test('TC-7.2a: theme survives restart', async ({ page }) => {
-  const serverManager = new ServerManager();
+  const serverManager = getGlobalServerManager();
 
-  try {
-    const { baseURL } = await serverManager.start({ sessionDir: state.sessionDir });
+  await prepareWorkspace(page, state.baseURL);
+  await selectTheme(page, 'dark-default');
 
-    await prepareWorkspace(page, baseURL);
-    await selectTheme(page, 'dark-default');
+  await serverManager.restart();
+  await page.reload();
 
-    await serverManager.restart();
-    await page.reload();
-
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark-default');
-  } finally {
-    try {
-      const { baseURL } = serverManager.getState();
-      await resetOpenTabs(baseURL);
-      await setTheme(baseURL, DEFAULT_THEME);
-    } catch {
-      // Ignore cleanup if the dedicated server never started.
-    }
-
-    await serverManager.stop();
-  }
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark-default');
 });
 
 test('TC-8.1a: workspace restored after restart', async ({ page }) => {
-  const serverManager = new ServerManager();
+  const serverManager = getGlobalServerManager();
 
-  try {
-    const { baseURL } = await serverManager.start({ sessionDir: state.sessionDir });
+  await prepareWorkspace(page, state.baseURL);
+  const treeBeforeRestart = await getVisibleTreePaths(page);
 
-    await prepareWorkspace(page, baseURL);
-    const treeBeforeRestart = await getVisibleTreePaths(page);
+  expect(treeBeforeRestart).toContain(state.files.kitchenSink);
+  expect(treeBeforeRestart).toContain(state.files.invalidMermaid);
+  expect(treeBeforeRestart).toContain(state.files.simple);
 
-    expect(treeBeforeRestart).toContain(state.files.kitchenSink);
-    expect(treeBeforeRestart).toContain(state.files.invalidMermaid);
-    expect(treeBeforeRestart).toContain(state.files.simple);
+  await serverManager.restart();
+  await page.reload();
+  await page.locator(TREE_ROW_SELECTOR).first().waitFor({ state: 'visible' });
 
-    await serverManager.restart();
-    await page.reload();
-    await page.locator(TREE_ROW_SELECTOR).first().waitFor({ state: 'visible' });
-
-    await expect(
-      page.locator('.tree-node--file').filter({ hasText: 'kitchen-sink.md' }).first(),
-    ).toBeVisible();
-    await expect(
-      page.locator('.tree-node--file').filter({ hasText: 'invalid-mermaid.md' }).first(),
-    ).toBeVisible();
-    await expect(
-      page.locator('.tree-node--file').filter({ hasText: 'simple.md' }).first(),
-    ).toBeVisible();
-    expect(await getVisibleTreePaths(page)).toEqual(treeBeforeRestart);
-  } finally {
-    try {
-      const { baseURL } = serverManager.getState();
-      await resetOpenTabs(baseURL);
-      await setTheme(baseURL, DEFAULT_THEME);
-    } catch {
-      // Ignore cleanup if the dedicated server never started.
-    }
-
-    await serverManager.stop();
-  }
+  await expect(
+    page.locator('.tree-node--file').filter({ hasText: 'kitchen-sink.md' }).first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('.tree-node--file').filter({ hasText: 'invalid-mermaid.md' }).first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('.tree-node--file').filter({ hasText: 'simple.md' }).first(),
+  ).toBeVisible();
+  expect(await getVisibleTreePaths(page)).toEqual(treeBeforeRestart);
 });
 
 test('TC-8.2a: theme and workspace both restored', async ({ page }) => {
-  const serverManager = new ServerManager();
+  const serverManager = getGlobalServerManager();
 
-  try {
-    const { baseURL } = await serverManager.start({ sessionDir: state.sessionDir });
+  await prepareWorkspace(page, state.baseURL);
+  await selectTheme(page, 'dark-cool');
+  const treeBeforeRestart = await getVisibleTreePaths(page);
 
-    await prepareWorkspace(page, baseURL);
-    await selectTheme(page, 'dark-cool');
-    const treeBeforeRestart = await getVisibleTreePaths(page);
+  await serverManager.restart();
+  await page.reload();
+  await page.locator(TREE_ROW_SELECTOR).first().waitFor({ state: 'visible' });
 
-    await serverManager.restart();
-    await page.reload();
-    await page.locator(TREE_ROW_SELECTOR).first().waitFor({ state: 'visible' });
-
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark-cool');
-    expect(await getVisibleTreePaths(page)).toEqual(treeBeforeRestart);
-  } finally {
-    try {
-      const { baseURL } = serverManager.getState();
-      await resetOpenTabs(baseURL);
-      await setTheme(baseURL, DEFAULT_THEME);
-    } catch {
-      // Ignore cleanup if the dedicated server never started.
-    }
-
-    await serverManager.stop();
-  }
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark-cool');
+  expect(await getVisibleTreePaths(page)).toEqual(treeBeforeRestart);
 });
 
 test('TC-9.1a: file change updates rendered content', async ({ page }) => {

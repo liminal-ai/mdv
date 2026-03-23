@@ -1,8 +1,20 @@
 import { expect, test } from '@playwright/test';
-import { openFile, setWorkspaceAndNavigate, waitForMermaid } from '../utils/e2e/helpers.js';
-import { readE2EState } from '../utils/e2e/state.js';
+import {
+  installConsoleErrorMonitoring,
+  loadE2EState,
+  openFile,
+  setWorkspaceAndNavigate,
+  waitForMermaid,
+} from '../utils/e2e/helpers.js';
+import type { E2EState } from '../utils/e2e/state.js';
 
-const state = readE2EState();
+let state: E2EState;
+
+installConsoleErrorMonitoring(test);
+
+test.beforeAll(async () => {
+  state = await loadE2EState();
+});
 
 test('TC-3.1a: heading elements are present', async ({ page }) => {
   await setWorkspaceAndNavigate(page, state.baseURL, state.fixtureDir);
@@ -64,7 +76,11 @@ test('TC-3.5a: Mermaid diagram renders as SVG', async ({ page }) => {
 
   await waitForMermaid(page);
 
-  await expect(page.locator('.markdown-body svg').first()).toBeVisible();
+  const mermaidSvg = page.locator('.markdown-body svg').first();
+
+  await expect(mermaidSvg).toBeVisible();
+  await expect(mermaidSvg).toContainText('Review');
+  await expect(mermaidSvg).toContainText('Done');
 });
 
 test('TC-3.5b: invalid Mermaid shows error indicator', async ({ page }) => {

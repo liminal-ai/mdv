@@ -15,7 +15,7 @@
     "test:watch": "vitest",
     "test:server": "vitest run tests/server/",
     "test:client": "vitest run tests/client/",
-    "test:e2e": "npx playwright test",
+    "test:e2e": "npm run build && npx playwright test",
     "test:e2e:debug": "npx playwright test --headed --timeout=0",
     "test:electron": "vitest run tests/electron/",
     "typecheck": "tsc --noEmit",
@@ -26,7 +26,7 @@
     "red-verify": "npm run format:check && npm run lint && npm run typecheck && npm run typecheck:client",
     "green-verify": "npm run verify && npm run guard:no-test-changes",
     "guard:no-test-changes": "git diff --name-only HEAD | grep -q 'tests/' && echo 'ERROR: Test files were modified during Green phase' && exit 1 || true",
-    "verify": "npm run red-verify && npm run test",
+    "verify": "npm run build && npm run red-verify && npm run test",
     "verify-all": "npm run verify && npm run test:e2e"
   },
   "dependencies": {

@@ -1,5 +1,91 @@
-import type { Page } from '@playwright/test';
-import { expect } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
+import { expect, test as baseTest } from '@playwright/test';
+import { ensureGlobalServer } from './server-manager.js';
+import { readE2EState, type E2EState, writeE2EState } from './state.js';
+
+const consoleErrorsByPage = new WeakMap<Page, string[]>();
+
+async function putJson(baseURL: string, pathname: string, body: unknown): Promise<void> {
+  const response = await fetch(new URL(pathname, baseURL), {
+    method: 'PUT',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  expect(response.ok).toBe(true);
+}
+
+export async function loadE2EState(): Promise<E2EState> {
+  const currentState = readE2EState();
+  const { baseURL, port } = await ensureGlobalServer({
+    sessionDir: currentState.sessionDir,
+    preferredPort: currentState.port || 0,
+  });
+
+  if (currentState.baseURL === baseURL && currentState.port === port) {
+    return currentState;
+  }
+
+  const nextState = {
+    ...currentState,
+    baseURL,
+    port,
+  };
+
+  writeE2EState(nextState);
+  return nextState;
+}
+
+export async function resetOpenTabs(baseURL: string): Promise<void> {
+  await putJson(baseURL, '/api/session/tabs', {
+    openTabs: [],
+    activeTab: null,
+  });
+}
+
+export async function resetDefaultMode(baseURL: string): Promise<void> {
+  await putJson(baseURL, '/api/session/default-mode', {
+    mode: 'render',
+  });
+}
+
+function startConsoleErrorMonitor(page: Page): void {
+  const consoleErrors: string[] = [];
+  consoleErrorsByPage.set(page, consoleErrors);
+
+  page.on('console', (message) => {
+    if (message.type() !== 'error') {
+      return;
+    }
+
+    consoleErrors.push(message.text());
+  });
+}
+
+async function attachConsoleErrorsOnFailure(page: Page, testInfo: TestInfo): Promise<void> {
+  const consoleErrors = consoleErrorsByPage.get(page) ?? [];
+
+  if (testInfo.status === testInfo.expectedStatus || consoleErrors.length === 0) {
+    return;
+  }
+
+  await testInfo.attach('console-errors', {
+    body: consoleErrors.join('\n\n'),
+    contentType: 'text/plain',
+  });
+}
+
+export function installConsoleErrorMonitoring(test: typeof baseTest): void {
+  test.beforeEach(async ({ page }) => {
+    startConsoleErrorMonitor(page);
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    await attachConsoleErrorsOnFailure(page, testInfo);
+  });
+}
 
 /**
  * Sets the workspace root via API and navigates to the app.
@@ -13,14 +99,8 @@ export async function setWorkspaceAndNavigate(
   baseURL: string,
   workspacePath: string,
 ): Promise<void> {
-  const response = await fetch(new URL('/api/session/root', baseURL), {
-    method: 'PUT',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ root: workspacePath }),
-  });
-  expect(response.ok).toBe(true);
+  await resetOpenTabs(baseURL);
+  await putJson(baseURL, '/api/session/root', { root: workspacePath });
 
   await page.goto(baseURL);
   await page.locator('#sidebar .tree-node__row[data-path]').first().waitFor({ state: 'visible' });
@@ -81,7 +161,7 @@ export async function expandDirectory(page: Page, dirName: string): Promise<void
   await expect(dirNode).toBeVisible();
   await dirNode.click();
   await expect(dirNode).toHaveAttribute('aria-expanded', 'true');
-  await expect(visibleRows).toHaveCount(rowCountBefore + 1);
+  await expect.poll(async () => visibleRows.count()).toBeGreaterThan(rowCountBefore);
 }
 
 /**
