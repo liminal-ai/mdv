@@ -75,7 +75,7 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
       schema: {
         response: {
           200: PackageManifestResponseSchema,
-          400: ErrorResponseSchema,
+          422: ErrorResponseSchema,
           404: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
@@ -99,7 +99,7 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
 
         if (error instanceof ManifestParseError) {
           return reply
-            .code(400)
+            .code(422)
             .send(toApiError(PackageErrorCode.MANIFEST_PARSE_ERROR, error.message));
         }
 

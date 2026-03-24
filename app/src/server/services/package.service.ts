@@ -162,22 +162,37 @@ export class PackageService {
       throw new NoActivePackageError();
     }
 
-    if (this.state.manifestStatus === 'missing') {
-      throw new ManifestNotFoundError();
-    }
-
-    if (this.state.manifestStatus === 'unreadable') {
-      throw new ManifestParseError(this.state.manifestError);
-    }
-
     const manifestPath = path.join(this.state.extractedRoot, MANIFEST_FILENAME);
-    const raw = await fs.readFile(manifestPath, 'utf-8');
+    let content: string;
 
-    return {
-      metadata: this.state.metadata,
-      navigation: this.state.navigation,
-      raw,
-    };
+    try {
+      content = await fs.readFile(manifestPath, 'utf-8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new ManifestNotFoundError();
+      }
+
+      throw error;
+    }
+
+    try {
+      const parsed = parseManifest(content);
+      this.state.metadata = parsed.metadata;
+      this.state.navigation = parsed.navigation;
+      this.state.manifestStatus = 'present';
+      this.state.manifestError = undefined;
+
+      return {
+        metadata: parsed.metadata,
+        navigation: parsed.navigation,
+        raw: content,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.state.manifestStatus = 'unreadable';
+      this.state.manifestError = message;
+      throw new ManifestParseError(message);
+    }
   }
 
   async create(rootDir: string, overwrite = false): Promise<PackageCreateResponse> {

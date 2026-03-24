@@ -1144,6 +1144,37 @@ export async function bootstrapApp(
       );
 
       updateTabsState(nextTabs, latestState.activeTabId);
+
+      // Manifest re-sync: if saved file is the manifest, re-fetch and update sidebar.
+      const pkgState = store.get().packageState;
+      if (pkgState.active && pkgState.manifestPath && tabToSave.path === pkgState.manifestPath) {
+        try {
+          const manifest = await api.getPackageManifest();
+          const latestPkgState = store.get().packageState;
+          store.update(
+            {
+              packageState: {
+                ...latestPkgState,
+                navigation: manifest.navigation as ClientState['packageState']['navigation'],
+                metadata: manifest.metadata,
+              },
+            },
+            ['packageState'],
+          );
+
+          if (manifest.navigation.length === 0) {
+            setClientError('EMPTY_NAVIGATION', 'Manifest has no navigation entries');
+          }
+        } catch (manifestError) {
+          if (manifestError instanceof ApiError && manifestError.code === 'MANIFEST_PARSE_ERROR') {
+            setClientError(
+              'MANIFEST_PARSE_ERROR',
+              'Manifest has syntax errors — sidebar unchanged',
+            );
+          }
+        }
+      }
+
       return true;
     } catch (error) {
       if ((error as { code?: string } | undefined)?.code === 'CONFLICT') {
