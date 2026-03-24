@@ -1,7 +1,7 @@
 # Team Implementation Log — Epics 8 & 9
 
 **State:** `STORY_ACTIVE`
-**Active Story:** E8-S1 (Manifest Parsing)
+**Active Story:** E8-S2 (Package Creation)
 **Phase:** reviewing
 **CLI:** codex-subagent (Codex CLI, gpt-5.4)
 **Team:** epic-8-9-impl
@@ -208,6 +208,18 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 - Open risks: None
 
 **Cumulative test count:** 715 (baseline 711 + 4 structural)
+
+**Notes:** Clean first-pass implementation. First teammate attempt failed (Codex session incomplete), re-spawned with identical prompt — second attempt succeeded cleanly.
+
+### E8-S1: Manifest Parsing — ACCEPTED
+
+**Pre-acceptance receipt:**
+- CLI evidence: Implementation `019d1d2e-a5e5-7971-852e-6c6d617766c9`, Review `019d1d34-ad07-7663-98d9-b4268c340aa5`
+- Findings: One minor fix (TC-1.6e assertion strengthened for regression guard). Minor accepted: @ts-expect-error on js-yaml import, test style preferences.
+- Gate: `npm run verify` — 72 files, 735 tests, all green
+- Open risks: None
+
+**Cumulative test count:** 735 (baseline 711 + 4 S0 + 20 S1)
 
 **Notes:** Clean first-pass implementation. Codex got it right without self-review iteration. Fixtures are generous (16 manifest constants) which front-loads value for Story 1. The scaffoldManifest omission from public API is intentional per tech design — it's internal to createPackage().
 
