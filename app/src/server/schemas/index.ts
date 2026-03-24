@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { ActivePackageSchema } from './package.js';
 
 // --- Primitives ---
 export const AbsolutePathSchema = z.string().refine((p) => p.startsWith('/'), {
@@ -65,6 +66,7 @@ export const SessionStateSchema = z.object({
   defaultOpenMode: OpenModeSchema.default('render'),
   openTabs: z.array(LegacyOrPersistedTab).default([]),
   activeTab: AbsolutePathSchema.nullable().default(null),
+  activePackage: ActivePackageSchema,
 });
 
 export interface MermaidCacheEntry {

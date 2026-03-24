@@ -84,6 +84,53 @@ export interface ExportDirtyWarningState {
   format: 'pdf' | 'docx' | 'html';
 }
 
+export interface PackageNavigationNode {
+  displayName: string;
+  filePath?: string;
+  children: PackageNavigationNode[];
+  isGroup: boolean;
+}
+
+export interface PackageMetadata {
+  title?: string;
+  version?: string;
+  author?: string;
+}
+
+export interface PackageState {
+  active: boolean;
+  sidebarMode: 'filesystem' | 'package' | 'fallback';
+  sourcePath: string | null;
+  effectiveRoot: string | null;
+  format: 'mpk' | 'mpkz' | null;
+  mode: 'extracted' | 'directory' | null;
+  navigation: PackageNavigationNode[];
+  metadata: PackageMetadata;
+  stale: boolean;
+  manifestStatus: 'present' | 'missing' | 'unreadable' | null;
+  manifestError: string | null;
+  manifestPath: string | null;
+  collapsedGroups: Set<string>;
+}
+
+export function getDefaultPackageState(): PackageState {
+  return {
+    active: false,
+    sidebarMode: 'filesystem',
+    sourcePath: null,
+    effectiveRoot: null,
+    format: null,
+    mode: null,
+    navigation: [],
+    metadata: {},
+    stale: false,
+    manifestStatus: null,
+    manifestError: null,
+    manifestPath: null,
+    collapsedGroups: new Set(),
+  };
+}
+
 export interface ClientState {
   session: SessionState;
   availableThemes: ThemeInfo[];
@@ -103,6 +150,7 @@ export interface ClientState {
   conflictModal: ConflictModalState | null;
   unsavedModal: UnsavedModalState | null;
   exportDirtyWarning: ExportDirtyWarningState | null;
+  packageState: PackageState;
 }
 
 type StateListener = (state: ClientState, changed: Array<keyof ClientState>) => void;

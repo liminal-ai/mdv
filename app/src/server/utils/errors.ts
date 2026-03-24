@@ -164,6 +164,62 @@ export class ScanTimeoutError extends Error {
   }
 }
 
+export class NotImplementedError extends Error {
+  constructor(name: string) {
+    super(`Not implemented: ${name}`);
+    this.name = 'NotImplementedError';
+  }
+}
+
+export class PackageNotFoundError extends Error {
+  constructor(filePath: string) {
+    super(`Package file not found: ${filePath}`);
+    this.name = 'PackageNotFoundError';
+  }
+}
+
+export class InvalidArchiveError extends Error {
+  constructor(filePath: string, cause?: string) {
+    super(`Invalid archive: ${filePath}${cause ? ` (${cause})` : ''}`);
+    this.name = 'InvalidArchiveError';
+  }
+}
+
+export class ExtractionError extends Error {
+  constructor(filePath: string, cause?: string) {
+    super(`Extraction failed: ${filePath}${cause ? ` (${cause})` : ''}`);
+    this.name = 'ExtractionError';
+  }
+}
+
+export class NoActivePackageError extends Error {
+  constructor() {
+    super('No package is currently open');
+    this.name = 'NoActivePackageError';
+  }
+}
+
+export class ManifestExistsError extends Error {
+  constructor(path: string) {
+    super(`Manifest already exists: ${path}`);
+    this.name = 'ManifestExistsError';
+  }
+}
+
+export class ManifestNotFoundError extends Error {
+  constructor() {
+    super('Active package has no manifest file');
+    this.name = 'ManifestNotFoundError';
+  }
+}
+
+export class ManifestParseError extends Error {
+  constructor(cause?: string) {
+    super(`Manifest could not be parsed${cause ? `: ${cause}` : ''}`);
+    this.name = 'ManifestParseError';
+  }
+}
+
 export function toApiError(
   code: string,
   message: string,

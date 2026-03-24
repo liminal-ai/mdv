@@ -10,6 +10,7 @@ export const emptySession: SessionState = {
   defaultOpenMode: 'render',
   openTabs: [],
   activeTab: null,
+  activePackage: null,
 };
 
 export const populatedSession: SessionState = {
@@ -29,6 +30,7 @@ export const populatedSession: SessionState = {
     { path: '/Users/leemoore/code/liminal/ARCHITECTURE.md', mode: 'render' },
   ],
   activeTab: '/Users/leemoore/code/README.md',
+  activePackage: null,
 };
 
 export const corruptedSessionJson = '{ "workspaces": [, invalid }';

@@ -1,4 +1,4 @@
-import { StateStore, type ClientState } from '../../src/client/state.js';
+import { StateStore, getDefaultPackageState, type ClientState } from '../../src/client/state.js';
 import { emptySession } from '../fixtures/session.js';
 
 export function createClientState(overrides: Partial<ClientState> = {}): ClientState {
@@ -30,6 +30,7 @@ export function createClientState(overrides: Partial<ClientState> = {}): ClientS
     conflictModal: null,
     unsavedModal: null,
     exportDirtyWarning: null,
+    packageState: getDefaultPackageState(),
     ...overrides,
   };
 }

@@ -18,6 +18,7 @@ function getDefaultSession(): SessionState {
     defaultOpenMode: 'render',
     openTabs: [],
     activeTab: null,
+    activePackage: null,
   };
 }
 
@@ -143,6 +144,12 @@ export class SessionService {
   async setLastExportDir(dir: string): Promise<SessionState> {
     return this.mutate((session) => {
       session.lastExportDir = dir;
+    });
+  }
+
+  async setActivePackage(activePackage: SessionState['activePackage']): Promise<SessionState> {
+    return this.mutate((session) => {
+      session.activePackage = activePackage;
     });
   }
 

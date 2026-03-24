@@ -21,7 +21,7 @@ import { mountTabStrip } from './components/tab-strip.js';
 import { mountUnsavedModal } from './components/unsaved-modal.js';
 import { mountWarningPanel } from './components/warning-panel.js';
 import { mermaidCache } from './components/mermaid-cache.js';
-import { StateStore, type ClientState, type TabState } from './state.js';
+import { StateStore, getDefaultPackageState, type ClientState, type TabState } from './state.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { getElectronBridge } from './utils/electron-bridge.js';
 import { INSERT_LINK_EVENT, KeyboardManager } from './utils/keyboard.js';
@@ -44,6 +44,7 @@ const FALLBACK_SESSION: SessionState = {
   defaultOpenMode: 'render',
   openTabs: [],
   activeTab: null,
+  activePackage: null,
 };
 
 const FALLBACK_THEMES: ThemeInfo[] = [
@@ -402,6 +403,7 @@ export async function bootstrapApp(
     conflictModal: null,
     unsavedModal: null,
     exportDirtyWarning: null,
+    packageState: getDefaultPackageState(),
   };
 
   const store = new StateStore(initialState);

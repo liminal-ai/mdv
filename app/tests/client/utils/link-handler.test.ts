@@ -33,6 +33,22 @@ function clickRenderedLink(container: HTMLElement) {
     ?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 }
 
+function dispatchClickAndCaptureDefaultPrevented(
+  link: HTMLAnchorElement,
+  event: MouseEvent,
+): boolean {
+  let defaultPreventedBeforeTestCleanup = false;
+
+  link.addEventListener('click', (listenerEvent) => {
+    defaultPreventedBeforeTestCleanup = listenerEvent.defaultPrevented;
+    // Prevent jsdom from attempting real navigation after the test assertion point.
+    listenerEvent.preventDefault();
+  });
+
+  link.dispatchEvent(event);
+  return defaultPreventedBeforeTestCleanup;
+}
+
 describe('link handler', () => {
   afterEach(() => {
     document.body.innerHTML = '';
@@ -166,7 +182,10 @@ describe('link handler', () => {
     const event = new MouseEvent('click', { bubbles: true, cancelable: true });
 
     attach(container, state);
-    const prevented = !container.querySelector<HTMLAnchorElement>('a')!.dispatchEvent(event);
+    const prevented = dispatchClickAndCaptureDefaultPrevented(
+      container.querySelector<HTMLAnchorElement>('a')!,
+      event,
+    );
 
     expect(prevented).toBe(false);
     expect(state.openFile).not.toHaveBeenCalled();
@@ -185,7 +204,7 @@ describe('link handler', () => {
       metaKey: true,
     });
     const link = container.querySelector<HTMLAnchorElement>('a')!;
-    const prevented = !link.dispatchEvent(event);
+    const prevented = dispatchClickAndCaptureDefaultPrevented(link, event);
 
     expect(prevented).toBe(false);
     expect(state.openFile).not.toHaveBeenCalled();

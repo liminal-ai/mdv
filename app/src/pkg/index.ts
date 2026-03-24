@@ -22,6 +22,7 @@ export { MANIFEST_FILENAME, MERMAID_DIAGRAM_TYPES } from './types.js';
 export { PackageError, PackageErrorCode } from './errors.js';
 
 export { parseManifest } from './manifest/parser.js';
+export { scaffoldManifest } from './manifest/scaffold.js';
 
 export { createPackage } from './tar/create.js';
 export { extractPackage } from './tar/extract.js';
