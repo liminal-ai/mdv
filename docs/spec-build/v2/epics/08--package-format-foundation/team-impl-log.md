@@ -1,7 +1,7 @@
 # Team Implementation Log — Epics 8 & 9
 
 **State:** `STORY_ACTIVE`
-**Active Story:** E8-S0 (Foundation)
+**Active Story:** E8-S1 (Manifest Parsing)
 **Phase:** reviewing
 **CLI:** codex-subagent (Codex CLI, gpt-5.4)
 **Team:** epic-8-9-impl
@@ -43,8 +43,8 @@ Codex CLI verified operational on 2026-03-23. Simple echo command succeeded. Usi
 
 | Boundary | Status | Story | Notes |
 |----------|--------|-------|-------|
-| tar-stream (npm) | not started | E8-S0 | Package tar read/write dependency |
-| commander (npm) | not started | E8-S0 | CLI framework |
+| tar-stream (npm) | installed | E8-S0 | Package tar read/write dependency |
+| commander (npm) | installed | E8-S0 | CLI framework |
 | zlib (Node built-in) | not started | E8-S2 | Compression for .mpkz |
 | markdown-it (existing) | integrated | E8-S1 | Already in project, used by manifest parser |
 | Shiki (existing) | integrated | E8-S6 | Already in project, used by render library |
