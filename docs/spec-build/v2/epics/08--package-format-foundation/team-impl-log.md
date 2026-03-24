@@ -1,7 +1,7 @@
 # Team Implementation Log — Epics 8 & 9
 
 **State:** `STORY_ACTIVE`
-**Active Story:** E8-S4 (Package Inspection & Reading)
+**Active Story:** E8-S5 (CLI Interface)
 **Phase:** reviewing
 **CLI:** codex-subagent (Codex CLI, gpt-5.4)
 **Team:** epic-8-9-impl
@@ -210,6 +210,16 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 **Cumulative test count:** 715 (baseline 711 + 4 structural)
 
 **Notes:** Clean first-pass implementation. First teammate attempt failed (Codex session incomplete), re-spawned with identical prompt — second attempt succeeded cleanly.
+
+### E8-S4: Package Inspection & Reading — ACCEPTED
+
+**Pre-acceptance receipt:**
+- CLI evidence: Implementation `019d1d64-f11a-7a23-9b5b-1216dc8f3c3d`, Review `019d1d6d-00b0-7e21-9137-69623977fb52`
+- Findings: P2 inspectPackage doesn't throw MANIFEST_NOT_FOUND for no-manifest (accepted-risk — no TC, graceful behavior). P2 double-scan for display name (accepted-risk — matches tech design). shared.ts positive deviation from module tree.
+- Gate: `npm run verify` — 76 files, 783 tests, all green
+- Open risks: None
+
+**Cumulative test count:** 783
 
 ### E8-S3: Package Extraction — ACCEPTED
 
