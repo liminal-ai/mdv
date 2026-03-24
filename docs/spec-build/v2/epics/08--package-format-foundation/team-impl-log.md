@@ -1,7 +1,7 @@
 # Team Implementation Log — Epics 8 & 9
 
 **State:** `STORY_ACTIVE`
-**Active Story:** E8-S2 (Package Creation)
+**Active Story:** E8-S3 (Package Extraction)
 **Phase:** reviewing
 **CLI:** codex-subagent (Codex CLI, gpt-5.4)
 **Team:** epic-8-9-impl
@@ -210,6 +210,18 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 **Cumulative test count:** 715 (baseline 711 + 4 structural)
 
 **Notes:** Clean first-pass implementation. First teammate attempt failed (Codex session incomplete), re-spawned with identical prompt — second attempt succeeded cleanly.
+
+### E8-S2: Package Creation — ACCEPTED
+
+**Pre-acceptance receipt:**
+- CLI evidence: Implementation `019d1d3e-317b-7e81-99e5-697df6c7a95e`, Review `019d1d47-be6a-7e30-85b1-ba335317a44a`
+- Findings: P2 scaffold ordering not sequence-tested (accepted-risk). P2 no instanceof check (accepted-risk). P3 unused error codes (not S2 concern). P3 no isDirectory check (no TC).
+- Gate: `npm run verify` — 73 files, 749 tests
+- Open risks: None
+
+**Cumulative test count:** 749
+
+**Boundary update:** tar-stream and zlib now integrated.
 
 ### E8-S1: Manifest Parsing — ACCEPTED
 
