@@ -29,8 +29,6 @@ export interface PackageRoutesOptions {
   packageService: PackageService;
 }
 
-const NotImplementedResponse = toApiError('NOT_IMPLEMENTED', 'Not implemented');
-
 export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOptions) {
   const { packageService } = opts;
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
@@ -165,10 +163,39 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
         body: PackageExportRequestSchema,
         response: {
           200: PackageExportResponseSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => reply.code(501).send(NotImplementedResponse),
+    async (request, reply) => {
+      try {
+        const result = await packageService.export(
+          request.body.outputPath,
+          request.body.compress,
+          request.body.sourceDir,
+        );
+        return result;
+      } catch (err) {
+        if (err instanceof InvalidPathError) {
+          return reply
+            .code(400)
+            .send(toApiError(PackageErrorCode.INVALID_OUTPUT_PATH, err.message));
+        }
+        if (err instanceof NoActivePackageError) {
+          return reply
+            .code(400)
+            .send(toApiError(PackageErrorCode.NO_SOURCE, 'No active root or package to export'));
+        }
+        return reply
+          .code(500)
+          .send(
+            toApiError(
+              PackageErrorCode.EXPORT_ERROR,
+              err instanceof Error ? err.message : 'Export failed',
+            ),
+          );
+      }
+    },
   );
 }

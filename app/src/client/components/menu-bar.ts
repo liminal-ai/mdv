@@ -17,6 +17,7 @@ export interface MenuBarActions {
   onBrowse: () => void | Promise<void>;
   onOpenPackage?: () => void | Promise<void>;
   onNewPackage?: () => void | Promise<void>;
+  onExportPackage?: () => void | Promise<void>;
   onSave?: () => void | Promise<void>;
   onSaveAs?: () => void | Promise<void>;
   onToggleSidebar: () => void | Promise<void>;
@@ -62,12 +63,26 @@ function getMenuItems(menuId: MenuId, state: ClientState, actions: MenuBarAction
   if (menuId === 'export') {
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
     const exportEnabled = activeTab?.status === 'ok' && !state.exportState.inProgress;
-
-    return EXPORT_FORMATS.map((format) => ({
+    const packageExportEnabled = Boolean(state.session.lastRoot || state.packageState.active);
+    const exportItems = EXPORT_FORMATS.map((format) => ({
       label: format.toUpperCase(),
       disabled: !exportEnabled,
       action: exportEnabled ? () => actions.onExportFormat(format) : undefined,
     }));
+
+    if (!packageExportEnabled) {
+      return exportItems;
+    }
+
+    return [
+      ...exportItems,
+      { kind: 'separator' as const, label: 'separator-export-package' },
+      {
+        label: 'Export Package',
+        disabled: false,
+        action: actions.onExportPackage,
+      },
+    ];
   }
 
   return [

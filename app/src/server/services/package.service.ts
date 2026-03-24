@@ -9,6 +9,7 @@ import type {
   PackageOpenResponse,
 } from '../schemas/package.js';
 import {
+  createPackage,
   extractPackage,
   MANIFEST_FILENAME,
   parseManifest,
@@ -244,11 +245,52 @@ export class PackageService {
   }
 
   async export(
-    _outputPath: string,
-    _compress?: boolean,
-    _sourceDir?: string,
+    outputPath: string,
+    compress?: boolean,
+    sourceDir?: string,
   ): Promise<PackageExportResponse> {
-    throw new NotImplementedError('PackageService.export');
+    const effectiveSourceDir = sourceDir ?? this.state?.extractedRoot;
+    if (!effectiveSourceDir) {
+      throw new NoActivePackageError();
+    }
+
+    const manifestPath = path.join(effectiveSourceDir, MANIFEST_FILENAME);
+    let manifestExisted = true;
+
+    try {
+      await fs.stat(manifestPath);
+    } catch {
+      manifestExisted = false;
+    }
+
+    await createPackage({
+      sourceDir: effectiveSourceDir,
+      outputPath,
+      compress,
+    });
+
+    if (!manifestExisted) {
+      await fs.unlink(manifestPath);
+    }
+
+    const stats = await fs.stat(outputPath);
+    const filePaths = await fs.readdir(effectiveSourceDir, {
+      recursive: true,
+      withFileTypes: true,
+    });
+    const fileCount = filePaths.filter((entry) => entry.isFile()).length;
+    const format = path.extname(outputPath).toLowerCase() === '.mpkz' ? 'mpkz' : 'mpk';
+
+    if (this.state && outputPath === this.state.sourcePath) {
+      this.clearStale();
+    }
+
+    return {
+      outputPath,
+      format,
+      fileCount,
+      sizeBytes: stats.size,
+    };
   }
 
   markStale(): void {

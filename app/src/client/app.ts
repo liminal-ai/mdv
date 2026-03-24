@@ -909,6 +909,61 @@ export async function bootstrapApp(
     }
   };
 
+  const handleExportPackage = async (): Promise<void> => {
+    const state = store.get();
+    const pkgState = state.packageState;
+    const sourceName = pkgState.sourcePath
+      ? fileName(pkgState.sourcePath).replace(/\.(mpk|mpkz)$/i, '')
+      : null;
+    const baseName =
+      pkgState.metadata?.title ??
+      sourceName ??
+      (state.session.lastRoot ? fileName(state.session.lastRoot) : 'package');
+    const defaultFilename = `${baseName}.mpk`;
+
+    const selection = await api.saveDialog({
+      defaultPath: state.session.lastRoot ?? '',
+      defaultFilename,
+      prompt: 'Export Package',
+    });
+
+    if (!selection) {
+      return;
+    }
+
+    const outputPath = selection.path;
+    const compress = outputPath.endsWith('.mpkz');
+    const sourceDir = pkgState.effectiveRoot ?? state.session.lastRoot ?? undefined;
+
+    try {
+      const result = await api.exportPackage({
+        outputPath,
+        compress,
+        sourceDir,
+      });
+
+      if (
+        pkgState.mode === 'extracted' &&
+        pkgState.sourcePath &&
+        outputPath === pkgState.sourcePath
+      ) {
+        store.update(
+          {
+            packageState: {
+              ...store.get().packageState,
+              stale: false,
+            },
+          },
+          ['packageState'],
+        );
+      }
+
+      console.info(`Exported package: ${result.fileCount} files, ${result.sizeBytes} bytes`);
+    } catch (error) {
+      setError(error);
+    }
+  };
+
   const pickAndOpenFile = async () => {
     try {
       const selection = await api.pickFile();
@@ -1968,6 +2023,7 @@ export async function bootstrapApp(
       await openPackage(selection);
     },
     onNewPackage: handleNewPackage,
+    onExportPackage: handleExportPackage,
     onSave: () => {
       void saveCurrentTab();
     },

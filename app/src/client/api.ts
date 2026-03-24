@@ -5,6 +5,7 @@ import type {
   PersistedTab,
   FileReadResponse,
   PackageCreateResponse,
+  PackageExportResponse,
   PackageManifestResponse,
   PackageOpenResponse,
   FileSaveResponse,
@@ -137,6 +138,17 @@ export class ApiClient {
 
   async getPackageManifest(): Promise<PackageManifestResponse> {
     return this.request('/api/package/manifest');
+  }
+
+  async exportPackage(request: {
+    outputPath: string;
+    compress?: boolean;
+    sourceDir?: string;
+  }): Promise<PackageExportResponse> {
+    return this.request('/api/package/export', {
+      method: 'POST',
+      body: request,
+    });
   }
 
   async render(request: {
