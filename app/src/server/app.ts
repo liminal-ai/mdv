@@ -83,5 +83,17 @@ export async function buildApp(opts?: AppOptions) {
     }
   }
 
+  app.addHook('onResponse', async (request, reply) => {
+    if (request.method === 'PUT' && request.url === '/api/file' && reply.statusCode === 200) {
+      const state = packageService.getState();
+      if (state && state.mode === 'extracted' && !state.stale) {
+        const savedPath = (request.body as { path?: string })?.path;
+        if (savedPath && savedPath.startsWith(state.extractedRoot)) {
+          packageService.markStale();
+        }
+      }
+    }
+  });
+
   return app;
 }

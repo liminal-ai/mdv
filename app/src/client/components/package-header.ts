@@ -15,7 +15,7 @@ export function mountPackageHeader(
   actions: { onEditManifest: () => void | Promise<void> },
 ): () => void {
   const render = () => {
-    const { metadata, sourcePath } = store.get().packageState;
+    const { metadata, sourcePath, stale, mode } = store.get().packageState;
 
     container.replaceChildren(
       createElement('div', {
@@ -51,6 +51,12 @@ export function mountPackageHeader(
               },
             },
           }),
+          stale && mode === 'extracted'
+            ? createElement('span', {
+                className: 'pkg-header__stale',
+                text: 'Modified',
+              })
+            : null,
         ],
       }),
     );

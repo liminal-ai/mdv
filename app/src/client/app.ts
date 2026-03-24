@@ -1175,6 +1175,18 @@ export async function bootstrapApp(
         }
       }
 
+      if (
+        pkgState.active &&
+        pkgState.mode === 'extracted' &&
+        pkgState.effectiveRoot &&
+        tabToSave.path.startsWith(pkgState.effectiveRoot) &&
+        !pkgState.stale
+      ) {
+        store.update({ packageState: { ...store.get().packageState, stale: true } }, [
+          'packageState',
+        ]);
+      }
+
       return true;
     } catch (error) {
       if ((error as { code?: string } | undefined)?.code === 'CONFLICT') {
