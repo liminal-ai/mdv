@@ -329,10 +329,10 @@ describe('package sidebar', () => {
     expect(document.querySelector('.pkg-header__mode')?.textContent).toBe('Package');
   });
 
-  it('TC-2.2b: filesystem mode shows a Folder indicator', () => {
+  it('TC-2.2b: filesystem mode does not show a mode indicator', () => {
     renderSidebar();
 
-    expect(document.querySelector('.sidebar__mode-indicator')?.textContent).toBe('Folder');
+    expect(document.querySelector('.sidebar__mode-indicator')).toBeNull();
   });
 
   it('TC-2.3a: a flat list renders five top-level entries', () => {

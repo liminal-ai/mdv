@@ -91,7 +91,7 @@ export class WatchService {
         persistent: true,
         ignoreInitial: true,
         depth: 20,
-        ignored: /(^|[/\\])(node_modules|\.git)([/\\]|$)/,
+        ignored: [/(^|[/\\])(node_modules|\.git)([/\\]|$)/, /\.sock$/],
       });
 
       const debouncedNotify = () => {
@@ -110,6 +110,10 @@ export class WatchService {
       watcher.on('unlink', debouncedNotify);
       watcher.on('addDir', debouncedNotify);
       watcher.on('unlinkDir', debouncedNotify);
+      watcher.on('error', () => {
+        // Ignore root watch errors — prevents crashes from socket files,
+        // permission errors, or other OS-level watch failures.
+      });
 
       this.watchers.set(key, watcher);
     } catch {

@@ -117,15 +117,9 @@ export function mountSidebar(
   let cleanupContent: (() => void) | null = null;
   let currentMode: string | null = null;
 
-  const mountFilesystemTree = (label: string) => {
+  const mountFilesystemTree = () => {
     const treeHost = createElement('div', { className: 'sidebar__tree' });
-    contentHost.replaceChildren(
-      createElement('div', {
-        className: 'sidebar__mode-indicator',
-        text: label,
-      }),
-      treeHost,
-    );
+    contentHost.replaceChildren(treeHost);
 
     return mountFileTree(treeHost, store, {
       onExpandAll: () => expandAllBtn.click(),
@@ -192,7 +186,7 @@ export function mountSidebar(
       return;
     }
 
-    cleanupContent = mountFilesystemTree('Folder');
+    cleanupContent = mountFilesystemTree();
   };
 
   const render = () => {

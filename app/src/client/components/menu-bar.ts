@@ -251,35 +251,6 @@ export function mountMenuBar(
       });
     });
 
-    const openFileQuickAction = createElement('button', {
-      className: 'menu-bar__icon-button',
-      text: 'File',
-      attrs: {
-        type: 'button',
-        title: 'Open File (Cmd+O)',
-        'aria-label': 'Open File',
-      },
-      on: {
-        click: () => {
-          void actions.onOpenFile();
-        },
-      },
-    });
-    const openFolderQuickAction = createElement('button', {
-      className: 'menu-bar__icon-button',
-      text: 'Folder',
-      attrs: {
-        type: 'button',
-        title: 'Open Folder (Cmd+Shift+O)',
-        'aria-label': 'Open Folder',
-      },
-      on: {
-        click: () => {
-          void actions.onBrowse();
-        },
-      },
-    });
-
     container.replaceChildren(
       createElement('div', {
         className: 'menu-bar__shell',
@@ -305,10 +276,6 @@ export function mountMenuBar(
             attrs: {
               title: activeTab?.path ?? '',
             },
-          }),
-          createElement('div', {
-            className: 'menu-bar__quick-actions',
-            children: [openFileQuickAction, openFolderQuickAction],
           }),
         ],
       }),

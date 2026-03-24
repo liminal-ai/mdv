@@ -303,3 +303,78 @@ All 5 accepted and fixed.
 ## Phase 3: Publish Epic — Epic 12 (Document Awareness and Editing)
 
 ### Publisher Launch
+
+**Teammate:** `publisher` (Opus, general-purpose, bypassPermissions)
+
+**Reading journey (5 artifacts, sequential with reflection):**
+1. Accepted Epic 12 → all ACs, TCs, flows, recommended story breakdown
+2. Tech Design Index → architecture decisions, module responsibilities, chunk breakdown
+3. Tech Design Server → context injection, persistence, script extensions, schemas, WS route
+4. Tech Design Client → context indicator, restoration, file links, state extensions
+5. Test Plan → TC-to-test mappings, chunk boundaries
+
+**Skill loaded last:** `ls-publish-epic`
+
+**Outcome:** 5 stories + coverage artifact published. No deviation from epic's recommended breakdown.
+
+**Stories:**
+- Story 0: Foundation (types, schemas, fixtures)
+- Story 1: Context Injection and Indicator
+- Story 2: Document Editing and Dirty-Tab Safety
+- Story 3: Conversation Persistence
+- Story 4: Local File Links and Error Handling
+
+**Self-review:** 51 TCs exact wording match, 18 ACs covered, no gaps/duplicates. AC-4.2 initially split across Stories 3 and 4 — corrected during verification to single-story ownership in Story 4.
+
+### External Verification — Round 1
+
+**Model:** Codex (gpt-5.4, high reasoning)
+**Session ID:** `019d1dde-f201-7260-82c9-ee1841406bcc`
+**Output:** `verification/codex/publish-review-r1.md`
+
+**Findings:** 1 Critical, 2 Major.
+
+- **C1** — AC-4.2 split across Story 3 and Story 4. Rule: every AC assigned to exactly one story. Fixed: full AC-4.2 moved to Story 4.
+- **M1** — Story 3 rewrote AC-4.2 wording instead of using exact epic text. Fixed: removed from Story 3.
+- **M2** — Coverage artifact had false verification statements (claimed each story has an AC; blessed the split). Fixed: corrected both.
+
+TC fidelity passed: all 51 TCs exact Given/When/Then match.
+
+### External Verification — Round 2
+
+**Output:** `verification/codex/publish-review-r2.md`
+
+**Findings:** 1 Major.
+
+- Story 3 and Story 4 DoD test counts diverged from test plan after the AC-4.2 move. Fixed: aligned to test plan (Story 3: 26 tests, Story 4: 14 tests). Documented chunk-vs-story ownership distinction for TC-4.2b.
+
+### External Verification — Round 3
+
+**Output:** `verification/codex/publish-review-r3.md`
+
+**Findings:** None.
+
+**Verdict:** Codex signed off — **Approved for Implementation.**
+
+**Verification summary:** 3 rounds. R1 found 1C/2M (AC-4.2 split). R2 found 1M (test count mismatch). R3 clean. Total: 4 findings, all resolved.
+
+### Human Review
+
+**Status:** Stories presented to human for spot-check.
+
+**Human verdict:** Accepted.
+
+**Phase 3 complete.**
+
+---
+
+## Final Verification
+
+All three phases complete. Full artifact set:
+
+- **Detailed Epic:** `epic.md` — 18 ACs, 51 TCs, 4 flows (accepted after 4 verification rounds, 22 findings)
+- **Tech Design:** `tech-design.md`, `tech-design-server.md`, `tech-design-client.md`, `test-plan.md` — 11 modules, 81 tests, 5 chunks (accepted after 4 verification rounds, 14 findings)
+- **Stories:** `stories/story-0-foundation.md` through `stories/story-4-local-file-links-and-error-handling.md` + `stories/coverage.md` (accepted after 3 verification rounds, 4 findings)
+- **Orchestration Log:** `team-spec-log.md`
+
+Total verification: 11 rounds across 3 phases. 40 total findings, all resolved. Ready for implementation via `ls-team-impl-c`, `ls-subagent-impl-cc`, or direct handoff.

@@ -142,13 +142,13 @@ New REST endpoints for package operations:
 
 - `POST /api/package/open` — open a .mpk/.mpkz file, extract, return manifest
 - `GET /api/package/manifest` — get the current package's parsed manifest
-- `GET /api/package/file?path=...` — read a file from the extracted package
 - `POST /api/package/create` — create a new package (scaffold manifest)
 - `POST /api/package/export` — export current root/package to .mpk/.mpkz
 
 Existing endpoints (`GET /api/file`, `GET /api/tree`, `GET /api/image`,
-etc.) should work transparently on extracted package contents — the package
-service sets up the temp directory as the effective root.
+etc.) work transparently on extracted package contents — the package
+service sets the temp directory as the effective root, so no separate
+package-file-read endpoint is needed.
 
 ### Boundary: Client ↔ Server (Chat Streaming)
 
@@ -156,40 +156,70 @@ New WebSocket route `/ws/chat` (separate from the existing `/ws` file-watch
 route):
 
 **Client → Server messages:**
-- `chat:send` — user message with optional context (current document path,
-  package info)
+- `chat:send` — user message with optional context (current document path)
 - `chat:cancel` — cancel the current streaming response
 - `chat:clear` — clear conversation state
+- `chat:task-cancel` — cancel a background task by ID (Epic 14)
+- `chat:autonomous-cancel` — cancel an autonomous pipeline run (Epic 14)
 
-**Server → Client messages:**
+**Server → Client messages — provider lifecycle:**
 - `chat:token` — streaming token(s) from the provider
 - `chat:done` — response complete
-- `chat:error` — provider error
-- `chat:status` — background task status update
-- `chat:file-created` — a file was created/modified by the agent (triggers
-  UI refresh)
+- `chat:error` — provider error (per-message or connection-wide)
+- `chat:status` — provider lifecycle state (starting, ready, crashed,
+  not-found)
 
-Message schemas extend the existing Zod-based pattern.
+**Server → Client messages — document and package operations:**
+- `chat:file-created` — a file was created/modified by the Steward
+  (triggers viewer refresh)
+- `chat:package-changed` — workspace-level state change (manifest updated,
+  package created, package exported — triggers sidebar refresh)
+- `chat:conversation-load` — persisted conversation delivered on connect
+  or workspace switch (Epic 12)
+
+**Server → Client messages — background task lifecycle (Epic 14):**
+- `chat:task-status` — background task lifecycle (started, running,
+  completed, failed, cancelled) with elapsed time and output paths
+- `chat:task-snapshot` — full task state delivered on connect/reconnect
+- `chat:autonomous-run` — autonomous run lifecycle (started, running,
+  completed, failed, cancelled) with phase sequence and progress
+
+Message schemas extend the existing Zod-based pattern. `chat:status`
+(provider lifecycle) and `chat:task-status` (background task lifecycle)
+are distinct message families with different semantics.
 
 ### Boundary: Server ↔ CLI Provider
 
-The provider interface wraps a CLI process:
+The provider operates in two modes:
+
+**Foreground (conversational):** Per-invocation spawning with resume
+semantics. Each `chat:send` triggers a CLI invocation. Session IDs
+maintain multi-turn conversation context across invocations via
+`--resume`. The foreground session is always available for interactive
+chat, even when background tasks are running.
+
+**Background (pipeline workers):** Isolated CLI processes spawned for
+long-running pipeline operations (Epic 14). Each background task gets its
+own CLI process with independent lifecycle. Background workers do not share
+session state with the foreground or with each other.
 
 ```
 Provider Interface:
-  - start(config): Promise<void>     // spawn the CLI process
-  - send(message, context): void     // write to stdin
+  - start(config): Promise<void>     // initialize provider configuration
+  - send(message, context): void     // dispatch a message to the CLI
   - onToken(callback): void          // streaming output handler
   - onDone(callback): void           // completion handler
   - onError(callback): void          // error handler
-  - cancel(): void                   // send interrupt / kill
-  - stop(): void                     // graceful shutdown
+  - cancel(): void                   // cancel the current invocation
+  - stop(): Promise<void>            // graceful shutdown
+  - readonly isRunning: boolean      // whether a response is in progress
 ```
 
 The Provider Manager on the server side:
 1. Receives a `chat:send` WebSocket message
-2. Attaches context (current document content, package manifest, etc.)
-3. Passes it to the active provider
+2. Attaches context (current document content, package manifest, workspace
+   and spec metadata — progressively enriched by Epics 12–13)
+3. Dispatches to the CLI provider
 4. Parses the streaming output — see "Script Execution Pattern" in
    Cross-Cutting Decisions for how the stream is parsed for text tokens
    vs XML-fenced script blocks
@@ -204,56 +234,72 @@ The Provider Manager on the server side:
 2. Client sends `POST /api/package/open` with the file path
 3. Server reads the tar (streaming via tar-stream), extracts to a temp
    directory
-4. Server scans for manifest file at the root (`_nav.md` or chosen convention)
+4. Server scans for `_nav.md` at the root (the canonical manifest filename)
 5. Server parses manifest: extracts YAML frontmatter (metadata) and markdown
    body (navigation tree from nested links)
 6. Server returns parsed manifest (metadata + navigation tree structure)
 7. Client switches sidebar to package-mode navigation
-8. User clicks a nav entry → `GET /api/package/file?path=components/auth.md`
-9. Server reads from extracted temp directory, returns content
+8. User clicks a nav entry → `GET /api/file?path=<extracted-root>/components/auth.md`
+9. Server reads from the extracted temp directory via the existing file endpoint
 10. Client renders normally via existing markdown pipeline
 
 ### Flow: Chat with Steward
 
 1. User types a message in the chat panel
 2. Client sends `chat:send` over `/ws/chat` with message text and context
-   (current doc path, package manifest if applicable)
+   (current doc path)
 3. Server's Provider Manager receives the message
 4. Provider Manager constructs the full prompt: user message + document
-   content + package context + any system instructions
-5. Provider Manager writes to the CLI process's stdin
+   content + workspace/package/spec context + system instructions
+5. Provider Manager spawns a CLI invocation (with `--resume` and stored
+   session ID for multi-turn continuity)
 6. CLI process streams response tokens to stdout
-7. Provider Manager relays tokens as `chat:token` WebSocket messages
+7. Provider Manager parses the stream: text tokens are relayed as
+   `chat:token` messages, XML-fenced script blocks are intercepted and
+   executed server-side
 8. Client buffers tokens, debounces markdown re-rendering of the response
 9. When the CLI signals completion, server sends `chat:done`
-10. If the CLI created/modified files, server sends `chat:file-created`
+10. If the Steward created/modified files (via script execution), server
+    sends `chat:file-created` and/or `chat:package-changed`
     so the client can refresh affected views
 
 ### Flow: Steward Edits a Document
 
 1. User says "fix the formatting in section 3" in chat
-2. Steward (via CLI provider) reads the current document content (passed
-   as context or fetched via tool use)
-3. Steward produces the edit — either a full replacement or a diff
-4. Server applies the edit to the file on disk
-5. Server sends `chat:file-created` (or `file-modified`) over WebSocket
-6. Client detects the file change (existing file-watch infrastructure
-   or explicit WS message) and reloads the document in the viewer
-7. The edit appears in the viewer as a chunked update, not character-by-
-   character
+2. Steward receives the active document content in the provider context
+3. Steward emits a script block calling `applyEditToActiveDocument(content)`
+4. Server executes the script: writes the content to disk
+5. Server sends `chat:file-created` over WebSocket
+6. Client receives the notification and triggers document reload — clean
+   tabs auto-refresh, dirty tabs show the existing conflict modal (Epic 5)
+7. The edit appears in the viewer without manual refresh
 
 ### Flow: Background Pipeline Operation
 
 1. User says "draft the epic for Feature 2"
-2. Steward acknowledges and dispatches via CLI provider as a background
-   task
-3. Server tracks the background task (task ID, status, start time)
-4. The CLI runs — potentially for minutes, invoking Liminal Spec skills
-5. Server periodically sends `chat:status` messages with progress
-6. When complete, CLI output includes the path to the created artifact
-7. Server sends `chat:status` (completed) + `chat:file-created`
-8. Client shows completion notification in chat
-9. User clicks to open the artifact in the viewer
+2. Steward validates prerequisites (PRD exists with Feature 2 section),
+   reports what it will use and where output will go
+3. Steward emits a script block calling `dispatchTask(config)` to spawn
+   an isolated background worker CLI process
+4. Server creates a temp staging directory for the task and spawns the
+   CLI with that staging dir as its working directory
+5. Server sends `chat:task-status` with `started` — the foreground chat
+   session is immediately available for other work
+6. The background CLI runs independently — potentially for minutes,
+   invoking Liminal Spec skills — writing output to the staging directory,
+   not directly to the workspace
+7. Server sends periodic `chat:task-status` messages with `running` status
+   and elapsed time
+8. When complete, the server's ResultsIntegrator moves files from the
+   staging directory into the workspace via the curated service layer
+   (`addFile`/`editFile`). It sends `chat:file-created` per output file,
+   updates the package manifest via `updateManifest` (sends
+   `chat:package-changed`), and advances spec phase metadata. The staging
+   directory is cleaned up.
+9. Server sends `chat:task-status` with `completed`, `outputPaths`, and
+   `primaryOutputPath` — this is the terminal message for the task
+10. User clicks the primary output path (a navigable link in the chat) to
+    open the artifact in the viewer for review
 
 ---
 
@@ -309,25 +355,30 @@ process dying unexpectedly.
 wrapping, including process pool patterns for refreshing sessions. The
 tech design should reference these existing examples.
 
-**Process model bias:** One shared foreground process for interactive chat.
-Background pipeline tasks (Epic 14) should spawn isolated worker processes
-rather than occupying the interactive lane — a 30-minute pipeline run
-must not block the user from chatting. Epic 10 focuses on the interactive
-process only; Epic 14 introduces worker process orchestration consistent
-with this bias. The exact worker lifecycle model is a tech design decision.
+**Process model:** Per-invocation foreground calls with resume semantics for
+interactive chat. Background pipeline tasks (Epic 14) spawn isolated worker
+processes with independent lifecycles — a 30-minute pipeline run must not
+block the user from chatting. The foreground and background processes do not
+share session state. Epic 10 establishes the foreground model; Epic 14
+introduces the background worker model.
 
-### Script Execution Pattern (Exploratory)
+### Script Execution Pattern
 
-**Status:** This is exploratory infrastructure, feature-flagged, intended
-for the primary user only. Any distribution beyond the primary user requires
-a full security review, proper sandboxing, and likely rework of the harness
-itself.
+**Status:** This is the Steward's primary mechanism for performing app
+operations. It is feature-flagged and intended for the primary user only.
+Any distribution beyond the primary user requires a full security review,
+proper sandboxing (`isolated-vm` at minimum), and likely rework of the
+harness. Despite the experimental security posture, the script execution
+lane is foundational — downstream document editing (Epic 12), package
+operations (Epic 13), and pipeline orchestration (Epic 14) are all built
+on this mechanism.
 
 **Problem:** The Claude CLI does not support adding custom tools without
 MCP, and MCP introduces significant overhead (separate I/O process, auth
 complexity, additional API surface). The Steward needs to perform app
-operations (read/write files, manipulate packages, trigger UI actions) but
-there is no lightweight mechanism to extend the CLI's tool capabilities.
+operations (read/write files, manipulate packages, dispatch tasks, trigger
+UI actions) but there is no lightweight mechanism to extend the CLI's tool
+capabilities.
 
 **Pattern:** The CLI's output stream is parsed for three types of content:
 
@@ -350,22 +401,38 @@ object containing only the methods the script is allowed to call. No
 `require`, no `process`, no `fs`, no globals — only the explicitly provided
 methods. A timeout prevents infinite loops.
 
-**Method surface principle:** The script lane exposes coarse-grained
-product capabilities, not low-level backend primitives. Methods should
-represent product actions and workflow-oriented operations, not raw
-service access or broad filesystem methods. This keeps the surface safe,
-stable, observable, and portable across providers.
+**Method surface principle:** The script lane exposes coarse-grained,
+workspace-scoped product capabilities, not low-level backend primitives.
+Methods represent product actions and workflow-oriented operations, not raw
+service access. All file operations are scoped to the workspace root with
+server-side path-traversal prevention. This keeps the surface safe, stable,
+observable, and portable across providers.
 
-Recommended capability facade:
-- `openDocument(path)` — open a file in the viewer
-- `applyEditToActiveDocument(edit)` — modify the currently active document
-- `createPackageFromCurrentRoot(options)` — scaffold a package
-- `addPackageFile(path, content)` — create a file within the package
-- `updateManifestEntries(entries)` — modify the package manifest
+The method surface is progressively extended across Epics 10–14:
+
+**Core (Epic 10):**
 - `showNotification(message)` — display a notification to the user
-- `navigateToPath(path)` — navigate the sidebar to a location
+
+**Document operations (Epic 12):**
 - `getActiveDocumentContent()` — read the currently open document
-- `getPackageManifest()` — read the current package's navigation tree
+- `applyEditToActiveDocument(content)` — replace the active document content
+- `openDocument(path)` — open a file in the viewer
+
+**Workspace file operations (Epic 13):**
+- `getFileContent(path)` — read any file in the workspace by relative path
+- `addFile(path, content)` — create a new file in the workspace
+- `editFile(path, content)` — replace content of an existing file
+
+**Package operations (Epic 13):**
+- `getPackageManifest()` — read the current manifest structure
+- `updateManifest(content)` — replace manifest content (re-parses on save)
+- `createPackage(options?)` — scaffold a manifest from discovered files
+- `exportPackage(options)` — export workspace to .mpk/.mpkz
+
+**Task orchestration (Epic 14):**
+- `dispatchTask(config)` — dispatch a background pipeline task
+- `getRunningTasks()` — list active and recently completed tasks
+- `cancelTask(taskId)` — cancel a running background task
 
 Avoid: raw service instances, broad filesystem methods (readFile/writeFile
 on arbitrary paths), or a large chatty toolbox that makes Claude
@@ -442,17 +509,18 @@ acceptable for a local app where bundle size is not a deployment concern.
 
 ### Manifest File Convention
 
-**Choice:** To be finalized during Epic 8 tech design. Candidates: `_nav.md`,
-`_index.md`, or `manifest.md`. Single canonical name, not multiple with
-priority fallback.
+**Choice:** `_nav.md` — a single canonical manifest filename at the
+package root.
 
-**Rationale:** A single canonical name is simpler to document, implement,
-and explain. The underscore prefix (`_nav.md`) signals "this is metadata,
-not content" and sorts to the top of directory listings.
+**Rationale:** The underscore prefix signals "this is metadata, not
+content" and sorts to the top of directory listings. A single canonical
+name is simpler to document, implement, and explain than a fallback chain.
 
-**Consequence:** Deferred to tech design. The PRD establishes that it's a
-single markdown file at the package root with YAML frontmatter for metadata
-and a nested link list for navigation.
+**Consequence:** All package tools, the viewer, and the CLI use `_nav.md`
+as the manifest filename. The manifest is a markdown file with optional
+YAML frontmatter for metadata and a body of nested lists with links
+defining the navigation tree. Documents within a package are addressable
+by file path or by navigation display name (resolved through the manifest).
 
 ### Conversation Persistence
 
@@ -501,35 +569,36 @@ v2 scope.
 
 ---
 
-## Open Questions for Tech Design
+## Settled Questions
 
-- **Manifest file name:** `_nav.md` vs `_index.md` vs `manifest.md`. Single
-  canonical choice needed.
+These were originally open questions that have been resolved through
+downstream tech designs and implementation:
+
+- **Manifest file name:** `_nav.md` — settled during Epic 8 implementation.
+- **Package library module boundary:** The package library lives at
+  `app/src/pkg/` with its own entrypoint (`app/src/pkg/index.ts`),
+  independently importable without viewer or server dependencies.
+- **Provider process model:** Per-invocation foreground calls with
+  `--resume` for multi-turn continuity. Isolated worker processes for
+  background pipeline tasks. Settled across Epics 10, 12, and 14 designs.
+
+## Remaining Open Questions for Tech Design
+
 - **CLI output parsing:** What is the exact format of the Claude CLI's
   streaming output? Does it emit structured JSON, plain text, or a mix?
   The provider wrapper's complexity depends on this.
 - **Chat context injection:** How does the server construct the full prompt
   for the CLI? Does it prepend document content as a system message, pass
   it as a file reference, or use the CLI's built-in context mechanisms?
-- **Background worker lifecycle:** The architecture biases toward isolated
-  worker processes for pipeline tasks (see CLI Provider section). Tech
-  design for Epic 14 needs to specify: how workers are spawned, monitored,
-  and cleaned up; how many can run concurrently; how cancellation works.
+- **Background worker lifecycle:** How are workers spawned, monitored, and
+  cleaned up? What is the concurrency limit? How does cancellation work?
+  Epic 14 tech design resolves this.
 - **Package temp directory lifecycle:** When exactly are temp directories
   cleaned up? On package close, on app quit, on startup (stale cleanup)?
   What if the app crashes?
-- **Manifest update propagation:** When the user edits the manifest in edit
-  mode, how quickly does the package-mode sidebar update? On save? On
-  debounced change? On explicit refresh?
 - **Chat rendering optimization:** What's the right debounce interval for
   re-rendering streamed markdown? Needs experimentation to balance
-  smoothness against rendering cost.
-- **Package library module boundary:** The PRD promises a reusable library
-  and CLI that are independently usable without the viewer. Should this be
-  a separate workspace package, a separate directory with its own
-  entrypoint, or something else? The current `shared/types.ts` re-exports
-  server schemas directly — the package library needs cleaner separation
-  to be genuinely reusable. Epic 8 tech design must resolve this.
+  smoothness against rendering cost. This is the M3 manual tuning point.
 
 ---
 
@@ -582,14 +651,18 @@ verification.
 ## Relationship to Downstream
 
 - **This document settles:** system shape (additive to v1), E2E testing
-  framework choice, package format strategy (tar + extract-to-temp), provider
-  architecture (CLI process wrapper over WebSocket), streaming rendering
-  strategy (debounced markdown-it), feature flag mechanism, WebSocket route
-  separation
-- **Epic specs settle:** manifest file naming, exact API contracts, exact
-  WS message schemas, package metadata schema, CLI output parsing strategy,
-  temp directory lifecycle details, E2E test patterns and conventions
+  framework choice, package format strategy (tar + extract-to-temp),
+  manifest file convention (`_nav.md`), provider architecture (per-invocation
+  foreground + isolated background workers over WebSocket), script execution
+  as the Steward's app-action mechanism, streaming rendering strategy
+  (debounced markdown-it), feature flag mechanism, WebSocket route
+  separation, message taxonomy (provider lifecycle, task lifecycle, and
+  autonomous-run lifecycle as distinct families)
+- **Epic specs settle:** exact API contracts, exact WS message schemas,
+  package metadata schema, script method surface per epic, CLI output
+  parsing strategy, temp directory lifecycle details, E2E test patterns and
+  conventions, spec metadata conventions, autonomous pipeline sequence
 - **Tech design still decides:** module decomposition for package and chat
-  services, provider interface exact shape, streaming buffer implementation,
-  chat panel DOM structure, manifest parser implementation, CLI prompt
-  construction strategy
+  services, streaming buffer implementation, chat panel DOM structure,
+  manifest parser implementation, CLI prompt construction strategy,
+  background worker concurrency limits and spawn mechanics

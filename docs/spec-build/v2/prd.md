@@ -131,9 +131,10 @@ Inherited from v1 (still apply):
 New for v2:
 - **Open convention over proprietary format**: the package format should be
   adoptable by any tool, not locked to MD Viewer
-- **Steward principle**: anything you can do in the viewer, you can do
-  through the chat. The Steward has full visibility and control over the
-  app surface.
+- **Steward principle**: the chat is an action surface, not just a Q&A
+  channel. The Steward can operate on the contents of the current workspace
+  (files, manifest, packages) through a curated set of workspace-scoped
+  methods.
 - **Experiment safely**: the Steward is feature-flagged. General users never
   see it unless they enable it. The core product stays clean.
 - **Provider-agnostic**: the Steward's agent capabilities sit behind an
@@ -337,10 +338,12 @@ packages in scripts and automation.
 - Package format specification: `.mpk` as tar, `.mpkz` as compressed tar.
   Internal structure: a manifest file at the root, markdown files, and
   supporting assets (images, etc.) preserving directory hierarchy.
-- Manifest file convention: a markdown file at the package root that defines
-  the navigation tree using standard markdown links and nested lists.
-  Optional YAML frontmatter for metadata (title, version, author,
-  description, type, status).
+- Manifest file convention: `_nav.md` at the package root defines the
+  navigation tree using standard markdown links and nested lists. The
+  underscore prefix signals metadata and sorts to the top of directory
+  listings. Optional YAML frontmatter for metadata (title, version, author,
+  description, type, status). Documents within a package are addressable by
+  file path or by navigation display name (resolved through the manifest).
 - Manifest parser: parse the manifest markdown into a structured navigation
   tree (hierarchy, display names, file paths, group labels).
 - Tar reading: open `.mpk` files, stream entries, extract to directory.
@@ -351,7 +354,7 @@ packages in scripts and automation.
   - `extract` — unpack a package to a directory
   - `info` — display package metadata and navigation tree
   - `ls` — list all documents with paths
-  - `read` — extract a specific document by nav path or file path
+  - `read` — extract a specific document by file path or display name
   - `manifest` — extract manifest only
 - Library API: all CLI operations backed by a library usable
   programmatically. The core rendering pipeline (markdown-to-HTML with
@@ -469,13 +472,17 @@ switches back to filesystem-scan mode.
 
 This is the infrastructure layer for the Spec Steward. It establishes the
 feature flag, the CLI provider abstraction, the WebSocket streaming server,
-and a basic chat panel that streams plain text responses. The focus is
-entirely on plumbing — getting the pipes connected and reliable.
+a basic chat panel that streams plain text responses, and the exploratory
+script execution lane that bridges chat into app actions. The focus is on
+plumbing — getting the pipes connected and reliable, and establishing the
+mechanism the Steward uses to act on the app.
 
 No markdown rendering in chat, no document awareness, no intelligence. Just
 a working chat that can send messages to a CLI and stream responses back as
-plain text. Getting the provider lifecycle management right (spawning,
-crashing, restarting, cancelling) is the hard technical problem in this epic.
+plain text, plus the script execution infrastructure that later epics build
+on for editing, file operations, and orchestration. Getting the provider
+lifecycle management right (spawning, recovery, cancelling) and the script
+execution lane working are the hard technical problems in this epic.
 
 This feature is gated behind a feature flag and invisible by default.
 
@@ -495,11 +502,15 @@ gracefully. If the user cancels mid-response, it stops cleanly.
 - CLI provider abstraction: a provider interface that defines how to spawn,
   send messages to, receive streaming output from, cancel, and shut down a
   CLI process. Designed so different CLIs or a custom harness can implement
-  the same interface.
+  the same interface. The foreground provider operates per-invocation with
+  resume semantics for multi-turn continuity — each message spawns a CLI
+  call, and session IDs maintain conversation context across invocations.
+  Background pipeline operations (Epic 14) use a separate isolated worker
+  model, not the foreground session.
 - Claude CLI as initial provider: implements the provider interface by
-  spawning the `claude` CLI, piping input via stdin, parsing streaming
-  output from stdout, and managing the process lifecycle. Handles process
-  crashes, unexpected exits, timeouts, and cancellation.
+  spawning the `claude` CLI, parsing streaming output, and managing the
+  process lifecycle. Handles process crashes, unexpected exits, timeouts,
+  and cancellation.
 - WebSocket streaming server: new `/ws/chat` route (separate from the
   existing `/ws` file-watch route). Typed message schemas extending the
   existing Zod-based pattern. Relays between the CLI provider and the
@@ -511,6 +522,15 @@ gracefully. If the user cancels mid-response, it stops cleanly.
   keeps the latest content visible during streaming.
 - Basic conversation management: clear conversation, new conversation,
   cancel in-progress response.
+- Exploratory script execution: the server's stream parser intercepts
+  XML-fenced script blocks from the CLI output and executes them in a
+  sandboxed VM (`vm.runInNewContext()`) with a curated set of app
+  operation methods. This is experimental infrastructure — not
+  distributed beyond the primary user without a security review — but it
+  is the mechanism that Epics 12–14 build on for document editing,
+  package operations, and pipeline orchestration. The initial method
+  surface is minimal (`showNotification`); later epics extend it with
+  document, file, package, and task methods.
 
 ### Out of Scope
 
@@ -520,6 +540,8 @@ gracefully. If the user cancels mid-response, it stops cleanly.
 - Document awareness (Epic 12)
 - Package awareness (Epic 13)
 - Conversation persistence across restarts (Epic 12)
+- Distribution of script execution beyond the primary user (requires
+  security review and sandbox hardening)
 
 ### Rolled-Up Acceptance Criteria
 
@@ -532,15 +554,21 @@ The user types a message and the agent's response streams in as plain text.
 Tokens appear progressively as they arrive from the CLI. The user can cancel
 a response mid-stream.
 
-The CLI provider manages its process lifecycle cleanly. If the CLI process
-crashes, the provider restarts it and the user sees a brief error message
-before being able to continue. If the user closes the app, the provider
-shuts down its CLI process gracefully.
+The CLI provider manages its lifecycle cleanly. If the CLI process encounters
+an error, the provider recovers on the next message and the user sees a brief
+error message before being able to continue. If the user closes the app, the
+provider shuts down gracefully.
 
 The provider abstraction cleanly separates the chat protocol from the
 specific CLI. Swapping the Claude CLI for another provider requires
 implementing the provider interface, not modifying the chat panel or
 WebSocket server.
+
+The script execution lane intercepts XML-fenced blocks from the CLI output,
+executes them in a sandboxed VM, and relays results back to the CLI. Normal
+text passes through to the chat display. Script blocks are invisible to the
+user. Execution errors are contained — they produce error results, not
+server crashes.
 
 ---
 
@@ -571,9 +599,10 @@ markdown, no visual glitches when a code block is half-received.
 ### In Scope
 
 - Streaming markdown rendering: incoming tokens are buffered and the
-  accumulated response is re-rendered through the existing markdown-it
-  pipeline at a debounced interval. The rendering reuses the same
-  markdown-it + shiki setup used for document rendering.
+  accumulated response is re-rendered through a client-side markdown-it +
+  shiki pipeline at a debounced interval. This is a new client-side
+  instance (the document viewer's pipeline runs server-side) configured
+  for visual parity with document rendering.
 - Partial markdown handling: incomplete code fences show as plain text
   until the closing fence arrives, then render as highlighted code on the
   next cycle. Incomplete emphasis, links, and other inline constructs
@@ -655,11 +684,19 @@ off.
   provider by attaching the active document's content. Token budget
   management — large documents may need truncation or summarization
   strategies to fit within context limits.
-- Conversation persistence: chat history persists per folder or per package
-  across app restarts. Reopening a workspace restores the conversation.
+- Conversation persistence: chat history persists per canonical workspace
+  identity (absolute folder path for regular workspaces, package source
+  path for opened packages) across app restarts. Reopening a workspace
+  restores the conversation. CLI session IDs persist alongside the
+  conversation for multi-turn continuity.
 - Tab context switching: when the user switches tabs, the Steward's context
   updates. The conversation can reference previously discussed documents
   naturally ("that other document we looked at").
+- Local file navigation in chat responses: file paths in agent responses
+  that reference files within the current workspace root are clickable
+  links that open the file in the viewer. This is foundational for the
+  review workflow in Epic 14, where the Steward directs the user to
+  completed pipeline output.
 
 ### Out of Scope
 
@@ -682,6 +719,10 @@ refresh.
 
 Conversation history persists across app restarts. Reopening the app
 restores the previous conversation for the active workspace or package.
+
+File paths in agent responses that reference local files within the
+workspace are clickable — clicking a path opens the file in the viewer.
+External URLs continue to open in the system browser.
 
 ---
 
@@ -715,20 +756,24 @@ what comes next.
   structure and can reference any file by its navigation path. "What's in
   this package?" lists the navigation tree. Multi-file context — "compare
   the PRD scope with the epic" reads both files and answers.
-- Package operations through chat: creating new packages, adding files to
-  packages, modifying the manifest — all available through conversation.
-  Steward principle: anything you can do in the viewer, you can do through
-  the chat.
+- Package-content operations through chat: creating new packages, adding
+  files, modifying the manifest, exporting — available through
+  conversation. The Steward can operate on the contents of the current
+  workspace (files, manifest, package export) but does not manage the
+  workspace itself (opening different `.mpk` files, switching folder roots,
+  or changing sidebar mode are UI operations, not chat operations).
 - Spec package conventions: metadata fields in the manifest frontmatter
   that indicate a package is a spec package (type, pipeline phase, status).
   The Steward understands these and can set them.
 - Liminal Spec phase awareness: the Steward knows the phases (PRD → epic →
-  tech design → publish epic → implementation) and can suggest what's next
+  tech design → stories → implementation) and can suggest what's next
   based on what artifacts exist in the package. Conversational guidance,
   not a rigid workflow — the user can follow it or ignore it.
-- Folder-mode chat: package operations through chat also work on regular
-  folders (non-packages). "Create a package from this folder" works from
-  the chat when browsing a regular directory.
+- Folder-mode chat: file operations and package creation/export through
+  chat also work on regular folders (non-packages). "Create a package from
+  this folder" works from the chat when browsing a regular directory. Spec
+  awareness and phase guidance require a package with manifest metadata —
+  after creating a package from a folder, spec features become available.
 
 ### Out of Scope
 
@@ -784,25 +829,35 @@ optionally let the Steward run through multiple pipeline phases autonomously.
 ### In Scope
 
 - Background task management: the Steward can dispatch long-running CLI
-  operations that run while the user continues working. Task tracking
+  operations as isolated worker processes that run while the user continues
+  working. Background workers are separate from the foreground chat session
+  — the user chats, edits, and browses while tasks run. Task tracking
   includes status, elapsed time, and the ability to cancel. The user can
-  ask "what's running?" at any time.
+  ask "what's running?" at any time. Multiple concurrent tasks are
+  supported up to a configured limit.
 - Pipeline dispatch: the Steward invokes Liminal Spec operations (epic
-  drafting, tech design, publish epic, implementation) via the CLI provider
-  as background tasks. It constructs the appropriate context and skill
-  invocations for each phase.
-- Results integration: when a task completes, the output file appears in
-  the package. The Steward notifies the user and offers to open the result
-  for review. The manifest is updated if new files were created.
+  drafting, tech design, story generation, implementation) via isolated CLI
+  worker processes as background tasks. It resolves input artifacts from
+  the workspace, validates prerequisites before dispatch, and constructs
+  the appropriate context for each phase.
+- Results integration: when a task completes, the output files appear in
+  the workspace. The Steward notifies the user and offers to open the
+  result for review. In package mode, the manifest is updated to include
+  new files and the spec phase metadata advances.
 - Approval flow: the user reviews artifacts in the viewer and communicates
   through the chat — "looks good, proceed to tech design" or "section 3
-  needs work." The Steward routes feedback and proceeds or iterates.
+  needs work." The Steward binds feedback to the correct task (via the
+  active document context) and proceeds or re-dispatches with the
+  feedback incorporated.
 - Autonomous mode: the user opts in to "run the full pipeline for this
-  feature." The Steward sequences through phases, running each and moving
-  to the next without stopping for intermediate approval. The user reviews
-  the final output.
+  feature." The default autonomous sequence is `epic` → `tech-design` →
+  `stories`. Implementation is not included in the default sequence — it
+  is kicked off explicitly after the user reviews the spec pipeline
+  output. Phases where output already exists are skipped. The user can
+  cancel the run at any time; completed phase output is preserved.
 - Progress visibility: active background tasks are visible in the chat
-  with status and elapsed time.
+  with status and elapsed time. Both per-task and per-run lifecycle events
+  are reported.
 
 ### Out of Scope
 
@@ -816,20 +871,24 @@ optionally let the Steward run through multiple pipeline phases autonomously.
 ### Rolled-Up Acceptance Criteria
 
 The user tells the Steward to draft an epic. The Steward dispatches the
-operation as a background task. The user sees a status indicator in the chat
-and can continue working — browsing, editing, or chatting about other topics.
+operation as an isolated background task. The user sees a status indicator
+in the chat and can continue working — browsing, editing, or chatting about
+other topics. The foreground chat session is completely independent of the
+background task.
 
-When the task completes, the Steward notifies the user and the output file
-is in the package. The user opens it, reviews it in the viewer, and tells
-the Steward to proceed or make changes.
+When the task completes, the Steward notifies the user and the output files
+are in the workspace. The user opens the primary output (via clickable file
+path in the notification), reviews it in the viewer, and tells the Steward
+to proceed or make changes.
 
 The user can opt into autonomous mode: "Run the full spec pipeline for this
-feature." The Steward sequences through PRD refinement, epic drafting, tech
-design, and story publishing. The user reviews the final output rather than
-approving each step.
+feature." The Steward sequences through epic drafting, tech design, and
+story generation — skipping phases where output already exists. The user
+reviews the final output rather than approving each step. Implementation is
+kicked off explicitly after reviewing the spec output.
 
 The user can ask "what's running?" and see active tasks. They can cancel a
-running task through the chat.
+running task or an entire autonomous run through the chat.
 
 ---
 
@@ -845,19 +904,30 @@ the library API makes it easier).
 
 ### Steward Principle
 
-Anything you can do in the viewer, you can do through the chat. The Steward
-has full visibility and control over the app surface — opening files, creating
-packages, editing documents, navigating the tree. This is a core design
-principle, not a nice-to-have. It means the Steward needs access to the same
-API surface the frontend uses.
+The Steward can operate on the contents of the current workspace through
+chat: reading files, editing documents, creating files, modifying the
+manifest, creating and exporting packages. This is a core design principle
+— the chat is an action surface, not just a Q&A channel. The Steward
+accesses app capabilities through a curated script execution lane with
+workspace-scoped, product-level methods — not raw filesystem access.
+
+The boundary is workspace-content operations, not workspace management.
+Opening different `.mpk` files, switching folder roots, and changing the
+sidebar mode are UI-level workspace operations that remain outside the
+chat scope.
 
 ### Provider Abstraction
 
 The Steward's agent capabilities sit behind a WebSocket server that abstracts
 the specific CLI or harness being used. Today it's the Claude CLI. The
-interface is designed so that a custom-built harness focused on exactly the
-Liminal Spec workflow could replace it without changes to the chat panel or
-WebSocket protocol. Other CLIs (Codex, Copilot) could also be plugged in.
+interface is designed so that a custom-built harness could replace it without
+changes to the chat panel or WebSocket protocol.
+
+The provider operates in two modes: a **foreground conversational session**
+(per-invocation with resume semantics for multi-turn continuity) and
+**isolated background workers** (for long-running pipeline operations in
+Epic 14). These use separate CLI processes — the foreground and background
+do not share session state.
 
 ### Vanilla JS Throughout
 
