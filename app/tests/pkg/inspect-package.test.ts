@@ -136,6 +136,19 @@ async function createTarWithoutManifest(
   );
 }
 
+async function expectPackageError(
+  promise: Promise<unknown>,
+  expected: Partial<PackageError>,
+): Promise<void> {
+  try {
+    await promise;
+    throw new Error('Expected operation to throw PackageError');
+  } catch (error) {
+    expect(error).toBeInstanceOf(PackageError);
+    expect(error).toMatchObject(expected);
+  }
+}
+
 describe('inspectPackage', () => {
   it('returns metadata fields from manifest frontmatter', async () => {
     const packagePath = await createTestPackage({
@@ -187,6 +200,22 @@ describe('inspectPackage', () => {
       code: PackageErrorCode.INVALID_ARCHIVE,
       path: packagePath,
     } satisfies Partial<PackageError>);
+  });
+
+  it('throws MANIFEST_NOT_FOUND for package without manifest', async () => {
+    const packageDir = await createTempDir('mdv-inspect-missing-manifest-');
+    const packagePath = path.join(packageDir, 'no-manifest.mpk');
+
+    await createTarWithoutManifest(packagePath, {
+      'guide.md': '# Guide',
+      'reference/api.md': '# API',
+    });
+
+    await expectPackageError(inspectPackage({ packagePath }), {
+      code: PackageErrorCode.MANIFEST_NOT_FOUND,
+      message: `Manifest not found in package: ${packagePath}`,
+      path: packagePath,
+    });
   });
 
   it('returns hierarchical navigation with groups', async () => {

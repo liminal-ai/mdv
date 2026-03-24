@@ -1,3 +1,4 @@
+import { PackageError, PackageErrorCode } from '../errors.js';
 import { parseManifest } from '../manifest/parser.js';
 import type { FileEntry, InspectOptions, PackageInfo } from '../types.js';
 import { MANIFEST_FILENAME } from '../types.js';
@@ -10,6 +11,7 @@ export async function inspectPackage(options: InspectOptions): Promise<PackageIn
 
   const files: FileEntry[] = [];
   let manifestContent = '';
+  let foundManifest = false;
 
   const format = await scanPackage(options.packagePath, async (header, stream) => {
     files.push({
@@ -22,8 +24,17 @@ export async function inspectPackage(options: InspectOptions): Promise<PackageIn
       return;
     }
 
+    foundManifest = true;
     manifestContent = (await readEntryContent(stream)).toString('utf8');
   });
+
+  if (!foundManifest) {
+    throw new PackageError(
+      PackageErrorCode.MANIFEST_NOT_FOUND,
+      `Manifest not found in package: ${options.packagePath}`,
+      options.packagePath,
+    );
+  }
 
   const parsed = parseManifest(manifestContent);
 

@@ -134,6 +134,24 @@ describe('mdvpkg CLI', () => {
     expect(result.stderr).toContain('extract:');
   });
 
+  it('TC-6.4c: read rejects using both --file and --name together', async () => {
+    const sourceDir = await createWorkspace({
+      manifest: '- [Guide](guide.md)',
+      files: {
+        'guide.md': '# Guide',
+      },
+    });
+    const packageDir = await createTempDir('mdv-cli-read-conflict-');
+    const packagePath = path.join(packageDir, 'package.mpk');
+
+    await pkg.createPackage({ sourceDir, outputPath: packagePath });
+
+    const result = await runCli('read', packagePath, '--file', 'guide.md', '--name', 'Guide');
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('read: provide --file or --name, not both');
+  });
+
   it('TC-7.1a: CLI create matches library create', async () => {
     const sourceDir = await createWorkspace({
       manifest: '- [Guide](docs/guide.md)\n- [API](reference/api.md)\n- [Logo](assets/logo.txt)\n',

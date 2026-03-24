@@ -94,6 +94,11 @@ program
   .option('--file <filePath>', 'Read by file path')
   .option('--name <displayName>', 'Read by manifest display name')
   .action((packagePath: string, options: { file?: string; name?: string }) => {
+    if (options.file && options.name) {
+      process.stderr.write('read: provide --file or --name, not both\n');
+      process.exit(1);
+    }
+
     if (!options.file && !options.name) {
       process.stderr.write('read: --file or --name is required\n');
       process.exit(1);

@@ -89,20 +89,30 @@ export async function createPackage(options: CreateOptions): Promise<void> {
     throw new TypeError('createPackage requires sourceDir and outputPath');
   }
 
-  try {
-    await stat(options.sourceDir);
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
+  const sourceStats = await (async () => {
+    try {
+      return await stat(options.sourceDir);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
 
-    if (code === 'ENOENT') {
-      throw new PackageError(
-        PackageErrorCode.SOURCE_DIR_NOT_FOUND,
-        `Source directory does not exist: ${options.sourceDir}`,
-        options.sourceDir,
-      );
+      if (code === 'ENOENT') {
+        throw new PackageError(
+          PackageErrorCode.SOURCE_DIR_NOT_FOUND,
+          `Source directory does not exist: ${options.sourceDir}`,
+          options.sourceDir,
+        );
+      }
+
+      throw error;
     }
+  })();
 
-    throw error;
+  if (!sourceStats.isDirectory()) {
+    throw new PackageError(
+      PackageErrorCode.SOURCE_DIR_NOT_FOUND,
+      `Source path is not a directory: ${options.sourceDir}`,
+      options.sourceDir,
+    );
   }
 
   const sourceEntries = await readdir(options.sourceDir, { recursive: true });

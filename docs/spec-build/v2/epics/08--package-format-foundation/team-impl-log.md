@@ -1,8 +1,6 @@
 # Team Implementation Log — Epics 8 & 9
 
-**State:** `STORY_ACTIVE`
-**Active Story:** E8-S6 (Rendering Library Exposure)
-**Phase:** reviewing
+**State:** `PRE_EPIC_VERIFY`
 **CLI:** codex-subagent (Codex CLI, gpt-5.4)
 **Team:** epic-8-9-impl
 **Started:** 2026-03-23
@@ -210,6 +208,18 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 **Cumulative test count:** 715 (baseline 711 + 4 structural)
 
 **Notes:** Clean first-pass implementation. First teammate attempt failed (Codex session incomplete), re-spawned with identical prompt — second attempt succeeded cleanly.
+
+### E8-S6: Rendering Library Exposure — ACCEPTED
+
+**Pre-acceptance receipt:**
+- CLI evidence: Implementation `019d1d82-38ea-7f73-ab46-46a7dde1ee57`, Review `019d1d8a-5250-7e92-bead-ad90c043b9fc`
+- Findings: Codex flagged raw HTML injection risk (by-design — sanitization is consumer's responsibility per tech design). TC weakness observations all acceptable. Known TC-8.2b deviation (structural validation only).
+- Gate: `npm run verify` — 78 files, 801 tests, all green
+- Open risks: Epic 9 must sanitize renderMarkdown() output at viewer layer
+
+**Cumulative test count:** 801 (baseline 711 + 90 new across 7 stories)
+
+**Boundary update:** Shiki now integrated in src/pkg/render. All boundaries active.
 
 ### E8-S5: CLI Interface — ACCEPTED
 

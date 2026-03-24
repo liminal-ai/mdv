@@ -136,6 +136,19 @@ async function readWorkspaceFiles(rootDir: string): Promise<Map<string, Buffer>>
   return files;
 }
 
+async function expectPackageError(
+  promise: Promise<unknown>,
+  expected: Partial<PackageError>,
+): Promise<void> {
+  try {
+    await promise;
+    throw new Error('Expected operation to throw PackageError');
+  } catch (error) {
+    expect(error).toBeInstanceOf(PackageError);
+    expect(error).toMatchObject(expected);
+  }
+}
+
 describe('extractPackage', () => {
   it('TC-3.1a full extraction preserves structure', async () => {
     const packagePath = await createTestPackage({
@@ -240,10 +253,10 @@ describe('extractPackage', () => {
 
     await writeFile(packagePath, 'not a tar archive', 'utf8');
 
-    await expect(extractPackage({ packagePath, outputDir })).rejects.toMatchObject({
+    await expectPackageError(extractPackage({ packagePath, outputDir }), {
       code: PackageErrorCode.INVALID_ARCHIVE,
       path: packagePath,
-    } satisfies Partial<PackageError>);
+    });
   });
 
   it('TC-3.4b corrupted gzip throws COMPRESSION_ERROR', async () => {
@@ -253,10 +266,10 @@ describe('extractPackage', () => {
 
     await writeFile(packagePath, Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]));
 
-    await expect(extractPackage({ packagePath, outputDir })).rejects.toMatchObject({
+    await expectPackageError(extractPackage({ packagePath, outputDir }), {
       code: PackageErrorCode.COMPRESSION_ERROR,
       path: packagePath,
-    } satisfies Partial<PackageError>);
+    });
   });
 
   it('TC-3.5a nonexistent output directory created', async () => {
@@ -281,10 +294,10 @@ describe('extractPackage', () => {
 
     await createTraversalTar(packagePath, [{ name: '../../etc/malicious', content: 'owned' }]);
 
-    await expect(extractPackage({ packagePath, outputDir })).rejects.toMatchObject({
+    await expectPackageError(extractPackage({ packagePath, outputDir }), {
       code: PackageErrorCode.PATH_TRAVERSAL,
       path: '../../etc/malicious',
-    } satisfies Partial<PackageError>);
+    });
   });
 
   it('TC-3.6b absolute path blocked', async () => {
@@ -294,10 +307,10 @@ describe('extractPackage', () => {
 
     await createTraversalTar(packagePath, [{ name: '/etc/passwd', content: 'owned' }]);
 
-    await expect(extractPackage({ packagePath, outputDir })).rejects.toMatchObject({
+    await expectPackageError(extractPackage({ packagePath, outputDir }), {
       code: PackageErrorCode.PATH_TRAVERSAL,
       path: '/etc/passwd',
-    } satisfies Partial<PackageError>);
+    });
   });
 
   it('TC-7.3a error has code property from PackageErrorCode', async () => {
@@ -326,22 +339,23 @@ describe('extractPackage', () => {
 
     await symlink(escapeDir, path.join(outputDir, 'linked'));
 
-    await expect(extractPackage({ packagePath, outputDir })).rejects.toMatchObject({
+    await expectPackageError(extractPackage({ packagePath, outputDir }), {
       code: PackageErrorCode.PATH_TRAVERSAL,
-    } satisfies Partial<PackageError>);
+    });
   });
 
   it('nonexistent package file throws READ_ERROR', async () => {
     const outputDir = await createTempDir('mdv-missing-package-output-');
 
-    await expect(
+    await expectPackageError(
       extractPackage({
         packagePath: '/nonexistent/path/to/package.mpk',
         outputDir,
       }),
-    ).rejects.toMatchObject({
-      code: PackageErrorCode.READ_ERROR,
-    } satisfies Partial<PackageError>);
+      {
+        code: PackageErrorCode.READ_ERROR,
+      },
+    );
   });
 
   it('handles unicode filenames', async () => {

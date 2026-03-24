@@ -80,6 +80,19 @@ async function readPackageEntries(
   });
 }
 
+async function expectPackageError(
+  promise: Promise<unknown>,
+  expected: Partial<PackageError>,
+): Promise<void> {
+  try {
+    await promise;
+    throw new Error('Expected operation to throw PackageError');
+  } catch (error) {
+    expect(error).toBeInstanceOf(PackageError);
+    expect(error).toMatchObject(expected);
+  }
+}
+
 describe('createPackage', () => {
   it('TC-2.1a creates package with all source files', async () => {
     const sourceDir = await createWorkspace({
@@ -205,6 +218,30 @@ describe('createPackage', () => {
     expect(await readFile(path.join(sourceDir, MANIFEST_FILENAME), 'utf8')).toBe(customManifest);
   });
 
+  it('TC-2.2d preserves case-insensitive alphabetical ordering in scaffolded package entries', async () => {
+    const sourceDir = await createWorkspace({
+      files: {
+        'Zebra.md': '# Zebra',
+        'alpha.md': '# Alpha',
+        'Beta.md': '# Beta',
+      },
+    });
+    const outputPath = await createOutputPath('ordered-scaffold.mpk');
+    const manifestContent = await scaffoldManifest(sourceDir);
+
+    await writeFile(path.join(sourceDir, MANIFEST_FILENAME), manifestContent, 'utf8');
+    await createPackage({ sourceDir, outputPath });
+
+    const entryPaths = [...(await readPackageEntries(outputPath)).keys()];
+
+    expect(entryPaths).toEqual([MANIFEST_FILENAME, 'alpha.md', 'Beta.md', 'Zebra.md']);
+    expect(entryPaths).toEqual(
+      [...entryPaths].sort((left, right) =>
+        left.localeCompare(right, undefined, { sensitivity: 'base' }),
+      ),
+    );
+  });
+
   it('TC-2.3a creates compressed package smaller than uncompressed', async () => {
     const repeatedContent = `${'# Repeated\n\n'}${'lorem ipsum dolor sit amet\n'.repeat(300)}`;
     const sourceDir = await createWorkspace({
@@ -249,11 +286,28 @@ describe('createPackage', () => {
     const missingSourceDir = path.join(tmpdir(), `missing-${Date.now()}-${Math.random()}`);
     const outputPath = await createOutputPath('missing-source.mpk');
 
-    await expect(createPackage({ sourceDir: missingSourceDir, outputPath })).rejects.toMatchObject({
+    await expectPackageError(createPackage({ sourceDir: missingSourceDir, outputPath }), {
       code: PackageErrorCode.SOURCE_DIR_NOT_FOUND,
       message: `Source directory does not exist: ${missingSourceDir}`,
       path: missingSourceDir,
-    } satisfies Partial<PackageError>);
+    });
+  });
+
+  it('TC-2.4c throws SOURCE_DIR_NOT_FOUND when source path is a file', async () => {
+    const sourceRoot = await mkdtemp(path.join(tmpdir(), 'mdv-file-source-'));
+    cleanupTasks.push(async () => {
+      await rm(sourceRoot, { recursive: true, force: true });
+    });
+    const sourcePath = path.join(sourceRoot, 'source.md');
+    const outputPath = await createOutputPath('file-source.mpk');
+
+    await writeFile(sourcePath, '# Not a directory', 'utf8');
+
+    await expectPackageError(createPackage({ sourceDir: sourcePath, outputPath }), {
+      code: PackageErrorCode.SOURCE_DIR_NOT_FOUND,
+      message: `Source path is not a directory: ${sourcePath}`,
+      path: sourcePath,
+    });
   });
 
   it('TC-2.4b throws SOURCE_DIR_EMPTY for empty directory', async () => {
@@ -263,11 +317,11 @@ describe('createPackage', () => {
     });
     const outputPath = await createOutputPath('empty-source.mpk');
 
-    await expect(createPackage({ sourceDir, outputPath })).rejects.toMatchObject({
+    await expectPackageError(createPackage({ sourceDir, outputPath }), {
       code: PackageErrorCode.SOURCE_DIR_EMPTY,
       message: `Source directory is empty: ${sourceDir}`,
       path: sourceDir,
-    } satisfies Partial<PackageError>);
+    });
   });
 
   it('TC-2.5a overwrites existing output file', async () => {
