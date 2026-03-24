@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -342,6 +342,27 @@ describe('extractPackage', () => {
     await expectPackageError(extractPackage({ packagePath, outputDir }), {
       code: PackageErrorCode.PATH_TRAVERSAL,
     });
+  });
+
+  it('rejects extraction through pre-existing file symlink and does not overwrite outside target', async () => {
+    const packagePath = await createTestPackage({
+      manifest: '- [Guide](linked.md)',
+      files: { 'linked.md': '# Package Content' },
+    });
+    const outputDir = await createTempDir('mdv-file-symlink-output-');
+    const escapeDir = await createTempDir('mdv-file-symlink-escape-');
+    const escapedFilePath = path.join(escapeDir, 'target.md');
+
+    await writeFile(escapedFilePath, 'ORIGINAL', 'utf8');
+    await symlink(escapedFilePath, path.join(outputDir, 'linked.md'));
+    expect((await lstat(path.join(outputDir, 'linked.md'))).isSymbolicLink()).toBe(true);
+
+    await expectPackageError(extractPackage({ packagePath, outputDir }), {
+      code: PackageErrorCode.PATH_TRAVERSAL,
+      path: 'linked.md',
+    });
+
+    expect(await readFile(escapedFilePath, 'utf8')).toBe('ORIGINAL');
   });
 
   it('nonexistent package file throws READ_ERROR', async () => {

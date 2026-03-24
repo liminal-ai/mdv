@@ -10,8 +10,21 @@ import {
   listPackage,
   readDocument,
 } from './index.js';
+import type { NavigationNode } from './types.js';
 
 const program = new Command();
+
+function formatNavigationTree(nodes: NavigationNode[], level = 0): string[] {
+  return nodes.flatMap((node) => {
+    const prefix = `${'  '.repeat(level)}- `;
+    const line =
+      node.isGroup || !node.filePath
+        ? `${prefix}${node.displayName}`
+        : `${prefix}${node.displayName} (${node.filePath})`;
+
+    return [line, ...formatNavigationTree(node.children, level + 1)];
+  });
+}
 
 async function handlePackageError(commandName: string, run: () => Promise<void>): Promise<void> {
   try {
@@ -67,9 +80,14 @@ program
       const lines = [
         result.metadata.title ? `Title: ${result.metadata.title}` : undefined,
         result.metadata.version ? `Version: ${result.metadata.version}` : undefined,
+        result.metadata.author ? `Author: ${result.metadata.author}` : undefined,
         result.metadata.description ? `Description: ${result.metadata.description}` : undefined,
+        result.metadata.type ? `Type: ${result.metadata.type}` : undefined,
+        result.metadata.status ? `Status: ${result.metadata.status}` : undefined,
         `Format: ${result.format}`,
         `Files: ${result.files.length}`,
+        'Navigation:',
+        ...formatNavigationTree(result.navigation),
       ].filter((line): line is string => line !== undefined);
 
       console.log(lines.join('\n'));

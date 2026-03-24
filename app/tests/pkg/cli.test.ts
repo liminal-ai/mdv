@@ -152,6 +152,58 @@ describe('mdvpkg CLI', () => {
     expect(result.stderr).toContain('read: provide --file or --name, not both');
   });
 
+  it('info shows all manifest metadata fields and navigation tree', async () => {
+    const sourceDir = await createWorkspace({
+      manifest: `---
+title: API Reference
+version: 1.2.3
+author: Docs Team
+description: Comprehensive API package manifest
+type: reference
+status: published
+---
+
+- Guides
+  - [Start Here](guides/start.md)
+  - [Advanced](guides/advanced.md)
+- Reference
+  - [CLI](reference/cli.md)
+`,
+      files: {
+        'guides/start.md': '# Start Here',
+        'guides/advanced.md': '# Advanced',
+        'reference/cli.md': '# CLI',
+      },
+    });
+    const packageDir = await createTempDir('mdv-cli-info-');
+    const packagePath = path.join(packageDir, 'package.mpk');
+
+    await pkg.createPackage({ sourceDir, outputPath: packagePath });
+
+    const result = await runCli('info', packagePath);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe(
+      [
+        'Title: API Reference',
+        'Version: 1.2.3',
+        'Author: Docs Team',
+        'Description: Comprehensive API package manifest',
+        'Type: reference',
+        'Status: published',
+        'Format: mpk',
+        'Files: 4',
+        'Navigation:',
+        '- Guides',
+        '  - Start Here (guides/start.md)',
+        '  - Advanced (guides/advanced.md)',
+        '- Reference',
+        '  - CLI (reference/cli.md)',
+        '',
+      ].join('\n'),
+    );
+  });
+
   it('TC-7.1a: CLI create matches library create', async () => {
     const sourceDir = await createWorkspace({
       manifest: '- [Guide](docs/guide.md)\n- [API](reference/api.md)\n- [Logo](assets/logo.txt)\n',

@@ -1,7 +1,9 @@
+import { execFile } from 'node:child_process';
 import { createReadStream } from 'node:fs';
-import { mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { createGunzip } from 'node:zlib';
 
 import { extract } from 'tar-stream';
@@ -13,6 +15,7 @@ import createPackage from '../../src/pkg/tar/create.js';
 import { MANIFEST_FILENAME } from '../../src/pkg/types.js';
 import { createFixtureWorkspace } from './fixtures/workspaces.js';
 
+const execFileAsync = promisify(execFile);
 const cleanupTasks: Array<() => Promise<void>> = [];
 
 afterEach(async () => {
@@ -324,6 +327,22 @@ describe('createPackage', () => {
     });
   });
 
+  it('throws SOURCE_DIR_EMPTY when source directory only contains empty subdirectories', async () => {
+    const sourceDir = await mkdtemp(path.join(tmpdir(), 'mdv-empty-subdirs-source-'));
+    cleanupTasks.push(async () => {
+      await rm(sourceDir, { recursive: true, force: true });
+    });
+    const outputPath = await createOutputPath('empty-subdirs.mpk');
+
+    await mkdir(path.join(sourceDir, 'docs', 'nested'), { recursive: true });
+
+    await expectPackageError(createPackage({ sourceDir, outputPath }), {
+      code: PackageErrorCode.SOURCE_DIR_EMPTY,
+      message: `Source directory is empty: ${sourceDir}`,
+      path: sourceDir,
+    });
+  });
+
   it('TC-2.5a overwrites existing output file', async () => {
     const sourceDir = await createWorkspace({
       files: {
@@ -338,6 +357,78 @@ describe('createPackage', () => {
     expect(await readFile(outputPath, 'utf8')).not.toBe('placeholder');
     const entries = await readPackageEntries(outputPath);
     expect(entries.has(MANIFEST_FILENAME)).toBe(true);
+  });
+
+  it('wraps output stream errors as WRITE_ERROR', async () => {
+    const sourceDir = await createWorkspace({
+      files: {
+        'guide.md': '# Guide',
+      },
+    });
+    const outputPath = await createOutputPath('write-error.mpk');
+    const script = `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { PassThrough } from 'node:stream';
+
+      const sourceDir = process.env.SOURCE_DIR;
+      const outputPath = process.env.OUTPUT_PATH;
+
+      process.on('uncaughtException', () => {
+        // The subprocess swallows raw stream noise so the test can assert on the public API error.
+      });
+
+      const originalCreateWriteStream = fs.createWriteStream;
+      fs.createWriteStream = function patchedCreateWriteStream() {
+        const stream = new PassThrough();
+        stream.on('pipe', () => {
+          setImmediate(() => {
+            stream.emit('error', new Error('disk full'));
+          });
+        });
+        return stream;
+      };
+      syncBuiltinESMExports();
+
+      const { default: createPackage } = await import('../../src/pkg/tar/create.ts');
+      let caught = null;
+
+      try {
+        await createPackage({ sourceDir, outputPath });
+      } catch (error) {
+        caught = {
+          name: error.name,
+          message: error.message,
+          code: error.code ?? null,
+          path: error.path ?? null,
+        };
+      }
+
+      fs.createWriteStream = originalCreateWriteStream;
+      syncBuiltinESMExports();
+
+      console.log(JSON.stringify(caught));
+    `;
+
+    const { stdout } = await execFileAsync(
+      'node',
+      ['--import', 'tsx', '--input-type=module', '-e', script],
+      {
+        cwd: import.meta.dirname,
+        env: {
+          ...process.env,
+          SOURCE_DIR: sourceDir,
+          OUTPUT_PATH: outputPath,
+        },
+      },
+    );
+
+    expect(JSON.parse(stdout)).toEqual({
+      name: 'PackageError',
+      code: PackageErrorCode.WRITE_ERROR,
+      message: `Failed to write package: ${outputPath}`,
+      path: outputPath,
+    });
   });
 
   it('TC-7.2a throws error when required option field is missing', async () => {

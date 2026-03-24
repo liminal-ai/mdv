@@ -1,7 +1,9 @@
+import { createWriteStream } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { pack } from 'tar-stream';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { PackageError, PackageErrorCode } from '../../src/pkg/errors.js';
@@ -54,6 +56,68 @@ async function createTestPackage(
   });
 
   return packagePath;
+}
+
+async function createTarWithoutManifest(
+  outputPath: string,
+  files: Record<string, string>,
+): Promise<void> {
+  const packStream = pack();
+  const outputStream = createWriteStream(outputPath);
+
+  const outputPromise = new Promise<void>((resolve, reject) => {
+    let settled = false;
+
+    const cleanup = () => {
+      packStream.removeListener('error', onError);
+      outputStream.removeListener('error', onError);
+      outputStream.removeListener('finish', onFinish);
+    };
+
+    const onError = (error: Error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+
+    const onFinish = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      resolve();
+    };
+
+    packStream.once('error', onError);
+    outputStream.once('error', onError);
+    outputStream.once('finish', onFinish);
+
+    packStream.pipe(outputStream);
+  });
+
+  for (const [name, content] of Object.entries(files)) {
+    await new Promise<void>((resolve, reject) => {
+      const buffer = Buffer.from(content, 'utf8');
+
+      packStream.entry({ name, size: buffer.length }, buffer, (error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
+  }
+
+  packStream.finalize();
+  await outputPromise;
 }
 
 describe('readDocument', () => {
@@ -152,6 +216,26 @@ describe('readDocument', () => {
     ).rejects.toMatchObject({
       code: PackageErrorCode.FILE_NOT_FOUND,
       path: 'Nonexistent',
+    } satisfies Partial<PackageError>);
+  });
+
+  it('throws MANIFEST_NOT_FOUND for display name lookup when manifest is missing', async () => {
+    const packageDir = await createTempDir('mdv-read-no-manifest-');
+    const packagePath = path.join(packageDir, 'no-manifest.mpk');
+
+    await createTarWithoutManifest(packagePath, {
+      'guides/start.md': '# Start Here',
+    });
+
+    await expect(
+      readDocument({
+        packagePath,
+        target: { displayName: 'Start Here' },
+      }),
+    ).rejects.toMatchObject({
+      code: PackageErrorCode.MANIFEST_NOT_FOUND,
+      message: 'No manifest found in package',
+      path: packagePath,
     } satisfies Partial<PackageError>);
   });
 

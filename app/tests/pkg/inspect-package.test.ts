@@ -67,7 +67,7 @@ async function createTestPackage(
 
 async function createTarArchive(
   outputPath: string,
-  entries: Array<{ name: string; content: string }>,
+  entries: Array<{ name: string; content?: string; type?: 'file' | 'directory' }>,
 ): Promise<void> {
   const packStream = pack();
   const outputStream = createWriteStream(outputPath);
@@ -109,8 +109,21 @@ async function createTarArchive(
   });
 
   for (const entry of entries) {
-    const content = Buffer.from(entry.content, 'utf8');
     await new Promise<void>((resolve, reject) => {
+      if (entry.type === 'directory') {
+        packStream.entry({ name: entry.name, type: 'directory' }, (error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve();
+        });
+        return;
+      }
+
+      const content = Buffer.from(entry.content ?? '', 'utf8');
+
       packStream.entry({ name: entry.name, size: content.length }, content, (error) => {
         if (error) {
           reject(error);
@@ -315,6 +328,21 @@ describe('inspectPackage', () => {
       [...result.files.map((file) => file.path)].sort(),
     );
   });
+
+  it('excludes directory entries from inspect file listings', async () => {
+    const packageDir = await createTempDir('mdv-inspect-directories-');
+    const packagePath = path.join(packageDir, 'directories.mpk');
+
+    await createTarArchive(packagePath, [
+      { name: '_nav.md', content: '- [Guide](docs/guide.md)\n' },
+      { name: 'docs', type: 'directory' },
+      { name: 'docs/guide.md', content: '# Guide' },
+    ]);
+
+    const result = await inspectPackage({ packagePath });
+
+    expect(result.files.map((file) => file.path)).toEqual(['_nav.md', 'docs/guide.md']);
+  });
 });
 
 describe('listPackage', () => {
@@ -359,6 +387,21 @@ describe('listPackage', () => {
       'a/second.md',
       'z-last.md',
     ]);
+  });
+
+  it('excludes directory entries from list output', async () => {
+    const packageDir = await createTempDir('mdv-list-directories-');
+    const packagePath = path.join(packageDir, 'directories.mpk');
+
+    await createTarArchive(packagePath, [
+      { name: '_nav.md', content: '- [Guide](docs/guide.md)\n' },
+      { name: 'docs', type: 'directory' },
+      { name: 'docs/guide.md', content: '# Guide' },
+    ]);
+
+    const result = await listPackage({ packagePath });
+
+    expect(result.map((entry) => entry.path)).toEqual(['_nav.md', 'docs/guide.md']);
   });
 });
 

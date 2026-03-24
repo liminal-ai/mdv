@@ -9,10 +9,12 @@ export async function listPackage(options: ListOptions): Promise<FileEntry[]> {
   const files: FileEntry[] = [];
 
   await scanPackage(options.packagePath, async (header, stream) => {
-    files.push({
-      path: header.name,
-      size: Number(header.size ?? 0),
-    });
+    if (header.type === undefined || header.type === null || header.type === 'file') {
+      files.push({
+        path: header.name,
+        size: Number(header.size ?? 0),
+      });
+    }
 
     await drainEntry(stream);
   });

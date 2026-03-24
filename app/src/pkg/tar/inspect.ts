@@ -14,10 +14,12 @@ export async function inspectPackage(options: InspectOptions): Promise<PackageIn
   let foundManifest = false;
 
   const format = await scanPackage(options.packagePath, async (header, stream) => {
-    files.push({
-      path: header.name,
-      size: Number(header.size ?? 0),
-    });
+    if (header.type === undefined || header.type === null || header.type === 'file') {
+      files.push({
+        path: header.name,
+        size: Number(header.size ?? 0),
+      });
+    }
 
     if (header.name !== MANIFEST_FILENAME) {
       await drainEntry(stream);

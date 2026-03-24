@@ -19,7 +19,7 @@ export type {
 
 export { MANIFEST_FILENAME, MERMAID_DIAGRAM_TYPES } from './types.js';
 
-export { PackageError, PackageErrorCode, NotImplementedError } from './errors.js';
+export { PackageError, PackageErrorCode } from './errors.js';
 
 export { parseManifest } from './manifest/parser.js';
 

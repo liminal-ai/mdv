@@ -66,9 +66,9 @@ export async function readDocument(options: ReadOptions): Promise<ReadResult> {
 
     if (manifestContent === undefined) {
       throw new PackageError(
-        PackageErrorCode.FILE_NOT_FOUND,
-        `No navigation entry matches display name: ${options.target.displayName}`,
-        options.target.displayName,
+        PackageErrorCode.MANIFEST_NOT_FOUND,
+        'No manifest found in package',
+        options.packagePath,
       );
     }
 

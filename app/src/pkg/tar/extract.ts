@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs';
-import { mkdir, realpath, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readlink, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createGunzip } from 'node:zlib';
 
@@ -40,7 +40,34 @@ async function verifyRealPath(
   resolvedOutputDir: string,
   entryName: string,
 ): Promise<void> {
-  const realDir = await realpath(dirPath);
+  let stats: Awaited<ReturnType<typeof lstat>>;
+
+  try {
+    stats = await lstat(dirPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return;
+    }
+
+    throw error;
+  }
+
+  let realDir: string;
+
+  if (stats.isSymbolicLink()) {
+    try {
+      realDir = await realpath(dirPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+
+      realDir = path.resolve(path.dirname(dirPath), await readlink(dirPath));
+    }
+  } else {
+    realDir = await realpath(dirPath);
+  }
+
   if (realDir !== resolvedOutputDir && !realDir.startsWith(`${resolvedOutputDir}${path.sep}`)) {
     throw new PackageError(
       PackageErrorCode.PATH_TRAVERSAL,
@@ -179,6 +206,7 @@ async function extractEntry(
   try {
     await mkdir(path.dirname(outputPath), { recursive: true });
     await verifyRealPath(path.dirname(outputPath), resolvedOutputDir, header.name);
+    await verifyRealPath(outputPath, resolvedOutputDir, header.name);
     await writeFile(outputPath, content);
   } catch (error) {
     if (error instanceof PackageError) throw error;

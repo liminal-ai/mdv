@@ -44,15 +44,18 @@ function waitForOutput(
   packStream: ReturnType<typeof pack>,
   archiveStream: NodeJS.ReadableStream,
   outputStream: NodeJS.WritableStream,
+  outputPath: string,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     let settled = false;
+    const suppressUnhandledOutputError = () => {};
 
     const cleanup = () => {
-      for (const stream of new Set([packStream, archiveStream, outputStream])) {
+      for (const stream of new Set([packStream, archiveStream])) {
         stream.removeListener('error', onError);
       }
 
+      outputStream.removeListener('error', onOutputError);
       outputStream.removeListener('finish', onFinish);
     };
 
@@ -66,6 +69,22 @@ function waitForOutput(
       reject(error);
     };
 
+    const onOutputError = (_error: Error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      reject(
+        new PackageError(
+          PackageErrorCode.WRITE_ERROR,
+          `Failed to write package: ${outputPath}`,
+          outputPath,
+        ),
+      );
+    };
+
     const onFinish = () => {
       if (settled) {
         return;
@@ -76,10 +95,12 @@ function waitForOutput(
       resolve();
     };
 
-    for (const stream of new Set([packStream, archiveStream, outputStream])) {
+    for (const stream of new Set([packStream, archiveStream])) {
       stream.once('error', onError);
     }
 
+    outputStream.on('error', suppressUnhandledOutputError);
+    outputStream.once('error', onOutputError);
     outputStream.once('finish', onFinish);
   });
 }
@@ -115,8 +136,8 @@ export async function createPackage(options: CreateOptions): Promise<void> {
     );
   }
 
-  const sourceEntries = await readdir(options.sourceDir, { recursive: true });
-  if (sourceEntries.length === 0) {
+  const sourceEntries = await readdir(options.sourceDir, { recursive: true, withFileTypes: true });
+  if (!sourceEntries.some((entry) => entry.isFile())) {
     throw new PackageError(
       PackageErrorCode.SOURCE_DIR_EMPTY,
       `Source directory is empty: ${options.sourceDir}`,
@@ -144,19 +165,79 @@ export async function createPackage(options: CreateOptions): Promise<void> {
   const archiveStream = options.compress ? packStream.pipe(createGzip()) : packStream;
 
   await mkdir(path.dirname(options.outputPath), { recursive: true });
+
+  try {
+    const outputStats = await stat(options.outputPath);
+
+    if (outputStats.isDirectory()) {
+      throw new PackageError(
+        PackageErrorCode.WRITE_ERROR,
+        `Failed to write package: ${options.outputPath}`,
+        options.outputPath,
+      );
+    }
+  } catch (error) {
+    if (error instanceof PackageError) {
+      throw error;
+    }
+
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+
   const outputStream = createWriteStream(options.outputPath);
-  const outputPromise = waitForOutput(packStream, archiveStream, outputStream);
+  const outputPromise = waitForOutput(packStream, archiveStream, outputStream, options.outputPath);
+  let outputError: Error | undefined;
+
+  void outputPromise.catch((error) => {
+    outputError = error as Error;
+  });
 
   archiveStream.pipe(outputStream);
 
-  for (const relativePath of filePaths) {
-    const absolutePath = path.join(options.sourceDir, relativePath);
-    const content = await readFile(absolutePath);
-    await writeEntry(packStream, relativePath, content);
-  }
+  try {
+    for (const relativePath of filePaths) {
+      if (outputError) {
+        throw outputError;
+      }
 
-  packStream.finalize();
-  await outputPromise;
+      const absolutePath = path.join(options.sourceDir, relativePath);
+      const content = await readFile(absolutePath);
+
+      if (outputError) {
+        throw outputError;
+      }
+
+      try {
+        await writeEntry(packStream, relativePath, content);
+      } catch (error) {
+        throw outputError ?? error;
+      }
+    }
+
+    if (outputError) {
+      throw outputError;
+    }
+
+    packStream.finalize();
+    await outputPromise;
+  } catch (error) {
+    if (!packStream.destroyed) {
+      packStream.destroy();
+    }
+
+    if ('destroy' in archiveStream && typeof archiveStream.destroy === 'function') {
+      archiveStream.destroy();
+    }
+
+    if ('destroy' in outputStream && typeof outputStream.destroy === 'function') {
+      outputStream.destroy();
+    }
+
+    await outputPromise.catch(() => undefined);
+    throw outputError ?? error;
+  }
 }
 
 export default createPackage;
