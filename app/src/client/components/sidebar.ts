@@ -1,5 +1,6 @@
 import type { StateStore } from '../state.js';
 import { collectAllDirPaths, mountFileTree } from './file-tree.js';
+import { mountPackageSidebar } from './package-sidebar.js';
 import { mountRootLine, type RootLineActions } from './root-line.js';
 import { mountWorkspaces, type WorkspacesActions } from './workspaces.js';
 import { createElement } from '../utils/dom.js';
@@ -8,6 +9,7 @@ export interface SidebarActions
   extends RootLineActions, Omit<WorkspacesActions, 'onToggleCollapsed'> {
   onToggleWorkspacesCollapsed: () => void;
   onOpenFile: (path: string) => void | Promise<void>;
+  onEditManifest?: () => void | Promise<void>;
 }
 
 export function mountSidebar(
@@ -74,9 +76,9 @@ export function mountSidebar(
     ],
   });
 
-  const treeHost = createElement('div', { className: 'sidebar__tree' });
+  const contentHost = createElement('div', { className: 'sidebar__content' });
 
-  container.replaceChildren(workspacesHost, rootLineHost, filesHeader, treeHost);
+  container.replaceChildren(workspacesHost, rootLineHost, filesHeader, contentHost);
 
   const cleanupWorkspaces = mountWorkspaces(workspacesHost, store, {
     onToggleCollapsed: actions.onToggleWorkspacesCollapsed,
@@ -112,14 +114,57 @@ export function mountSidebar(
     );
   };
 
-  const cleanupTree = mountFileTree(treeHost, store, {
-    onExpandAll: () => expandAllBtn.click(),
-    onCollapseAll: () => collapseAllBtn.click(),
-    onToggleDir,
-    onSelectFile: (path) => {
-      void actions.onOpenFile(path);
-    },
-  });
+  let cleanupContent: (() => void) | null = null;
+  let currentMode: string | null = null;
+
+  const mountFilesystemTree = (label: string) => {
+    const treeHost = createElement('div', { className: 'sidebar__tree' });
+    contentHost.replaceChildren(
+      createElement('div', {
+        className: 'sidebar__mode-indicator',
+        text: label,
+      }),
+      treeHost,
+    );
+
+    return mountFileTree(treeHost, store, {
+      onExpandAll: () => expandAllBtn.click(),
+      onCollapseAll: () => collapseAllBtn.click(),
+      onToggleDir,
+      onSelectFile: (path) => {
+        void actions.onOpenFile(path);
+      },
+    });
+  };
+
+  const renderMode = () => {
+    const mode = store.get().packageState.sidebarMode;
+    if (mode === currentMode && cleanupContent) {
+      return;
+    }
+
+    cleanupContent?.();
+    cleanupContent = null;
+    currentMode = mode;
+
+    filesHeader.hidden = mode !== 'filesystem';
+
+    if (mode === 'package') {
+      contentHost.replaceChildren();
+      cleanupContent = mountPackageSidebar(contentHost, store, {
+        onOpenFile: actions.onOpenFile,
+        onEditManifest: actions.onEditManifest ?? (() => undefined),
+      });
+      return;
+    }
+
+    if (mode === 'fallback') {
+      cleanupContent = mountFilesystemTree('Package (fallback)');
+      return;
+    }
+
+    cleanupContent = mountFilesystemTree('Folder');
+  };
 
   const render = () => {
     const { sidebarVisible } = store.get();
@@ -129,13 +174,20 @@ export function mountSidebar(
     container.parentElement?.setAttribute('data-sidebar-visible', String(sidebarVisible));
   };
 
+  renderMode();
   render();
-  const unsubscribe = store.subscribe(render);
+  const unsubscribe = store.subscribe((_state, changed) => {
+    if (changed.includes('packageState')) {
+      renderMode();
+    }
+
+    render();
+  });
 
   return () => {
     cleanupWorkspaces();
     cleanupRootLine();
-    cleanupTree();
+    cleanupContent?.();
     unsubscribe();
     container.replaceChildren();
   };

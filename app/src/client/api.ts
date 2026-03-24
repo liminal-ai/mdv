@@ -4,6 +4,7 @@ import type {
   FilePickerResponse,
   PersistedTab,
   FileReadResponse,
+  PackageOpenResponse,
   FileSaveResponse,
   FileTreeResponse,
   RenderFromContentResponse,
@@ -113,6 +114,13 @@ export class ApiClient {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  async openPackage(filePath: string): Promise<PackageOpenResponse> {
+    return this.request('/api/package/open', {
+      method: 'POST',
+      body: { filePath },
+    });
   }
 
   async render(request: {

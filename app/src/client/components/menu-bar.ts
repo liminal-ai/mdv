@@ -14,6 +14,7 @@ interface MenuItem {
 export interface MenuBarActions {
   onOpenFile: () => void | Promise<void>;
   onBrowse: () => void | Promise<void>;
+  onOpenPackage?: () => void | Promise<void>;
   onSave?: () => void | Promise<void>;
   onSaveAs?: () => void | Promise<void>;
   onToggleSidebar: () => void | Promise<void>;
@@ -30,6 +31,7 @@ function getMenuItems(menuId: MenuId, state: ClientState, actions: MenuBarAction
     return [
       { label: 'Open File', shortcut: 'Cmd+O', action: actions.onOpenFile },
       { label: 'Open Folder', shortcut: 'Cmd+Shift+O', action: actions.onBrowse },
+      { label: 'Open Package', action: actions.onOpenPackage },
       {
         label: 'Save',
         shortcut: 'Cmd+S',
@@ -292,6 +294,7 @@ export function mountMenuBar(
     'tabs',
     'activeTabId',
     'session',
+    'packageState',
     'availableThemes',
     'sidebarVisible',
     'exportState',

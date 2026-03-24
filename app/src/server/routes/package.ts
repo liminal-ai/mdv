@@ -4,6 +4,7 @@ import { ErrorResponseSchema } from '../schemas/index.js';
 import {
   PackageCreateRequestSchema,
   PackageCreateResponseSchema,
+  PackageErrorCode,
   PackageExportRequestSchema,
   PackageExportResponseSchema,
   PackageManifestResponseSchema,
@@ -11,7 +12,12 @@ import {
   PackageOpenResponseSchema,
 } from '../schemas/package.js';
 import type { PackageService } from '../services/package.service.js';
-import { toApiError } from '../utils/errors.js';
+import {
+  ExtractionError,
+  InvalidArchiveError,
+  PackageNotFoundError,
+  toApiError,
+} from '../utils/errors.js';
 
 export interface PackageRoutesOptions {
   packageService: PackageService;
@@ -23,8 +29,6 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
   const { packageService } = opts;
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
-  void packageService;
-
   typedApp.post(
     '/api/package/open',
     {
@@ -32,11 +36,31 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
         body: PackageOpenRequestSchema,
         response: {
           200: PackageOpenResponseSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => reply.code(501).send(NotImplementedResponse),
+    async (request, reply) => {
+      try {
+        return await packageService.open(request.body.filePath);
+      } catch (error) {
+        if (error instanceof PackageNotFoundError) {
+          return reply.code(404).send(toApiError(PackageErrorCode.FILE_NOT_FOUND, error.message));
+        }
+        if (error instanceof InvalidArchiveError) {
+          return reply.code(400).send(toApiError(PackageErrorCode.INVALID_ARCHIVE, error.message));
+        }
+        if (error instanceof ExtractionError) {
+          return reply.code(500).send(toApiError(PackageErrorCode.EXTRACTION_ERROR, error.message));
+        }
+
+        return reply
+          .code(500)
+          .send(toApiError(PackageErrorCode.EXTRACTION_ERROR, 'Unexpected error opening package'));
+      }
+    },
   );
 
   typedApp.get(

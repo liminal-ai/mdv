@@ -1,6 +1,7 @@
 import type {
   ExportFormat,
   FileReadResponse,
+  PackageOpenResponse,
   PersistedTab,
   RenderWarning,
   SessionState,
@@ -22,6 +23,7 @@ import { mountUnsavedModal } from './components/unsaved-modal.js';
 import { mountWarningPanel } from './components/warning-panel.js';
 import { mermaidCache } from './components/mermaid-cache.js';
 import { StateStore, getDefaultPackageState, type ClientState, type TabState } from './state.js';
+import { MANIFEST_FILENAME } from '../pkg/types.js';
 import { copyTextToClipboard } from './utils/clipboard.js';
 import { getElectronBridge } from './utils/electron-bridge.js';
 import { INSERT_LINK_EVENT, KeyboardManager } from './utils/keyboard.js';
@@ -140,12 +142,13 @@ function createLoadingTab(
   path: string,
   mode: ClientState['session']['defaultOpenMode'] = 'render',
   scrollPosition = 0,
+  filename = fileName(path),
 ): TabState {
   return {
     id: createTabId(),
     path,
     canonicalPath: path,
-    filename: fileName(path),
+    filename,
     html: '',
     content: '',
     warnings: [],
@@ -220,9 +223,8 @@ function disambiguateDisplayNames(tabs: TabState[]): TabState[] {
     groups.get(base)?.push(tab);
   }
 
-  for (const [base, group] of groups) {
+  for (const [, group] of groups) {
     if (group.length === 1) {
-      group[0]!.filename = base;
       continue;
     }
 
@@ -754,6 +756,74 @@ export async function bootstrapApp(
       }
 
       await switchRoot(selection.path);
+    } catch (error) {
+      setError(error);
+    }
+  };
+
+  const getPackageDisplayName = (absolutePath: string): string | null => {
+    const { packageState } = store.get();
+    if (!packageState.active || !packageState.effectiveRoot) {
+      return null;
+    }
+
+    const prefix = `${packageState.effectiveRoot.replace(/\/$/, '')}/`;
+    if (!absolutePath.startsWith(prefix)) {
+      return null;
+    }
+
+    const relativePath = absolutePath.slice(prefix.length);
+    const findDisplayName = (nodes: ClientState['packageState']['navigation']): string | null => {
+      for (const node of nodes) {
+        if (node.filePath === relativePath) {
+          return node.displayName;
+        }
+
+        const childMatch = findDisplayName(node.children);
+        if (childMatch) {
+          return childMatch;
+        }
+      }
+
+      return null;
+    };
+
+    return findDisplayName(packageState.navigation);
+  };
+
+  const handlePackageOpen = async (response: PackageOpenResponse): Promise<void> => {
+    const { metadata, navigation, packageInfo } = response;
+
+    store.update(
+      {
+        packageState: {
+          active: true,
+          sidebarMode: packageInfo.manifestStatus === 'present' ? 'package' : 'fallback',
+          sourcePath: packageInfo.sourcePath,
+          effectiveRoot: packageInfo.extractedRoot,
+          format: packageInfo.format,
+          mode: 'extracted',
+          navigation: navigation as ClientState['packageState']['navigation'],
+          metadata: metadata as ClientState['packageState']['metadata'],
+          stale: false,
+          manifestStatus: packageInfo.manifestStatus,
+          manifestError: packageInfo.manifestError ?? null,
+          manifestPath: `${packageInfo.extractedRoot}/${MANIFEST_FILENAME}`,
+          collapsedGroups: new Set(),
+        },
+        session: {
+          ...store.get().session,
+          lastRoot: packageInfo.extractedRoot,
+        },
+      },
+      ['packageState', 'session'],
+    );
+  };
+
+  const openPackage = async (filePath: string): Promise<void> => {
+    try {
+      const response = await api.openPackage(filePath);
+      await handlePackageOpen(response);
     } catch (error) {
       setError(error);
     }
@@ -1303,7 +1373,12 @@ export async function bootstrapApp(
     }
 
     const previousActiveTabId = state.activeTabId;
-    const loadingTab = createLoadingTab(path, state.session.defaultOpenMode);
+    const loadingTab = createLoadingTab(
+      path,
+      state.session.defaultOpenMode,
+      0,
+      getPackageDisplayName(path) ?? fileName(path),
+    );
     const nextTabs = disambiguateDisplayNames([
       ...saveScrollPosition(state.tabs, state.activeTabId),
       loadingTab,
@@ -1386,6 +1461,26 @@ export async function bootstrapApp(
       await touchRecentFile(response.path);
       await syncTabsToSession();
     } catch (error) {
+      if (error instanceof ApiError && error.status === 404 && getPackageDisplayName(path)) {
+        const currentState = store.get();
+        if (currentState.tabs.some((tab) => tab.id === loadingTab.id)) {
+          updateTabsState(
+            currentState.tabs.map((tab) =>
+              tab.id === loadingTab.id
+                ? {
+                    ...tab,
+                    loading: false,
+                    status: 'error' as const,
+                    errorMessage: `File not found: ${path}`,
+                  }
+                : tab,
+            ),
+            loadingTab.id,
+          );
+          return;
+        }
+      }
+
       if (error instanceof ApiError && error.status === 404) {
         void api.removeRecentFile(path);
         void (async () => {
@@ -1741,6 +1836,14 @@ export async function bootstrapApp(
   mountMenuBar(menuBarHost, store, {
     onOpenFile: pickAndOpenFile,
     onBrowse: browseForFolder,
+    onOpenPackage: async () => {
+      const selection = window.prompt('Enter the absolute path to a .mpk or .mpkz file');
+      if (!selection) {
+        return;
+      }
+
+      await openPackage(selection);
+    },
     onSave: () => {
       void saveCurrentTab();
     },
@@ -1760,6 +1863,14 @@ export async function bootstrapApp(
     onCopy: copyRootPath,
     onRefresh: refreshTree,
     onOpenFile: openFile,
+    onEditManifest: async () => {
+      const manifestPath = store.get().packageState.manifestPath;
+      if (!manifestPath) {
+        return;
+      }
+
+      await openFile(manifestPath);
+    },
   });
   mountTabStrip(tabStripHost, store, {
     onActivateTab: switchTab,
