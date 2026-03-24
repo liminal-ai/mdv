@@ -33,6 +33,10 @@ import { clearSavePending, isSavePending, markSavePending, WsClient } from './ut
 declare global {
   interface Window {
     __MDV_DISABLE_AUTO_BOOTSTRAP__?: boolean;
+    __MDV_PACKAGE_DROP_HANDLERS__?: {
+      dragover: (event: DragEvent) => void;
+      drop: (event: DragEvent) => void | Promise<void>;
+    };
   }
 }
 
@@ -722,7 +726,28 @@ export async function bootstrapApp(
     }
   };
 
+  const closePreviousTabs = (): void => {
+    const state = store.get();
+    const prevRoot = state.packageState.effectiveRoot;
+    if (!prevRoot) {
+      return;
+    }
+
+    const remainingTabs = disambiguateDisplayNames(
+      state.tabs.filter((tab) => !tab.path.startsWith(prevRoot)),
+    );
+
+    updateTabsState(remainingTabs, remainingTabs.length > 0 ? remainingTabs[0]!.id : null, {
+      closeContextMenu: true,
+    });
+  };
+
   const switchRoot = async (path: string) => {
+    if (store.get().packageState.active) {
+      closePreviousTabs();
+      store.update({ packageState: getDefaultPackageState() }, ['packageState']);
+    }
+
     setTreeLoading(true);
 
     try {
@@ -793,6 +818,7 @@ export async function bootstrapApp(
 
   const handlePackageOpen = async (response: PackageOpenResponse): Promise<void> => {
     const { metadata, navigation, packageInfo } = response;
+    closePreviousTabs();
 
     store.update(
       {
@@ -2017,6 +2043,43 @@ export async function bootstrapApp(
     },
   });
 
+  if (window.__MDV_PACKAGE_DROP_HANDLERS__) {
+    document.removeEventListener('dragover', window.__MDV_PACKAGE_DROP_HANDLERS__.dragover);
+    document.removeEventListener('drop', window.__MDV_PACKAGE_DROP_HANDLERS__.drop);
+  }
+
+  const handleDocumentDragOver = (event: DragEvent) => {
+    event.preventDefault();
+  };
+
+  const handleDocumentDrop = async (event: DragEvent) => {
+    event.preventDefault();
+    const files = event.dataTransfer?.files;
+    if (!files?.length) {
+      return;
+    }
+
+    const file = files[0];
+    const filePath = (file as { path?: string }).path;
+
+    if (!filePath) {
+      return;
+    }
+
+    const ext = filePath.split('.').pop()?.toLowerCase();
+    if (ext === 'mpk' || ext === 'mpkz') {
+      await openPackage(filePath);
+    }
+  };
+
+  window.__MDV_PACKAGE_DROP_HANDLERS__ = {
+    dragover: handleDocumentDragOver,
+    drop: handleDocumentDrop,
+  };
+
+  document.addEventListener('dragover', handleDocumentDragOver);
+  document.addEventListener('drop', handleDocumentDrop);
+
   if (wsClient) {
     wsClient.on('open', () => {
       if (store.get().error?.code === WS_DISCONNECTED_ERROR_CODE) {
@@ -2239,6 +2302,52 @@ export async function bootstrapApp(
         setTreeLoading(false);
         setTreeError(error, () => void refreshTree());
       }
+    }
+  }
+
+  if (bootstrap.session.activePackage) {
+    const activePackage = bootstrap.session.activePackage;
+    const sidebarMode = activePackage.manifestStatus === 'present' ? 'package' : 'fallback';
+    let navigation: ClientState['packageState']['navigation'] = [];
+    let metadata: ClientState['packageState']['metadata'] = {};
+    let shouldRestorePackage = sidebarMode === 'fallback';
+
+    if (sidebarMode === 'package') {
+      try {
+        const manifest = await api.getPackageManifest();
+        navigation = manifest.navigation as ClientState['packageState']['navigation'];
+        metadata = manifest.metadata as ClientState['packageState']['metadata'];
+        shouldRestorePackage = true;
+      } catch {
+        navigation = [];
+        metadata = {};
+      }
+    }
+
+    if (shouldRestorePackage) {
+      store.update(
+        {
+          packageState: {
+            active: true,
+            sidebarMode,
+            sourcePath: activePackage.sourcePath,
+            effectiveRoot: activePackage.extractedRoot,
+            format: activePackage.format,
+            mode: activePackage.mode,
+            navigation,
+            metadata,
+            stale: activePackage.stale,
+            manifestStatus: activePackage.manifestStatus,
+            manifestError: null,
+            manifestPath:
+              activePackage.manifestStatus === 'present'
+                ? `${activePackage.extractedRoot}/${MANIFEST_FILENAME}`
+                : null,
+            collapsedGroups: new Set(),
+          },
+        },
+        ['packageState'],
+      );
     }
   }
 

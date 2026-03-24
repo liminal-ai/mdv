@@ -46,7 +46,8 @@ function createTempDirManager(tempDir = '/tmp/mdv-pkg-test') {
   return {
     create: vi.fn().mockResolvedValue(tempDir),
     cleanup: vi.fn().mockResolvedValue(undefined),
-    getActive: vi.fn().mockReturnValue(tempDir),
+    cleanupDir: vi.fn().mockResolvedValue(undefined),
+    getActive: vi.fn().mockReturnValue(null),
     setActive: vi.fn(),
     cleanupStale: vi.fn().mockResolvedValue(undefined),
   };

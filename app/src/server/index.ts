@@ -24,6 +24,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Fas
     sessionDir: options.sessionDir,
     sessionService: options.sessionService,
     browseService: options.browseService,
+    cliArg: options.cliArg ?? process.argv[2],
   });
   const host = options.host ?? '127.0.0.1';
   const preferredPort = options.preferredPort ?? 3000;
@@ -60,7 +61,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Fas
 }
 
 async function main() {
-  await startServer();
+  await startServer({ cliArg: process.argv[2] });
 }
 
 const entryUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : null;

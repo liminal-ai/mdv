@@ -15,6 +15,7 @@ import {
   UpdateTabsRequestSchema,
   UpdateSidebarRequestSchema,
 } from '../schemas/index.js';
+import type { PackageService } from '../services/package.service.js';
 import { SessionService } from '../services/session.service.js';
 import { themeRegistry } from '../services/theme-registry.js';
 import { ErrorCode, isNotFoundError, isPermissionError, toApiError } from '../utils/errors.js';
@@ -22,10 +23,12 @@ import { ErrorCode, isNotFoundError, isPermissionError, toApiError } from '../ut
 export interface SessionRoutesOptions {
   sessionService?: SessionService;
   sessionDir?: string;
+  packageService?: PackageService;
 }
 
 export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOptions) {
   const sessionService = opts.sessionService ?? new SessionService(opts.sessionDir);
+  const packageService = opts.packageService;
   const typedApp = app.withTypeProvider<ZodTypeProvider>();
 
   typedApp.get(
@@ -93,6 +96,7 @@ export async function sessionRoutes(app: FastifyInstance, opts: SessionRoutesOpt
         throw error;
       }
 
+      await packageService?.close();
       return sessionService.setRoot(root);
     },
   );

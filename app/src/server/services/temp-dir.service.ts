@@ -8,10 +8,17 @@ export class TempDirManager {
   private activeTempDir: string | null = null;
 
   async create(): Promise<string> {
-    await this.cleanup();
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), TEMP_PREFIX));
     this.activeTempDir = tempDir;
     return tempDir;
+  }
+
+  async cleanupDir(dir: string): Promise<void> {
+    try {
+      await fs.rm(dir, { recursive: true, force: true });
+    } catch (error) {
+      console.warn(`Failed to cleanup temp directory ${dir}:`, error);
+    }
   }
 
   async cleanup(): Promise<void> {
@@ -33,7 +40,7 @@ export class TempDirManager {
     return this.activeTempDir;
   }
 
-  setActive(dir: string): void {
+  setActive(dir: string | null): void {
     this.activeTempDir = dir;
   }
 

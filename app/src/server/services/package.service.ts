@@ -14,6 +14,9 @@ import type { TempDirManager } from './temp-dir.service.js';
 import {
   ExtractionError,
   InvalidArchiveError,
+  ManifestNotFoundError,
+  ManifestParseError,
+  NoActivePackageError,
   NotImplementedError,
   PackageNotFoundError,
 } from '../utils/errors.js';
@@ -54,17 +57,27 @@ export class PackageService {
       throw new InvalidArchiveError(filePath, `Unsupported package extension: ${ext || 'unknown'}`);
     }
 
+    const previousTempDir = this.tempDirManager.getActive();
     const tempDir = await this.tempDirManager.create();
 
     try {
       await extractPackage({ packagePath: filePath, outputDir: tempDir });
     } catch (error) {
+      // Extraction failed — cleanup new temp dir, restore previous state
+      await this.tempDirManager.cleanupDir(tempDir);
+      this.tempDirManager.setActive(previousTempDir);
+
       const code = (error as { code?: string } | undefined)?.code;
       const message = error instanceof Error ? error.message : String(error);
       if (code === 'INVALID_ARCHIVE' || code === 'COMPRESSION_ERROR' || code === 'PATH_TRAVERSAL') {
         throw new InvalidArchiveError(filePath, message);
       }
       throw new ExtractionError(filePath, message);
+    }
+
+    // Success — cleanup previous temp dir
+    if (previousTempDir) {
+      await this.tempDirManager.cleanupDir(previousTempDir);
     }
 
     let metadata: ManifestMetadata = {};
@@ -120,7 +133,26 @@ export class PackageService {
   }
 
   async getManifest(): Promise<PackageManifestResponse> {
-    throw new NotImplementedError('PackageService.getManifest');
+    if (!this.state) {
+      throw new NoActivePackageError();
+    }
+
+    if (this.state.manifestStatus === 'missing') {
+      throw new ManifestNotFoundError();
+    }
+
+    if (this.state.manifestStatus === 'unreadable') {
+      throw new ManifestParseError(this.state.manifestError);
+    }
+
+    const manifestPath = path.join(this.state.extractedRoot, MANIFEST_FILENAME);
+    const raw = await fs.readFile(manifestPath, 'utf-8');
+
+    return {
+      metadata: this.state.metadata,
+      navigation: this.state.navigation,
+      raw,
+    };
   }
 
   async create(_rootDir: string, _overwrite?: boolean): Promise<PackageCreateResponse> {

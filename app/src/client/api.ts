@@ -4,6 +4,7 @@ import type {
   FilePickerResponse,
   PersistedTab,
   FileReadResponse,
+  PackageManifestResponse,
   PackageOpenResponse,
   FileSaveResponse,
   FileTreeResponse,
@@ -121,6 +122,10 @@ export class ApiClient {
       method: 'POST',
       body: { filePath },
     });
+  }
+
+  async getPackageManifest(): Promise<PackageManifestResponse> {
+    return this.request('/api/package/manifest');
   }
 
   async render(request: {

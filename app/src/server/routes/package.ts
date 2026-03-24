@@ -15,6 +15,9 @@ import type { PackageService } from '../services/package.service.js';
 import {
   ExtractionError,
   InvalidArchiveError,
+  ManifestNotFoundError,
+  ManifestParseError,
+  NoActivePackageError,
   PackageNotFoundError,
   toApiError,
 } from '../utils/errors.js';
@@ -69,11 +72,39 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
       schema: {
         response: {
           200: PackageManifestResponseSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          500: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => reply.code(501).send(NotImplementedResponse),
+    async (_request, reply) => {
+      try {
+        return await packageService.getManifest();
+      } catch (error) {
+        if (error instanceof NoActivePackageError) {
+          return reply
+            .code(404)
+            .send(toApiError(PackageErrorCode.NO_ACTIVE_PACKAGE, error.message));
+        }
+
+        if (error instanceof ManifestNotFoundError) {
+          return reply
+            .code(404)
+            .send(toApiError(PackageErrorCode.MANIFEST_NOT_FOUND, error.message));
+        }
+
+        if (error instanceof ManifestParseError) {
+          return reply
+            .code(400)
+            .send(toApiError(PackageErrorCode.MANIFEST_PARSE_ERROR, error.message));
+        }
+
+        return reply
+          .code(500)
+          .send(toApiError(PackageErrorCode.EXTRACTION_ERROR, 'Unexpected error loading manifest'));
+      }
+    },
   );
 
   typedApp.post(

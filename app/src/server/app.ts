@@ -1,3 +1,5 @@
+import { stat } from 'node:fs/promises';
+import path from 'node:path';
 import Fastify from 'fastify';
 import websocket from '@fastify/websocket';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
@@ -23,6 +25,7 @@ export interface AppOptions {
   sessionDir?: string;
   sessionService?: SessionService;
   browseService?: BrowseService;
+  cliArg?: string;
 }
 
 export async function buildApp(opts?: AppOptions) {
@@ -38,6 +41,7 @@ export async function buildApp(opts?: AppOptions) {
   await app.register(websocket);
   await app.register(sessionRoutes, {
     sessionService,
+    packageService,
   });
   await app.register(packageRoutes, { packageService });
   await app.register(browseRoutes, {
@@ -54,6 +58,30 @@ export async function buildApp(opts?: AppOptions) {
     sessionService,
   });
   await app.register(wsRoutes);
+
+  if (opts?.cliArg) {
+    const resolvedPath = path.resolve(opts.cliArg);
+    const ext = path.extname(opts.cliArg).toLowerCase();
+
+    if (ext === '.mpk' || ext === '.mpkz') {
+      await packageService.open(resolvedPath);
+    } else {
+      try {
+        const stats = await stat(resolvedPath);
+        if (stats.isDirectory()) {
+          await sessionService.setRoot(resolvedPath);
+        }
+        // If it's a file, don't call setRoot — existing file-open behavior handles it
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          console.warn(`CLI argument path does not exist: ${resolvedPath}`);
+          // App starts in default empty state
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
 
   return app;
 }
