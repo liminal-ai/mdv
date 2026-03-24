@@ -25,7 +25,6 @@ import {
   ManifestParseError,
   ManifestExistsError,
   NoActivePackageError,
-  NotImplementedError,
   PackageNotFoundError,
 } from '../utils/errors.js';
 
@@ -225,13 +224,18 @@ export class PackageService {
     await fs.writeFile(manifestPath, manifestContent);
 
     const parsed = parseManifest(manifestContent);
+    const currentState = this.state;
+    const isActiveExtractedRoot =
+      currentState?.mode === 'extracted' && currentState.extractedRoot === rootDir;
+
     this.state = {
-      sourcePath: rootDir,
+      sourcePath: isActiveExtractedRoot ? currentState.sourcePath : rootDir,
       extractedRoot: rootDir,
-      format: 'mpk',
-      mode: 'directory',
+      format: isActiveExtractedRoot ? currentState.format : 'mpk',
+      mode: isActiveExtractedRoot ? 'extracted' : 'directory',
       manifestStatus: 'present',
-      stale: false,
+      manifestError: undefined,
+      stale: isActiveExtractedRoot,
       navigation: parsed.navigation,
       metadata: parsed.metadata,
     };
@@ -321,7 +325,68 @@ export class PackageService {
   }
 
   async restore(): Promise<void> {
-    throw new NotImplementedError('PackageService.restore');
+    const session = await this.sessionService.load();
+    const activePackage = session.activePackage;
+    if (!activePackage) {
+      return;
+    }
+
+    const checkPath =
+      activePackage.mode === 'extracted' ? activePackage.extractedRoot : activePackage.sourcePath;
+
+    try {
+      await fs.stat(checkPath);
+    } catch {
+      await this.sessionService.setActivePackage(null);
+      return;
+    }
+
+    let navigation: NavigationNode[] = [];
+    let metadata: ManifestMetadata = {};
+    let manifestStatus = activePackage.manifestStatus;
+    let manifestError: string | undefined;
+
+    const manifestPath = path.join(
+      activePackage.mode === 'extracted' ? activePackage.extractedRoot : activePackage.sourcePath,
+      MANIFEST_FILENAME,
+    );
+
+    try {
+      const content = await fs.readFile(manifestPath, 'utf-8');
+      try {
+        const parsed = parseManifest(content);
+        navigation = parsed.navigation;
+        metadata = parsed.metadata;
+        manifestStatus = 'present';
+      } catch (error) {
+        manifestStatus = 'unreadable';
+        manifestError = error instanceof Error ? error.message : String(error);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        manifestStatus = 'missing';
+      }
+    }
+
+    if (activePackage.mode === 'extracted') {
+      this.tempDirManager.setActive(activePackage.extractedRoot);
+    }
+
+    this.state = {
+      sourcePath: activePackage.sourcePath,
+      extractedRoot: activePackage.extractedRoot,
+      format: activePackage.format,
+      mode: activePackage.mode,
+      manifestStatus,
+      manifestError,
+      stale: activePackage.stale,
+      navigation,
+      metadata,
+    };
+
+    if (manifestStatus !== activePackage.manifestStatus) {
+      await this.persistState();
+    }
   }
 
   private async persistState(): Promise<void> {

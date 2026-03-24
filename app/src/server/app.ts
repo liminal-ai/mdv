@@ -26,6 +26,7 @@ export interface AppOptions {
   sessionService?: SessionService;
   browseService?: BrowseService;
   cliArg?: string;
+  runStartupTasks?: boolean;
 }
 
 export async function buildApp(opts?: AppOptions) {
@@ -33,6 +34,7 @@ export async function buildApp(opts?: AppOptions) {
   const sessionService = opts?.sessionService ?? new SessionService(opts?.sessionDir);
   const tempDirManager = new TempDirManager();
   const packageService = new PackageService(tempDirManager, sessionService);
+  const runStartupTasks = opts?.runStartupTasks ?? !process.env.VITEST;
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -83,6 +85,11 @@ export async function buildApp(opts?: AppOptions) {
     }
   }
 
+  if (runStartupTasks) {
+    await packageService.restore();
+    await tempDirManager.cleanupStale();
+  }
+
   app.addHook('onResponse', async (request, reply) => {
     if (request.method === 'PUT' && request.url === '/api/file' && reply.statusCode === 200) {
       const state = packageService.getState();
@@ -93,6 +100,10 @@ export async function buildApp(opts?: AppOptions) {
         }
       }
     }
+  });
+
+  app.addHook('onClose', async () => {
+    await tempDirManager.cleanup();
   });
 
   return app;

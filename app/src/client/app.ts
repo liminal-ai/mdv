@@ -881,7 +881,49 @@ export async function bootstrapApp(
   };
 
   const handleNewPackage = async (): Promise<void> => {
-    const root = store.get().session.lastRoot;
+    const state = store.get();
+    const pkgState = state.packageState;
+
+    if (pkgState.active && pkgState.sidebarMode === 'fallback' && pkgState.effectiveRoot) {
+      const hasExistingManifest = pkgState.manifestStatus === 'unreadable';
+
+      if (hasExistingManifest) {
+        const confirmed = window.confirm(
+          'The existing manifest could not be parsed. Overwrite with a new scaffold?',
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      try {
+        const response = await api.createPackage({
+          rootDir: pkgState.effectiveRoot,
+          overwrite: hasExistingManifest,
+        });
+
+        store.update(
+          {
+            packageState: {
+              ...store.get().packageState,
+              sidebarMode: 'package',
+              navigation: response.navigation as ClientState['packageState']['navigation'],
+              metadata: response.metadata as ClientState['packageState']['metadata'],
+              manifestStatus: 'present',
+              manifestError: null,
+              manifestPath: response.manifestPath,
+              stale: true,
+            },
+          },
+          ['packageState'],
+        );
+      } catch (error) {
+        setError(error);
+      }
+      return;
+    }
+
+    const root = state.session.lastRoot;
     if (!root) {
       return;
     }

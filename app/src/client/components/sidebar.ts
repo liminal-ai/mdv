@@ -159,7 +159,36 @@ export function mountSidebar(
     }
 
     if (mode === 'fallback') {
-      cleanupContent = mountFilesystemTree('Package (fallback)');
+      const pkgState = store.get().packageState;
+      const indicatorText =
+        pkgState.manifestStatus === 'unreadable'
+          ? 'Manifest could not be parsed — showing filesystem view'
+          : 'No manifest — showing filesystem view';
+
+      const fallbackIndicator = createElement('div', {
+        className: 'sidebar__fallback-indicator',
+        text: indicatorText,
+      });
+
+      contentHost.replaceChildren(
+        createElement('div', {
+          className: 'sidebar__mode-indicator sidebar__mode-indicator--fallback',
+          text: 'Package (fallback)',
+        }),
+        fallbackIndicator,
+      );
+
+      const treeHost = createElement('div', { className: 'sidebar__tree' });
+      contentHost.appendChild(treeHost);
+
+      cleanupContent = mountFileTree(treeHost, store, {
+        onExpandAll: () => expandAllBtn.click(),
+        onCollapseAll: () => collapseAllBtn.click(),
+        onToggleDir,
+        onSelectFile: (path) => {
+          void actions.onOpenFile(path);
+        },
+      });
       return;
     }
 
