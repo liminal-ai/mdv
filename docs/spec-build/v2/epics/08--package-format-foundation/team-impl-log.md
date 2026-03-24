@@ -1,7 +1,7 @@
 # Team Implementation Log — Epics 8 & 9
 
 **State:** `STORY_ACTIVE`
-**Active Story:** E8-S5 (CLI Interface)
+**Active Story:** E8-S6 (Rendering Library Exposure)
 **Phase:** reviewing
 **CLI:** codex-subagent (Codex CLI, gpt-5.4)
 **Team:** epic-8-9-impl
@@ -210,6 +210,16 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 **Cumulative test count:** 715 (baseline 711 + 4 structural)
 
 **Notes:** Clean first-pass implementation. First teammate attempt failed (Codex session incomplete), re-spawned with identical prompt — second attempt succeeded cleanly.
+
+### E8-S5: CLI Interface — ACCEPTED
+
+**Pre-acceptance receipt:**
+- CLI evidence: Implementation `019d1d74-1f2f-7512-bcb6-b15003306d78`, Review `019d1d7b-c219-79e2-84cb-cfd5b96c07ac`
+- Findings: Codex flagged --file/--name mutual exclusivity gap (accepted-risk — no TC, deterministic behavior). Commander boundary integrated.
+- Gate: `npm run verify` — 77 files, 793 tests, all green
+- Open risks: None
+
+**Cumulative test count:** 793
 
 ### E8-S4: Package Inspection & Reading — ACCEPTED
 
