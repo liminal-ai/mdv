@@ -1,7 +1,7 @@
 # Team Implementation Log — Epics 8 & 9
 
 **State:** `STORY_ACTIVE`
-**Active Story:** E8-S3 (Package Extraction)
+**Active Story:** E8-S4 (Package Inspection & Reading)
 **Phase:** reviewing
 **CLI:** codex-subagent (Codex CLI, gpt-5.4)
 **Team:** epic-8-9-impl
@@ -210,6 +210,18 @@ Step 5 — Report to orchestrator (SEND THIS MESSAGE):
 **Cumulative test count:** 715 (baseline 711 + 4 structural)
 
 **Notes:** Clean first-pass implementation. First teammate attempt failed (Codex session incomplete), re-spawned with identical prompt — second attempt succeeded cleanly.
+
+### E8-S3: Package Extraction — ACCEPTED
+
+**Pre-acceptance receipt:**
+- CLI evidence: Implementation `019d1d50-cd00-7092-9cd1-60521e3f5153`, Review `019d1d58-5293-70d2-a2f6-058be3fad5bd`
+- Findings: P1 symlink bypass (fixed — realpath verification added). P1 missing error wrapping (fixed — READ_ERROR for input failures). P2 TC-7.3a limited coverage (accepted-risk — mechanism proven, each error code tested by its own TC).
+- Gate: `npm run verify` — 74 files, 763 tests, all green
+- Open risks: None
+
+**Cumulative test count:** 763 (749 + 12 TC + 2 security hardening)
+
+**Notes:** This is the first story where the review cycle found and fixed real security issues. The dual-review pattern (Opus + Codex) caught the symlink bypass that the implementer missed. This validates the review process for security-sensitive code.
 
 ### E8-S2: Package Creation — ACCEPTED
 
