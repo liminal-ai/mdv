@@ -1,6 +1,7 @@
+import { execFile } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { ErrorResponseSchema } from '../schemas/index.js';
+import { ErrorResponseSchema, FilePickerResponseSchema } from '../schemas/index.js';
 import {
   PackageCreateRequestSchema,
   PackageCreateResponseSchema,
@@ -24,6 +25,28 @@ import {
   isNotFoundError,
   toApiError,
 } from '../utils/errors.js';
+
+const PACKAGE_PICKER_COMMAND =
+  'POSIX path of (choose file of type {"mpk", "mpkz"} with prompt "Open Package")';
+const PACKAGE_PICKER_TIMEOUT_MS = 60_000;
+
+function execOsascript(command: string): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'osascript',
+      ['-e', command],
+      { timeout: PACKAGE_PICKER_TIMEOUT_MS },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve({ stdout, stderr });
+      },
+    );
+  });
+}
 
 export interface PackageRoutesOptions {
   packageService: PackageService;
@@ -103,7 +126,9 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
 
         return reply
           .code(500)
-          .send(toApiError(PackageErrorCode.EXTRACTION_ERROR, 'Unexpected error loading manifest'));
+          .send(
+            toApiError(PackageErrorCode.MANIFEST_PARSE_ERROR, 'Unexpected error loading manifest'),
+          );
       }
     },
   );
@@ -194,6 +219,34 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
               PackageErrorCode.EXPORT_ERROR,
               err instanceof Error ? err.message : 'Export failed',
             ),
+          );
+      }
+    },
+  );
+
+  typedApp.post(
+    '/api/package/pick',
+    {
+      schema: {
+        response: {
+          200: FilePickerResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    },
+    async (_request, reply) => {
+      try {
+        const { stdout } = await execOsascript(PACKAGE_PICKER_COMMAND);
+        return { path: stdout.trim() };
+      } catch (error) {
+        if (Number((error as { code?: number | string } | undefined)?.code) === 1) {
+          return null;
+        }
+
+        return reply
+          .code(500)
+          .send(
+            toApiError(PackageErrorCode.EXTRACTION_ERROR, 'Failed to open the package picker.'),
           );
       }
     },

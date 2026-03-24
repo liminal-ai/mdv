@@ -230,6 +230,11 @@
   box-shadow: var(--shadow-context-menu);
 }
 
+.error-notification--warning {
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-bg-secondary));
+  border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+}
+
 .error-notification__body {
   display: grid;
   gap: 0.3rem;

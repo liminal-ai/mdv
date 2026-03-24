@@ -48,9 +48,14 @@ export function mountErrorNotification(
       }),
     );
 
+    const notificationClass =
+      error.severity === 'warning'
+        ? 'error-notification error-notification--warning'
+        : 'error-notification';
+
     container.replaceChildren(
       createElement('div', {
-        className: 'error-notification',
+        className: notificationClass,
         attrs: { role: 'alert' },
         children: [
           createElement('div', {

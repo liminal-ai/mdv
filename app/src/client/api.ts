@@ -119,6 +119,12 @@ export class ApiClient {
     }
   }
 
+  async pickPackage(): Promise<FilePickerResponse> {
+    return this.request('/api/package/pick', {
+      method: 'POST',
+    });
+  }
+
   async openPackage(filePath: string): Promise<PackageOpenResponse> {
     return this.request('/api/package/open', {
       method: 'POST',

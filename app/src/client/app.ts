@@ -449,8 +449,8 @@ export async function bootstrapApp(
     store.update({ error: getErrorMessage(error) }, ['error']);
   };
 
-  const setClientError = (code: string, message: string) => {
-    store.update({ error: { code, message } }, ['error']);
+  const setClientError = (code: string, message: string, severity?: 'error' | 'warning') => {
+    store.update({ error: { code, message, severity } }, ['error']);
   };
 
   const setTreeError = (error: unknown, retryFn: () => void) => {
@@ -1260,7 +1260,7 @@ export async function bootstrapApp(
           );
 
           if (manifest.navigation.length === 0) {
-            setClientError('EMPTY_NAVIGATION', 'Manifest has no navigation entries');
+            setClientError('EMPTY_NAVIGATION', 'Manifest has no navigation entries', 'warning');
           }
         } catch (manifestError) {
           if (manifestError instanceof ApiError && manifestError.code === 'MANIFEST_PARSE_ERROR') {
@@ -1268,6 +1268,8 @@ export async function bootstrapApp(
               'MANIFEST_PARSE_ERROR',
               'Manifest has syntax errors — sidebar unchanged',
             );
+          } else {
+            setClientError('MANIFEST_REFRESH_FAILED', 'Failed to refresh manifest');
           }
         }
       }
@@ -2057,12 +2059,12 @@ export async function bootstrapApp(
     onOpenFile: pickAndOpenFile,
     onBrowse: browseForFolder,
     onOpenPackage: async () => {
-      const selection = window.prompt('Enter the absolute path to a .mpk or .mpkz file');
-      if (!selection) {
+      const result = await api.pickPackage();
+      if (!result) {
         return;
       }
 
-      await openPackage(selection);
+      await openPackage(result.path);
     },
     onNewPackage: handleNewPackage,
     onExportPackage: handleExportPackage,
