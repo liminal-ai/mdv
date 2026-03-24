@@ -1,6 +1,7 @@
 import type {
   ExportFormat,
   FileReadResponse,
+  PackageCreateResponse,
   PackageOpenResponse,
   PersistedTab,
   RenderWarning,
@@ -846,11 +847,64 @@ export async function bootstrapApp(
     );
   };
 
+  const handlePackageCreated = (response: PackageCreateResponse): void => {
+    const root = store.get().session.lastRoot;
+    store.update(
+      {
+        packageState: {
+          active: true,
+          sidebarMode: 'package',
+          sourcePath: root,
+          effectiveRoot: root,
+          format: 'mpk',
+          mode: 'directory',
+          navigation: response.navigation as ClientState['packageState']['navigation'],
+          metadata: response.metadata as ClientState['packageState']['metadata'],
+          stale: false,
+          manifestStatus: 'present',
+          manifestError: null,
+          manifestPath: response.manifestPath,
+          collapsedGroups: new Set(),
+        },
+      },
+      ['packageState'],
+    );
+  };
+
   const openPackage = async (filePath: string): Promise<void> => {
     try {
       const response = await api.openPackage(filePath);
       await handlePackageOpen(response);
     } catch (error) {
+      setError(error);
+    }
+  };
+
+  const handleNewPackage = async (): Promise<void> => {
+    const root = store.get().session.lastRoot;
+    if (!root) {
+      return;
+    }
+
+    try {
+      const response = await api.createPackage({ rootDir: root });
+      handlePackageCreated(response);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'MANIFEST_EXISTS') {
+        const confirmed = window.confirm(
+          'A manifest already exists. Overwrite it with a new scaffold?',
+        );
+        if (confirmed) {
+          try {
+            const response = await api.createPackage({ rootDir: root, overwrite: true });
+            handlePackageCreated(response);
+          } catch (retryError) {
+            setError(retryError);
+          }
+        }
+        return;
+      }
+
       setError(error);
     }
   };
@@ -1870,6 +1924,7 @@ export async function bootstrapApp(
 
       await openPackage(selection);
     },
+    onNewPackage: handleNewPackage,
     onSave: () => {
       void saveCurrentTab();
     },

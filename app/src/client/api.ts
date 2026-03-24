@@ -4,6 +4,7 @@ import type {
   FilePickerResponse,
   PersistedTab,
   FileReadResponse,
+  PackageCreateResponse,
   PackageManifestResponse,
   PackageOpenResponse,
   FileSaveResponse,
@@ -121,6 +122,16 @@ export class ApiClient {
     return this.request('/api/package/open', {
       method: 'POST',
       body: { filePath },
+    });
+  }
+
+  async createPackage(request: {
+    rootDir: string;
+    overwrite?: boolean;
+  }): Promise<PackageCreateResponse> {
+    return this.request('/api/package/create', {
+      method: 'POST',
+      body: request,
     });
   }
 

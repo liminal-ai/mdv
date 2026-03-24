@@ -15,10 +15,13 @@ import type { PackageService } from '../services/package.service.js';
 import {
   ExtractionError,
   InvalidArchiveError,
+  InvalidPathError,
   ManifestNotFoundError,
   ManifestParseError,
+  ManifestExistsError,
   NoActivePackageError,
   PackageNotFoundError,
+  isNotFoundError,
   toApiError,
 } from '../utils/errors.js';
 
@@ -114,11 +117,45 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
         body: PackageCreateRequestSchema,
         response: {
           200: PackageCreateResponseSchema,
-          501: ErrorResponseSchema,
+          400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
+          409: ErrorResponseSchema,
         },
       },
     },
-    async (_request, reply) => reply.code(501).send(NotImplementedResponse),
+    async (request, reply) => {
+      try {
+        return await packageService.create(request.body.rootDir, request.body.overwrite);
+      } catch (error) {
+        if (error instanceof ManifestExistsError) {
+          return reply.code(409).send(toApiError(PackageErrorCode.MANIFEST_EXISTS, error.message));
+        }
+
+        if (error instanceof InvalidPathError) {
+          return reply.code(400).send(toApiError(PackageErrorCode.INVALID_DIR_PATH, error.message));
+        }
+
+        if (isNotFoundError(error)) {
+          return reply
+            .code(404)
+            .send(
+              toApiError(
+                PackageErrorCode.DIR_NOT_FOUND,
+                `Directory not found: ${request.body.rootDir}`,
+              ),
+            );
+        }
+
+        return reply
+          .code(400)
+          .send(
+            toApiError(
+              PackageErrorCode.INVALID_DIR_PATH,
+              error instanceof Error ? error.message : 'Invalid directory',
+            ),
+          );
+      }
+    },
   );
 
   typedApp.post(

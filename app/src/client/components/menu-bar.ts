@@ -5,6 +5,7 @@ type MenuId = 'file' | 'export' | 'view';
 type ExportFormat = 'pdf' | 'docx' | 'html';
 
 interface MenuItem {
+  kind?: 'action' | 'separator';
   label: string;
   shortcut?: string;
   disabled?: boolean;
@@ -15,6 +16,7 @@ export interface MenuBarActions {
   onOpenFile: () => void | Promise<void>;
   onBrowse: () => void | Promise<void>;
   onOpenPackage?: () => void | Promise<void>;
+  onNewPackage?: () => void | Promise<void>;
   onSave?: () => void | Promise<void>;
   onSaveAs?: () => void | Promise<void>;
   onToggleSidebar: () => void | Promise<void>;
@@ -28,10 +30,20 @@ const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html'];
 function getMenuItems(menuId: MenuId, state: ClientState, actions: MenuBarActions): MenuItem[] {
   if (menuId === 'file') {
     const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+    const pkgState = state.packageState;
+    const isExtractedWithManifest =
+      pkgState.active && pkgState.mode === 'extracted' && pkgState.manifestStatus === 'present';
+
     return [
       { label: 'Open File', shortcut: 'Cmd+O', action: actions.onOpenFile },
       { label: 'Open Folder', shortcut: 'Cmd+Shift+O', action: actions.onBrowse },
       { label: 'Open Package', action: actions.onOpenPackage },
+      {
+        label: 'New Package',
+        disabled: isExtractedWithManifest,
+        action: !isExtractedWithManifest ? actions.onNewPackage : undefined,
+      },
+      { kind: 'separator', label: 'separator-file-new-package' },
       {
         label: 'Save',
         shortcut: 'Cmd+S',
@@ -155,7 +167,9 @@ export function mountMenuBar(
     }
 
     const [menuId, indexText] = itemKey.split(':') as [MenuId, string];
-    const items = getMenuItems(menuId, store.get(), actions).filter((item) => !item.disabled);
+    const items = getMenuItems(menuId, store.get(), actions).filter(
+      (item) => item.kind !== 'separator' && !item.disabled,
+    );
     const currentIndex = Number(indexText);
 
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -405,6 +419,13 @@ function createDropdown(
       let enabledIndex = -1;
 
       return getMenuItems(menuId, state, actions).map((item) => {
+        if (item.kind === 'separator') {
+          return createElement('div', {
+            className: 'menu-bar__separator',
+            attrs: { role: 'separator' },
+          });
+        }
+
         const menuItemIndex = item.disabled ? null : ++enabledIndex;
 
         return createElement('button', {

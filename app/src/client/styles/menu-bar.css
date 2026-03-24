@@ -102,6 +102,12 @@
   text-align: left;
 }
 
+.menu-bar__separator {
+  height: 1px;
+  margin: 0.2rem 0;
+  background: var(--color-border-light);
+}
+
 .menu-bar__shortcut,
 .menu-bar__submenu-label {
   color: var(--color-text-muted);

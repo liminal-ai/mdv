@@ -8,14 +8,21 @@ import type {
   PackageManifestResponse,
   PackageOpenResponse,
 } from '../schemas/package.js';
-import { extractPackage, MANIFEST_FILENAME, parseManifest } from '../../pkg/index.js';
+import {
+  extractPackage,
+  MANIFEST_FILENAME,
+  parseManifest,
+  scaffoldManifest,
+} from '../../pkg/index.js';
 import type { SessionService } from './session.service.js';
 import type { TempDirManager } from './temp-dir.service.js';
 import {
   ExtractionError,
   InvalidArchiveError,
+  InvalidPathError,
   ManifestNotFoundError,
   ManifestParseError,
+  ManifestExistsError,
   NoActivePackageError,
   NotImplementedError,
   PackageNotFoundError,
@@ -31,6 +38,24 @@ interface ActivePackageState {
   stale: boolean;
   navigation: NavigationNode[];
   metadata: ManifestMetadata;
+}
+
+function hasDotfileSegment(targetPath: string): boolean {
+  return targetPath.split('/').some((segment) => segment.startsWith('.'));
+}
+
+function filterScaffoldContent(content: string): string {
+  return content
+    .split('\n')
+    .filter((line) => {
+      const match = line.match(/\]\(([^)]+)\)\s*$/);
+      if (!match) {
+        return line.trim().length > 0;
+      }
+
+      return !hasDotfileSegment(match[1] ?? '');
+    })
+    .join('\n');
 }
 
 export class PackageService {
@@ -155,8 +180,52 @@ export class PackageService {
     };
   }
 
-  async create(_rootDir: string, _overwrite?: boolean): Promise<PackageCreateResponse> {
-    throw new NotImplementedError('PackageService.create');
+  async create(rootDir: string, overwrite = false): Promise<PackageCreateResponse> {
+    const rootStats = await fs.stat(rootDir);
+    if (!rootStats.isDirectory()) {
+      const error = new InvalidPathError(rootDir);
+      error.message = `Not a directory: ${rootDir}`;
+      throw error;
+    }
+
+    const manifestPath = path.join(rootDir, MANIFEST_FILENAME);
+    try {
+      await fs.stat(manifestPath);
+      if (!overwrite) {
+        throw new ManifestExistsError(manifestPath);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+
+    const scaffoldedContent = filterScaffoldContent(await scaffoldManifest(rootDir));
+    const manifestContent =
+      scaffoldedContent.length > 0
+        ? `---\ntitle: ${path.basename(rootDir)}\n---\n\n${scaffoldedContent}`
+        : `---\ntitle: ${path.basename(rootDir)}\n---\n`;
+
+    await fs.writeFile(manifestPath, manifestContent);
+
+    const parsed = parseManifest(manifestContent);
+    this.state = {
+      sourcePath: rootDir,
+      extractedRoot: rootDir,
+      format: 'mpk',
+      mode: 'directory',
+      manifestStatus: 'present',
+      stale: false,
+      navigation: parsed.navigation,
+      metadata: parsed.metadata,
+    };
+    await this.persistState();
+
+    return {
+      metadata: parsed.metadata,
+      navigation: parsed.navigation,
+      manifestPath,
+    };
   }
 
   async export(
