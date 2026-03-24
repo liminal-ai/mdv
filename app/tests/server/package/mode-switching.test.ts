@@ -191,17 +191,24 @@ describe('CLI routing (server)', () => {
     await app.close();
   });
 
-  it('TC-1.3b-server: non-existent CLI arg starts empty', async () => {
+  it('TC-1.3b-server: missing CLI package starts app in empty state with warning', async () => {
     const enoent = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     vi.mocked(fs.stat).mockRejectedValue(enoent);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const sessionService = createFullSessionService();
     const app = await buildApp({
       sessionService: sessionService as never,
-      cliArg: '/nonexistent/path',
+      cliArg: '/nonexistent/path.mpk',
     });
 
     expect(sessionService.setRoot).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Failed to open CLI package /nonexistent/path.mpk: Package file not found: /nonexistent/path.mpk',
+    );
+
+    const manifestResponse = await app.inject({ method: 'GET', url: '/api/package/manifest' });
+    expect(manifestResponse.statusCode).toBe(404);
 
     await app.close();
   });

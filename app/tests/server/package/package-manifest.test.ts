@@ -132,7 +132,7 @@ describe('PackageService.getManifest', () => {
     vi.clearAllMocks();
   });
 
-  it('TC-6.1a: returns freshly parsed manifest metadata, navigation, and raw content', async () => {
+  it('TC-6.2-api: returns freshly parsed manifest metadata, navigation, and raw content', async () => {
     const service = new PackageService(
       createTempDirManager() as unknown as TempDirManager,
       createSessionService() as never,

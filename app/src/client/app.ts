@@ -449,7 +449,11 @@ export async function bootstrapApp(
     store.update({ error: getErrorMessage(error) }, ['error']);
   };
 
-  const setClientError = (code: string, message: string, severity?: 'error' | 'warning') => {
+  const setClientError = (
+    code: string,
+    message: string,
+    severity?: 'error' | 'warning' | 'info',
+  ) => {
     store.update({ error: { code, message, severity } }, ['error']);
   };
 
@@ -817,6 +821,23 @@ export async function bootstrapApp(
     return findDisplayName(packageState.navigation);
   };
 
+  const loadPackageFallbackTree = async (root: string): Promise<void> => {
+    setTreeLoading(true);
+
+    try {
+      const treeResponse = await api.getTree(root);
+      applyTree(treeResponse.tree);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'PATH_NOT_FOUND') {
+        setInvalidRoot(error);
+        return;
+      }
+
+      setTreeLoading(false);
+      setTreeError(error, () => void loadPackageFallbackTree(root));
+    }
+  };
+
   const handlePackageOpen = async (response: PackageOpenResponse): Promise<void> => {
     const { metadata, navigation, packageInfo } = response;
     closePreviousTabs();
@@ -835,7 +856,10 @@ export async function bootstrapApp(
           stale: false,
           manifestStatus: packageInfo.manifestStatus,
           manifestError: packageInfo.manifestError ?? null,
-          manifestPath: `${packageInfo.extractedRoot}/${MANIFEST_FILENAME}`,
+          manifestPath:
+            packageInfo.manifestStatus === 'present'
+              ? `${packageInfo.extractedRoot}/${MANIFEST_FILENAME}`
+              : null,
           collapsedGroups: new Set(),
         },
         session: {
@@ -845,6 +869,10 @@ export async function bootstrapApp(
       },
       ['packageState', 'session'],
     );
+
+    if (packageInfo.manifestStatus !== 'present') {
+      await loadPackageFallbackTree(packageInfo.extractedRoot);
+    }
   };
 
   const handlePackageCreated = (response: PackageCreateResponse): void => {
@@ -1000,7 +1028,7 @@ export async function bootstrapApp(
         );
       }
 
-      console.info(`Exported package: ${result.fileCount} files, ${result.sizeBytes} bytes`);
+      setClientError('EXPORT_SUCCESS', `Package exported to ${result.outputPath}`, 'info');
     } catch (error) {
       setError(error);
     }
@@ -2546,6 +2574,10 @@ export async function bootstrapApp(
         },
         ['packageState'],
       );
+
+      if (sidebarMode === 'fallback') {
+        await loadPackageFallbackTree(activePackage.extractedRoot);
+      }
     }
   }
 

@@ -146,6 +146,11 @@ describe('package export client flow', () => {
       sourceDir: '/tmp/mdv-pkg-sample',
     });
     expect(store.get().packageState.stale).toBe(false);
+    expect(store.get().error).toEqual({
+      code: 'EXPORT_SUCCESS',
+      message: 'Package exported to /exports/sample.mpk',
+      severity: 'info',
+    });
   });
 
   it('TC-5.3c: stale remains on different path', async () => {

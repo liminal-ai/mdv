@@ -190,6 +190,47 @@ describe('package fallback sidebar', () => {
     cleanup();
   });
 
+  it('Non-TC: restore fetches the extracted tree in fallback mode', async () => {
+    document.body.innerHTML = `
+      <div id="app">
+        <header id="menu-bar"></header>
+        <div id="main">
+          <aside id="sidebar"></aside>
+          <div id="workspace">
+            <div id="tab-strip"></div>
+            <div id="content-area"></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    window.__MDV_DISABLE_AUTO_BOOTSTRAP__ = true;
+
+    const api = createApi({
+      getTree: vi.fn().mockResolvedValue({
+        root: '/tmp/mdv-pkg-sample',
+        tree: [
+          {
+            name: 'guide.md',
+            path: '/tmp/mdv-pkg-sample/guide.md',
+            type: 'file',
+          },
+        ],
+      }),
+    });
+
+    const { store } = await bootstrapApp(api as never, null);
+
+    expect(api.getTree).toHaveBeenCalledWith('/tmp/mdv-pkg-sample');
+    expect(store.get().tree).toEqual([
+      {
+        name: 'guide.md',
+        path: '/tmp/mdv-pkg-sample/guide.md',
+        type: 'file',
+      },
+    ]);
+  });
+
   it('TC-8.2a: fallback indicator is shown for missing manifests', () => {
     const { cleanup } = renderSidebar();
 

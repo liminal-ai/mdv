@@ -2,12 +2,44 @@ import type { PackageNavigationNode, StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
 import { mountPackageHeader } from './package-header.js';
 
-function toAbsolutePath(root: string | null, filePath: string): string {
+function normalizePath(input: string): string {
+  const absolute = input.startsWith('/');
+  const segments: string[] = [];
+
+  for (const segment of input.split('/')) {
+    if (!segment || segment === '.') {
+      continue;
+    }
+
+    if (segment === '..') {
+      if (segments.length > 0) {
+        segments.pop();
+      }
+      continue;
+    }
+
+    segments.push(segment);
+  }
+
+  if (segments.length === 0) {
+    return absolute ? '/' : '.';
+  }
+
+  return `${absolute ? '/' : ''}${segments.join('/')}`;
+}
+
+function isWithinRoot(root: string, targetPath: string): boolean {
+  const normalizedRoot = normalizePath(root).replace(/\/$/, '') || '/';
+  return targetPath === normalizedRoot || targetPath.startsWith(`${normalizedRoot}/`);
+}
+
+function toAbsolutePath(root: string | null, filePath: string): string | null {
   if (!root) {
     return filePath;
   }
 
-  return `${root.replace(/\/$/, '')}/${filePath}`;
+  const absolutePath = normalizePath(`${root.replace(/\/$/, '')}/${filePath}`);
+  return isWithinRoot(root, absolutePath) ? absolutePath : null;
 }
 
 function toggleGroup(store: StateStore, displayName: string): void {
@@ -102,9 +134,17 @@ function renderNode(
             return;
           }
 
-          void actions.onOpenFile(
-            toAbsolutePath(store.get().packageState.effectiveRoot, node.filePath),
-          );
+          const root = store.get().packageState.effectiveRoot;
+          const absolutePath = toAbsolutePath(root, node.filePath);
+          if (!absolutePath) {
+            return;
+          }
+
+          if (root && !isWithinRoot(root, absolutePath)) {
+            return;
+          }
+
+          void actions.onOpenFile(absolutePath);
         },
       },
     }),

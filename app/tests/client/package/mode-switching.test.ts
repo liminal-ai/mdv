@@ -209,7 +209,7 @@ describe('package mode switching', () => {
     });
   });
 
-  it('TC-1.3b: CLI argument with non-existent file', async () => {
+  it('TC-1.3b-client: no active package when CLI package is absent', async () => {
     const { store } = await bootstrap({
       sessionOverrides: {
         activePackage: null,

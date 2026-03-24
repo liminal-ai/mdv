@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import type {
   ManifestMetadata,
@@ -181,6 +182,7 @@ export class PackageService {
       this.state.navigation = parsed.navigation;
       this.state.manifestStatus = 'present';
       this.state.manifestError = undefined;
+      await this.persistState();
 
       return {
         metadata: parsed.metadata,
@@ -191,6 +193,7 @@ export class PackageService {
       const message = error instanceof Error ? error.message : String(error);
       this.state.manifestStatus = 'unreadable';
       this.state.manifestError = message;
+      await this.persistState();
       throw new ManifestParseError(message);
     }
   }
@@ -267,14 +270,25 @@ export class PackageService {
       manifestExisted = false;
     }
 
-    await createPackage({
-      sourceDir: effectiveSourceDir,
-      outputPath,
-      compress,
-    });
+    let archiveSourceDir = effectiveSourceDir;
+    let stagingRoot: string | null = null;
 
-    if (!manifestExisted) {
-      await fs.unlink(manifestPath);
+    try {
+      if (!manifestExisted) {
+        stagingRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mdv-pkg-export-'));
+        archiveSourceDir = path.join(stagingRoot, 'source');
+        await fs.cp(effectiveSourceDir, archiveSourceDir, { recursive: true });
+      }
+
+      await createPackage({
+        sourceDir: archiveSourceDir,
+        outputPath,
+        compress,
+      });
+    } finally {
+      if (stagingRoot) {
+        await fs.rm(stagingRoot, { recursive: true, force: true });
+      }
     }
 
     const stats = await fs.stat(outputPath);

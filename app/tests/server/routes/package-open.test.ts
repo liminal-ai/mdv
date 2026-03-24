@@ -152,4 +152,23 @@ describe('POST /api/package/open — route-level inject tests', () => {
 
     await app.close();
   });
+
+  it('returns 400 INVALID_FILE_PATH for relative paths', async () => {
+    const app = await buildApp({ sessionService: createSessionService() as never });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/package/open',
+      payload: { filePath: 'relative/sample.mpk' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_FILE_PATH',
+        message: 'Path must be absolute',
+      },
+    });
+
+    await app.close();
+  });
 });

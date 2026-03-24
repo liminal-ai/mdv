@@ -6,6 +6,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>();
   return {
     ...actual,
+    cp: vi.fn(),
     stat: vi.fn(),
     readFile: vi.fn(),
     writeFile: vi.fn(),
@@ -246,16 +247,25 @@ describe('PackageService.export', () => {
       manifestExists: false,
       outputSize: 256,
     });
+    vi.mocked(fs.mkdtemp).mockResolvedValue('/tmp/mdv-pkg-export-stage');
+    vi.mocked(fs.cp).mockResolvedValue(undefined);
     vi.mocked(fs.readdir).mockResolvedValue([makeFileEntry(), makeFileEntry()] as never);
     vi.mocked(pkg.createPackage).mockResolvedValue(undefined);
 
     const result = await service.export('/exports/scaffolded.mpk', false, '/workspace/no-manifest');
 
     expect(pkg.createPackage).toHaveBeenCalledWith({
-      sourceDir: '/workspace/no-manifest',
+      sourceDir: '/tmp/mdv-pkg-export-stage/source',
       outputPath: '/exports/scaffolded.mpk',
       compress: false,
     });
+    expect(fs.cp).toHaveBeenCalledWith(
+      '/workspace/no-manifest',
+      '/tmp/mdv-pkg-export-stage/source',
+      {
+        recursive: true,
+      },
+    );
     expect(result).toMatchObject({
       outputPath: '/exports/scaffolded.mpk',
       format: 'mpk',
@@ -275,13 +285,22 @@ describe('PackageService.export', () => {
       manifestExists: false,
       outputSize: 300,
     });
+    vi.mocked(fs.mkdtemp).mockResolvedValue('/tmp/mdv-pkg-export-cleanup');
+    vi.mocked(fs.cp).mockResolvedValue(undefined);
     vi.mocked(fs.readdir).mockResolvedValue([makeFileEntry()] as never);
     vi.mocked(pkg.createPackage).mockResolvedValue(undefined);
-    vi.mocked(fs.unlink).mockResolvedValue(undefined);
 
     await service.export('/exports/cleanup.mpk', false, '/workspace/no-manifest');
 
-    expect(fs.unlink).toHaveBeenCalledWith('/workspace/no-manifest/_nav.md');
+    expect(fs.cp).toHaveBeenCalledWith(
+      '/workspace/no-manifest',
+      '/tmp/mdv-pkg-export-cleanup/source',
+      { recursive: true },
+    );
+    expect(fs.rm).toHaveBeenCalledWith('/tmp/mdv-pkg-export-cleanup', {
+      recursive: true,
+      force: true,
+    });
   });
 
   it('TC-5.3a: re-export after editing uses the extracted root', async () => {
@@ -391,5 +410,30 @@ describe('PackageService.export', () => {
     } finally {
       await app.close();
     }
+  });
+
+  it('Non-TC: export route returns 400 INVALID_OUTPUT_PATH for relative paths', async () => {
+    const app = await buildApp({
+      sessionService: createFullSessionService() as never,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/package/export',
+      payload: {
+        outputPath: 'relative/output.mpk',
+        sourceDir: '/workspace/project',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_OUTPUT_PATH',
+        message: 'Path must be absolute',
+      },
+    });
+
+    await app.close();
   });
 });

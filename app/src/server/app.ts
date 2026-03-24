@@ -66,7 +66,12 @@ export async function buildApp(opts?: AppOptions) {
     const ext = path.extname(opts.cliArg).toLowerCase();
 
     if (ext === '.mpk' || ext === '.mpkz') {
-      await packageService.open(resolvedPath);
+      try {
+        await packageService.open(resolvedPath);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`Failed to open CLI package ${resolvedPath}: ${message}`);
+      }
     } else {
       try {
         const stats = await stat(resolvedPath);

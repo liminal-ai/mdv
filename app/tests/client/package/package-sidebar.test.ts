@@ -194,6 +194,23 @@ describe('package sidebar', () => {
     expect(actions.onOpenFile).toHaveBeenCalledWith('/tmp/mdv-pkg-sample/auth/oauth2.md');
   });
 
+  it('Non-TC: navigation entries cannot escape the package root', () => {
+    const { actions } = renderPackageSidebar({
+      navigation: [
+        {
+          displayName: 'Outside',
+          filePath: '../outside.md',
+          children: [],
+          isGroup: false,
+        },
+      ],
+    });
+
+    document.querySelector<HTMLButtonElement>('.pkg-nav__link[data-path="../outside.md"]')?.click();
+
+    expect(actions.onOpenFile).not.toHaveBeenCalled();
+  });
+
   it('TC-1.4c: clicking an entry creates a tab with the manifest display name', async () => {
     await renderAppWithPackage(
       [

@@ -59,6 +59,7 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
   typedApp.post(
     '/api/package/open',
     {
+      attachValidation: true,
       schema: {
         body: PackageOpenRequestSchema,
         response: {
@@ -70,6 +71,12 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
       },
     },
     async (request, reply) => {
+      if (request.validationError) {
+        return reply
+          .code(400)
+          .send(toApiError(PackageErrorCode.INVALID_FILE_PATH, 'Path must be absolute'));
+      }
+
       try {
         return await packageService.open(request.body.filePath);
       } catch (error) {
@@ -136,6 +143,7 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
   typedApp.post(
     '/api/package/create',
     {
+      attachValidation: true,
       schema: {
         body: PackageCreateRequestSchema,
         response: {
@@ -147,6 +155,12 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
       },
     },
     async (request, reply) => {
+      if (request.validationError) {
+        return reply
+          .code(400)
+          .send(toApiError(PackageErrorCode.INVALID_DIR_PATH, 'Path must be absolute'));
+      }
+
       try {
         return await packageService.create(request.body.rootDir, request.body.overwrite);
       } catch (error) {
@@ -184,6 +198,7 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
   typedApp.post(
     '/api/package/export',
     {
+      attachValidation: true,
       schema: {
         body: PackageExportRequestSchema,
         response: {
@@ -194,6 +209,12 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
       },
     },
     async (request, reply) => {
+      if (request.validationError) {
+        return reply
+          .code(400)
+          .send(toApiError(PackageErrorCode.INVALID_OUTPUT_PATH, 'Path must be absolute'));
+      }
+
       try {
         const result = await packageService.export(
           request.body.outputPath,

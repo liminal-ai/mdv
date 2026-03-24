@@ -47,7 +47,7 @@ describe('package stale indicator', () => {
     vi.clearAllMocks();
   });
 
-  it('TC-7.1b: stale indicator visible when extracted package is stale', () => {
+  it('TC-7.2a: stale indicator visible when extracted package is stale', () => {
     const { cleanup, store } = renderPackageHeader({
       stale: false,
       mode: 'extracted',

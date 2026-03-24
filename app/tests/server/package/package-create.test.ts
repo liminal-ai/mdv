@@ -280,6 +280,28 @@ describe('PackageService.create', () => {
     await app.close();
   });
 
+  it('Non-TC: create route returns 400 INVALID_DIR_PATH for relative paths', async () => {
+    const app = await buildApp({
+      sessionService: createFullSessionService() as never,
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/package/create',
+      payload: { rootDir: 'relative/project' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: {
+        code: 'INVALID_DIR_PATH',
+        message: 'Path must be absolute',
+      },
+    });
+
+    await app.close();
+  });
+
   it('TC-4.3a: empty directory', async () => {
     const rootDir = '/path/to/empty-project';
     const sessionService = createSessionService();
