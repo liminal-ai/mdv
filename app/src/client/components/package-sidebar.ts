@@ -97,8 +97,8 @@ function renderNode(
         },
         children: [
           createElement('button', {
-            className: 'pkg-nav__toggle',
-            text: collapsed ? '▸' : '▾',
+            className: `pkg-nav__toggle${collapsed ? ' pkg-nav__toggle--collapsed' : ''}`,
+            text: '▾',
             attrs: {
               type: 'button',
               'aria-label': `${collapsed ? 'Expand' : 'Collapse'} ${node.displayName}`,

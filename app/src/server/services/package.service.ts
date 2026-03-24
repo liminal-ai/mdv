@@ -61,13 +61,27 @@ function filterScaffoldContent(content: string): string {
 
 export class PackageService {
   private state: ActivePackageState | null = null;
+  private mutationLock: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly tempDirManager: TempDirManager,
     private readonly sessionService: SessionService,
   ) {}
 
+  private serialize<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.mutationLock.then(fn);
+    this.mutationLock = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
+  }
+
   async open(filePath: string): Promise<PackageOpenResponse> {
+    return this.serialize(() => this.openImpl(filePath));
+  }
+
+  private async openImpl(filePath: string): Promise<PackageOpenResponse> {
     try {
       await fs.stat(filePath);
     } catch (error) {
@@ -219,10 +233,14 @@ export class PackageService {
     }
 
     const scaffoldedContent = filterScaffoldContent(await scaffoldManifest(rootDir));
+    const title =
+      this.state?.mode === 'extracted' && this.state.sourcePath
+        ? path.basename(this.state.sourcePath, path.extname(this.state.sourcePath))
+        : path.basename(rootDir);
     const manifestContent =
       scaffoldedContent.length > 0
-        ? `---\ntitle: ${path.basename(rootDir)}\n---\n\n${scaffoldedContent}`
-        : `---\ntitle: ${path.basename(rootDir)}\n---\n`;
+        ? `---\ntitle: ${title}\n---\n\n${scaffoldedContent}`
+        : `---\ntitle: ${title}\n---\n`;
 
     await fs.writeFile(manifestPath, manifestContent);
 
@@ -252,6 +270,14 @@ export class PackageService {
   }
 
   async export(
+    outputPath: string,
+    compress?: boolean,
+    sourceDir?: string,
+  ): Promise<PackageExportResponse> {
+    return this.serialize(() => this.exportImpl(outputPath, compress, sourceDir));
+  }
+
+  private async exportImpl(
     outputPath: string,
     compress?: boolean,
     sourceDir?: string,
@@ -330,6 +356,10 @@ export class PackageService {
   }
 
   async close(): Promise<void> {
+    return this.serialize(() => this.closeImpl());
+  }
+
+  private async closeImpl(): Promise<void> {
     if (this.state?.mode === 'extracted') {
       await this.tempDirManager.cleanup();
     }

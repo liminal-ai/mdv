@@ -233,6 +233,21 @@ export async function packageRoutes(app: FastifyInstance, opts: PackageRoutesOpt
             .code(400)
             .send(toApiError(PackageErrorCode.NO_SOURCE, 'No active root or package to export'));
         }
+        if (
+          err instanceof Error &&
+          'code' in err &&
+          ((err as NodeJS.ErrnoException).code === 'EPERM' ||
+            (err as NodeJS.ErrnoException).code === 'EACCES')
+        ) {
+          return reply
+            .code(500)
+            .send(
+              toApiError(
+                PackageErrorCode.EXPORT_ERROR,
+                `Permission denied: cannot write to ${request.body.outputPath}`,
+              ),
+            );
+        }
         return reply
           .code(500)
           .send(

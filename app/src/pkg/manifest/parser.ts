@@ -219,7 +219,7 @@ function parseInlineNode(token: MarkdownToken): { displayName: string; filePath?
     }
 
     linkStart = index;
-    href = child.attrGet('href') ?? '';
+    href = decodeURIComponent(child.attrGet('href') ?? '');
 
     for (let cursor = index + 1; cursor < children.length; cursor += 1) {
       if (children[cursor]?.type === 'link_close') {

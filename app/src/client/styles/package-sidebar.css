@@ -1,0 +1,195 @@
+/* ── Package Sidebar ────────────────────────────── */
+
+/* Layout containers */
+.pkg-sidebar__header {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.pkg-sidebar__nav {
+  padding-top: 0.25rem;
+}
+
+/* Header */
+.pkg-header {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.pkg-header__mode {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: var(--color-badge-bg);
+  color: var(--color-badge-text);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pkg-header__title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pkg-header__version {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+.pkg-header__author {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.pkg-header__edit-manifest {
+  width: fit-content;
+  margin-top: 0.15rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.pkg-header__edit-manifest:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.pkg-header__stale {
+  display: inline-block;
+  width: fit-content;
+  margin-top: 0.1rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* Navigation tree — mirrors .tree-node__row pattern from sidebar.css */
+.pkg-nav {
+  display: grid;
+  gap: 2px;
+}
+
+.pkg-nav__entry {
+  display: grid;
+}
+
+.pkg-nav__group {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.pkg-nav__group:hover {
+  background: var(--color-bg-hover);
+}
+
+/* Disclosure triangle — matches .disclosure-triangle from sidebar.css */
+.pkg-nav__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 0.6rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: transform 140ms ease;
+}
+
+.pkg-nav__toggle--collapsed {
+  transform: rotate(-90deg);
+}
+
+.pkg-nav__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.pkg-nav__children {
+  display: grid;
+  gap: 2px;
+}
+
+.pkg-nav__children[hidden] {
+  display: none;
+}
+
+.pkg-nav__link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.15rem 0.4rem;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pkg-nav__link:hover {
+  background: var(--color-bg-hover);
+}
+
+.pkg-nav__link:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+  background: var(--color-bg-hover);
+}
+
+/* Mode indicators (filesystem & fallback modes) */
+.sidebar__mode-indicator {
+  padding: 0.15rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sidebar__mode-indicator--fallback {
+  color: var(--color-warning);
+}
+
+.sidebar__fallback-indicator {
+  padding: 0.25rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-style: italic;
+}

@@ -194,6 +194,10 @@
   justify-content: space-between;
 }
 
+.sidebar__files-header[hidden] {
+  display: none;
+}
+
 .sidebar__files-actions {
   display: flex;
   gap: 0.25rem;
