@@ -11,6 +11,7 @@ interface LoadMainOptions {
   gotLock?: boolean;
   port?: number;
   startServerError?: Error;
+  argv?: string[];
 }
 
 async function flushPromises(): Promise<void> {
@@ -19,7 +20,12 @@ async function flushPromises(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-async function loadMain({ gotLock = true, port = 3000, startServerError }: LoadMainOptions = {}) {
+async function loadMain({
+  gotLock = true,
+  port = 3000,
+  startServerError,
+  argv,
+}: LoadMainOptions = {}) {
   vi.resetModules();
 
   const app = createMockApp();
@@ -53,13 +59,21 @@ async function loadMain({ gotLock = true, port = 3000, startServerError }: LoadM
     getAllWindows: vi.fn(() => createdWindows.map(({ instance }) => instance)),
   });
 
+  const server = {
+    close: vi.fn().mockResolvedValue(undefined),
+    server: {
+      address: vi.fn().mockReturnValue({ port }),
+    },
+  };
+
   const startServer = startServerError
     ? vi.fn().mockRejectedValue(startServerError)
-    : vi.fn().mockResolvedValue({
-        server: {
-          address: vi.fn().mockReturnValue({ port }),
-        },
-      });
+    : vi.fn().mockResolvedValue(server);
+
+  const originalArgv = process.argv;
+  if (argv) {
+    process.argv = argv;
+  }
 
   vi.doMock('electron', () => ({
     app,
@@ -82,19 +96,25 @@ async function loadMain({ gotLock = true, port = 3000, startServerError }: LoadM
     startServer,
   }));
 
-  await import('../../src/electron/main.js');
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    if (!gotLock || startServer.mock.calls.length > 0 || createdWindows.length > 0) {
-      break;
-    }
+  try {
+    await import('../../src/electron/main.js');
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      if (!gotLock || startServer.mock.calls.length > 0 || createdWindows.length > 0) {
+        break;
+      }
 
-    await flushPromises();
+      await flushPromises();
+    }
+  } finally {
+    process.argv = originalArgv;
   }
 
   return {
     app,
     createdWindows,
     startServer,
+    server,
+    ipcMain,
   };
 }
 
@@ -151,6 +171,36 @@ describe('electron main process', () => {
     expect(createdWindow?.webContents.send).toHaveBeenCalledWith('app:open-file', {
       path: '/tmp/notes.md',
     });
+  });
+
+  it('routes an initial launch markdown path after renderer readiness', async () => {
+    const { createdWindows, ipcMain } = await loadMain({
+      argv: ['/Applications/mdv.app/Contents/MacOS/mdv', '-psn_0_12345', '/tmp/notes.md'],
+    });
+    const createdWindow = createdWindows[0]?.instance;
+
+    const didFinishLoadHandler = (
+      createdWindow?.webContents.on.mock.calls as Array<[string, (...args: unknown[]) => void]>
+    ).find(([event]) => event === 'did-finish-load')?.[1];
+
+    didFinishLoadHandler?.();
+    ipcMain.invoke('app:renderer-ready', { sender: createdWindow?.webContents });
+
+    expect(createdWindow?.webContents.send).toHaveBeenCalledWith('app:open-file', {
+      path: '/tmp/notes.md',
+    });
+  });
+
+  it('shuts down the Fastify server during will-quit', async () => {
+    const { app, server } = await loadMain();
+    const event = { preventDefault: vi.fn() };
+
+    app.emit('will-quit', event);
+    await flushPromises();
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+    expect(server.close).toHaveBeenCalledTimes(1);
+    expect(app.exit).toHaveBeenCalledWith(0);
   });
 
   it('TC-13.2a: server start failure shows error', async () => {

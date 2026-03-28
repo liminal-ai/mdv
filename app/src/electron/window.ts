@@ -27,7 +27,7 @@ export function createMainWindow(serverUrl: string | null): BrowserWindow {
     show: false,
     title: 'mdv',
     webPreferences: {
-      preload: fileURLToPath(new URL('./preload.js', import.meta.url)),
+      preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,

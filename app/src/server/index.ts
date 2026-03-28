@@ -24,7 +24,7 @@ export async function startServer(options: StartServerOptions = {}): Promise<Fas
     sessionDir: options.sessionDir,
     sessionService: options.sessionService,
     browseService: options.browseService,
-    cliArg: options.cliArg ?? process.argv[2],
+    cliArg: options.cliArg,
   });
   const host = options.host ?? '127.0.0.1';
   const preferredPort = options.preferredPort ?? 3000;

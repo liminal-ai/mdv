@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.json && node esbuild.config.ts",
     "build:client": "node esbuild.config.ts",
     "build:electron": "npm run build && npm run build:electron:bundle",
-    "build:electron:bundle": "esbuild src/electron/main.ts src/electron/preload.ts --bundle --platform=node --format=esm --outdir=dist/electron --external:electron --external:electron-window-state",
+    "build:electron:bundle": "esbuild src/electron/main.ts --bundle --platform=node --format=esm --outfile=dist/electron/main.js --external:electron --external:electron-window-state && esbuild src/electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist/electron/preload.cjs --external:electron && rm -f dist/electron/preload.js",
     "install-app": "bash scripts/install-app.sh",
     "test": "vitest run",
     "test:watch": "vitest",

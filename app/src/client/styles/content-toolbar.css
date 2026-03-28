@@ -68,10 +68,22 @@
   outline: none;
 }
 
+.content-toolbar__button--compact {
+  min-width: 1.9rem;
+  padding: 2px 0.45rem;
+  text-align: center;
+}
+
 .status-area {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.reading-width-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .content-toolbar__edit-tools {

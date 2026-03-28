@@ -1,0 +1,146 @@
+{
+  "elapsedMs": 3207,
+  "terminalMode": [],
+  "statuses": [
+    "provider:starting",
+    "provider:ready"
+  ],
+  "tokens": [
+    {
+      "text": "Auto-compact                              false\nShow tips                                 true\nReduce motion                             false\nThinking mode                             true\nFast mode (Opus 4.6 only)                 false\nRewind code (checkpoints)                 true\nVerbose output                            false\nTerminal progress bar                     true\nShow turn duration                        true\n↓ 16 more below\n",
+      "format": "plain"
+    },
+    {
+      "text": "Type to filter · Enter/↓ to select · ↑ to tabs · Esc to clear\n",
+      "format": "plain"
+    }
+  ],
+  "debugOutputCount": 12,
+  "finalType": "chat:done",
+  "trace": [
+    {
+      "type": "chat:conversation-load",
+      "workspaceIdentity": "/Users/leemoore/code/md-viewer/docs",
+      "messages": [
+        {
+          "id": "edda947d-a78a-47d1-855f-081d293dfff7",
+          "role": "user",
+          "text": "/config",
+          "timestamp": "2026-03-26T10:37:20.143Z"
+        },
+        {
+          "id": "edda947d-a78a-47d1-855f-081d293dfff7",
+          "role": "agent",
+          "text": "Auto-compact                              false\nShow tips                                 true\nReduce motion                             false\nThinking mode                             true\nFast mode (Opus 4.6 only)                 false\nRewind code (checkpoints)                 true\nVerbose output                            false\nTerminal progress bar                     true\nShow turn duration                        true\n↓ 16 more below\nType to filter · Enter/↓ to select · ↑ to tabs · Esc to clear\n",
+          "timestamp": "2026-03-26T10:37:22.307Z",
+          "format": "plain"
+        }
+      ],
+      "cliSessionId": null
+    },
+    {
+      "type": "chat:session",
+      "sessionId": null,
+      "pid": null,
+      "cwd": null,
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:conversation-load",
+      "workspaceIdentity": "/Users/leemoore/code/md-viewer/docs",
+      "messages": [],
+      "cliSessionId": null
+    },
+    {
+      "type": "chat:session",
+      "sessionId": null,
+      "pid": null,
+      "cwd": null,
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:session",
+      "sessionId": "61d8beaa-5af5-4a43-9e28-4127689fb1d0",
+      "pid": 97199,
+      "cwd": "/Users/leemoore/code/md-viewer/docs",
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:starting"
+    },
+    {
+      "type": "chat:context",
+      "messageId": "5fb4e776-835d-4a48-81f3-30c42a841a47",
+      "activeDocument": null
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?25l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>4m\\x1b[<u\\x1b[?1004l\\x1b[?2004l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[31m ▐\\x1b[40m▛███▜\\x1b[49m▌\\x1b[3C\\x1b[39m\\x1b[1mClaude\\x1b[1CCode\\x1b[1C\\x1b[22m\\x1b[37mv2.1.84\\x1b[39m\\r\\r\n\\x1b[31m▝▜\\x1b[40m█████\\x1b[49m▛▘\\x1b[2C\\x1b[37mclaude-opus-4-6[1m][1m]\\x1b[1Cwith\\x1b[1Chigh\\x1b[1Ceffort\\x1b[1C·\\x1b[1CClaude\\x1b[1CMax\\x1b[39m\\r\\r\n\\x1b[31m \\x1b[1C▘▘\\x1b[1C▝▝\\x1b[4C\\x1b[37m~/code/md-viewer/docs\\x1b[39m\\r\\r\n\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n❯ \\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[62C\\x1b[37m●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/effort\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[1A\\x1b[37m535ee492-0295-47ae-9caa-efa49c6f2465 | md-viewer/docs | [cla…\\x1b[39m  \\x1b[37m● \\x1b[1Cigh · /ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:ready"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4A\\x1b[40m\\x1b[30m❯ \\x1b[97m/config\\x1b[39m                                                                       \\r\\x1b[1B\\x1b[49m   \\r\\x1b[1B\\x1b[97m────────────────────────────────────────────────────────────────────────────────\\r\\x1b[2C\\x1b[1B\\x1b[39m Status  \\x1b[1m\\x1b[7m Config \\x1b[27m\\x1b[22m  Usage                                     \\x1b[2C             \\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\r\\r\n\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\r\\x1b[2C\\x1b[18A\\x1b[97m╭──────────────────────────────────────────────────────────────────────────╮\\r\\x1b[2C\\x1b[1B│\\x1b[1C\\x1b[39m⌕\\x1b[1C\\x1b[7mS\\x1b[27m\\x1b[37mearch settings...\\x1b[53C\\x1b[97m│\\r\\x1b[2C\\x1b[1B╰──────────────────────────────────────────────────────────────────────────╯\\r\\x1b[4C\\x1b[2B\\x1b[39mAuto-compact\\x1b[30Cfalse\\r\\x1b[4C\\x1b[1BShow\\x1b[1Ctips\\x1b[33Ctrue\\r\\x1b[4C\\x1b[1BReduce\\x1b[1Cmotion\\x1b[29Cfalse\\r\\x1b[4C\\x1b[1BThinking\\x1b[1Cmode\\x1b[29Ctrue\\r\\x1b[4C\\x1b[1BFast\\x1b[1Cmode\\x1b[1C(Opus\\x1b[1C4.6\\x1b[1Conly)\\x1b[17Cfalse\\r\\x1b[4C\\x1b[1BRewind\\x1b[1Ccode\\x1b[1C(checkpoints)\\x1b[17Ctrue\\r\\x1b[4C\\x1b[1BVerbose\\x1b[1Coutput\\x1b[28Cfalse\\r\\x1b[4C\\x1b[1BTerminal\\x1b[1Cprogress\\x1b[1Cbar\\x1b[21Ctrue\\r\\x1b[4C\\x1b[1BShow\\x1b[1Cturn\\x1b[1Cduration\\x1b[24Ctrue\\r\\x1b[2C\\x1b[1B\\x1b[37m↓ 16 more below\\r\\x1b[2C\\x1b[2BType to filter · Enter/↓ to select · ↑ to tabs · Esc "
+    },
+    {
+      "type": "chat:token",
+      "messageId": "5fb4e776-835d-4a48-81f3-30c42a841a47",
+      "text": "Auto-compact                              false\nShow tips                                 true\nReduce motion                             false\nThinking mode                             true\nFast mode (Opus 4.6 only)                 false\nRewind code (checkpoints)                 true\nVerbose output                            false\nTerminal progress bar                     true\nShow turn duration                        true\n↓ 16 more below\n",
+      "format": "plain"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "to clear\\x1b[39m\\r\\r\n\\r\n\\r\n\\x1b[?2026l"
+    },
+    {
+      "type": "chat:token",
+      "messageId": "5fb4e776-835d-4a48-81f3-30c42a841a47",
+      "text": "Type to filter · Enter/↓ to select · ↑ to tabs · Esc to clear\n",
+      "format": "plain"
+    },
+    {
+      "type": "chat:done",
+      "messageId": "5fb4e776-835d-4a48-81f3-30c42a841a47"
+    }
+  ]
+}

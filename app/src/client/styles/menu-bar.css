@@ -1,4 +1,5 @@
 #menu-bar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -7,6 +8,8 @@
   background: var(--color-menu-bg);
   border-bottom: 1px solid var(--color-menu-border);
   backdrop-filter: blur(16px);
+  overflow: visible;
+  z-index: 80;
 }
 
 .menu-bar__shell {
@@ -84,7 +87,7 @@
   border: 1px solid var(--color-menu-border);
   border-radius: 6px;
   box-shadow: var(--shadow-dropdown);
-  z-index: 20;
+  z-index: 120;
 }
 
 .menu-bar__item {

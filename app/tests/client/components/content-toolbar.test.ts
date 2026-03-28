@@ -8,6 +8,20 @@ import { createStore } from '../support.js';
 import { singleTab } from '../../fixtures/tab-states.js';
 
 const cleanups: Array<() => void> = [];
+const storage = new Map<string, string>();
+
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      storage.set(key, value);
+    },
+    clear: () => {
+      storage.clear();
+    },
+  },
+});
 
 function renderContentToolbar(
   overrides: Parameters<typeof createStore>[0] = {},
@@ -45,6 +59,7 @@ describe('content toolbar', () => {
     while (cleanups.length > 0) {
       cleanups.pop()?.();
     }
+    storage.clear();
     document.body.innerHTML = '';
   });
 
@@ -161,6 +176,37 @@ describe('content toolbar', () => {
     exportItems[0]?.click();
 
     expect(actions.onExportFormat).toHaveBeenCalledWith('pdf');
+  });
+
+  it('shows reading width controls in render mode', () => {
+    renderContentToolbar({
+      tabs: [singleTab],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.reading-width-controls button'),
+    );
+
+    expect(buttons.map((button) => button.textContent)).toEqual(['+', '−']);
+  });
+
+  it('widens the reading width in small persisted steps', () => {
+    renderContentToolbar({
+      tabs: [singleTab],
+      activeTabId: singleTab.id,
+      contentToolbarVisible: true,
+    });
+
+    const widenButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.reading-width-controls button'),
+    ).find((button) => button.textContent === '+');
+
+    widenButton?.click();
+
+    expect(document.documentElement.style.getPropertyValue('--reading-zoom')).toBe('1.06');
+    expect(window.localStorage.getItem('mdv-reading-zoom')).toBe('1.06');
   });
 
   it('AC-9.2: exposes an Insert Table trigger while editing', () => {

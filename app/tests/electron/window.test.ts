@@ -80,6 +80,14 @@ describe('electron window creation', () => {
     expect(state.manage).toHaveBeenCalledWith(createdWindows[0]?.instance);
   });
 
+  it('uses the CommonJS preload bundle path', async () => {
+    const { createMainWindow, createdWindows } = await loadWindow();
+
+    createMainWindow('http://localhost:3000');
+
+    expect(String(createdWindows[0]?.options.webPreferences?.preload)).toContain('preload.cjs');
+  });
+
   it('TC-7.3b: off-screen window resets position', async () => {
     const { createMainWindow, createdWindows } = await loadWindow({
       stateOverrides: { x: 5000, y: 5000 },

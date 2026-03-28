@@ -1,0 +1,151 @@
+{
+  "elapsedMs": 3527,
+  "terminalMode": [],
+  "interactionState": [],
+  "statuses": [
+    "provider:ready"
+  ],
+  "tokens": [],
+  "debugOutputCount": 10,
+  "finalType": "chat:done",
+  "currentTurnTrace": [
+    {
+      "type": "chat:context",
+      "messageId": "bbe85f57-d63d-4866-8d47-d6b70d6af72e",
+      "activeDocument": null
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[?25l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>4m\\x1b[<u\\x1b[?1004l\\x1b[?2004l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[31m ▐\\x1b[40m▛███▜\\x1b[49m▌\\x1b[3C\\x1b[39m\\x1b[1mClaude\\x1b[1CCode\\x1b[1C\\x1b[22m\\x1b[37mv2.1.85\\x1b[39m\\r\\r\n\\x1b[31m▝▜\\x1b[40m█████\\x1b[49m▛▘\\x1b[2C\\x1b[37mclaude-opus-4-6[1m][1m]\\x1b[1Cwith\\x1b[1Chigh\\x1b[1Ceffort\\x1b[1C·\\x1b[1CClaude\\x1b[1CMax\\x1b[39m\\r\\r\n\\x1b[31m \\x1b[1C▘▘\\x1b[1C▝▝\\x1b[4C\\x1b[37m~/code/md-viewer/app\\x1b[39m\\r\\r\n\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n❯ \\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[62C\\x1b[37m●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/effort\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[1A\\x1b[37m9274a299-8f77-434b-9071-a5e2f60b2876 | md-viewer/app | [clau…\\x1b[39m  \\x1b[37m● \\x1b[1Cigh · /ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:ready"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4A\\x1b[40m\\x1b[30m❯ \\x1b[97mCommands are in the form `/command [args]`\\x1b[39m                                    \\r\\x1b[1B\\x1b[49m   \\r\\x1b[2B❯ \\x1b[7m \\x1b[27m                                                            \\x1b[2C             \\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[37m9274a299-8f77-434b-9071-a5e2f60b2876\\x1b[1C|\\x1b[1Cmd-viewer/app\\x1b[1C|\\x1b[1C[claude-●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Implement CLI command parsing system\\x07"
+    },
+    {
+      "type": "chat:done",
+      "messageId": "bbe85f57-d63d-4866-8d47-d6b70d6af72e"
+    }
+  ],
+  "trace": [
+    {
+      "type": "chat:conversation-load",
+      "workspaceIdentity": "/Users/leemoore/code/md-viewer/app",
+      "messages": [],
+      "cliSessionId": null
+    },
+    {
+      "type": "chat:session",
+      "sessionId": null,
+      "pid": null,
+      "cwd": null,
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:interaction-state",
+      "active": false,
+      "reason": null,
+      "projection": "chat"
+    },
+    {
+      "type": "chat:session",
+      "sessionId": "ca2b621d-f407-4074-adb3-8a7aa9204182",
+      "pid": 83339,
+      "cwd": "/Users/leemoore/code/md-viewer/app",
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:starting"
+    },
+    {
+      "type": "chat:context",
+      "messageId": "bbe85f57-d63d-4866-8d47-d6b70d6af72e",
+      "activeDocument": null
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[?25l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>4m\\x1b[<u\\x1b[?1004l\\x1b[?2004l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[31m ▐\\x1b[40m▛███▜\\x1b[49m▌\\x1b[3C\\x1b[39m\\x1b[1mClaude\\x1b[1CCode\\x1b[1C\\x1b[22m\\x1b[37mv2.1.85\\x1b[39m\\r\\r\n\\x1b[31m▝▜\\x1b[40m█████\\x1b[49m▛▘\\x1b[2C\\x1b[37mclaude-opus-4-6[1m][1m]\\x1b[1Cwith\\x1b[1Chigh\\x1b[1Ceffort\\x1b[1C·\\x1b[1CClaude\\x1b[1CMax\\x1b[39m\\r\\r\n\\x1b[31m \\x1b[1C▘▘\\x1b[1C▝▝\\x1b[4C\\x1b[37m~/code/md-viewer/app\\x1b[39m\\r\\r\n\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n❯ \\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[62C\\x1b[37m●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/effort\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[1A\\x1b[37m9274a299-8f77-434b-9071-a5e2f60b2876 | md-viewer/app | [clau…\\x1b[39m  \\x1b[37m● \\x1b[1Cigh · /ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:ready"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4A\\x1b[40m\\x1b[30m❯ \\x1b[97mCommands are in the form `/command [args]`\\x1b[39m                                    \\r\\x1b[1B\\x1b[49m   \\r\\x1b[2B❯ \\x1b[7m \\x1b[27m                                                            \\x1b[2C             \\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[37m9274a299-8f77-434b-9071-a5e2f60b2876\\x1b[1C|\\x1b[1Cmd-viewer/app\\x1b[1C|\\x1b[1C[claude-●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Implement CLI command parsing system\\x07"
+    },
+    {
+      "type": "chat:done",
+      "messageId": "bbe85f57-d63d-4866-8d47-d6b70d6af72e"
+    }
+  ]
+}

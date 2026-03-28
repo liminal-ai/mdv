@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { app, BrowserWindow } from 'electron';
 import type { FastifyInstance } from 'fastify';
 import { createMainWindow } from './window.js';
@@ -9,8 +10,26 @@ let mainWindow: BrowserWindow | null = null;
 let fastify: FastifyInstance | null = null;
 let serverUrl: string | null = null;
 let pendingFilePath: string | null = null;
-let quittingWithServerShutdown = false;
+let shuttingDownServer = false;
 const serverModulePath = '../server/index.js';
+const OPENABLE_EXTENSIONS = new Set(['.md', '.markdown']);
+
+function getLaunchFilePath(argv: string[]): string | null {
+  for (const arg of argv) {
+    if (!arg || arg.startsWith('-')) {
+      continue;
+    }
+
+    const ext = path.extname(arg).toLowerCase();
+    if (!OPENABLE_EXTENSIONS.has(ext)) {
+      continue;
+    }
+
+    return path.isAbsolute(arg) ? arg : path.resolve(arg);
+  }
+
+  return null;
+}
 
 function wireMainWindow(win: BrowserWindow, currentServerUrl: string | null): void {
   if (!currentServerUrl) {
@@ -49,6 +68,7 @@ if (!gotLock) {
 } else {
   app.on('second-instance', (_event, argv) => {
     const targetWindow = mainWindow ?? BrowserWindow.getAllWindows()[0] ?? null;
+    const filePath = getLaunchFilePath(argv);
 
     if (targetWindow) {
       mainWindow = targetWindow;
@@ -58,7 +78,6 @@ if (!gotLock) {
       }
 
       targetWindow.focus();
-      const filePath = argv.find((arg) => arg.endsWith('.md') || arg.endsWith('.markdown'));
       if (filePath) {
         if (targetWindow.webContents.isLoading()) {
           pendingFilePath = filePath;
@@ -76,6 +95,7 @@ if (!gotLock) {
         openUrl: async () => {},
         preferredPort: 0,
       });
+      pendingFilePath ??= getLaunchFilePath(process.argv);
       const address = fastify.server.address();
       const port = typeof address === 'object' ? address?.port : 3000;
       serverUrl = `http://localhost:${port}`;
@@ -95,13 +115,13 @@ if (!gotLock) {
     }
   });
 
-  app.on('before-quit', (event) => {
-    if (quittingWithServerShutdown || !fastify) {
+  app.on('will-quit', (event) => {
+    if (shuttingDownServer || !fastify) {
       return;
     }
 
     event.preventDefault();
-    quittingWithServerShutdown = true;
+    shuttingDownServer = true;
 
     const server = fastify;
     fastify = null;
@@ -112,7 +132,7 @@ if (!gotLock) {
         console.error('Failed to close server:', error);
       })
       .finally(() => {
-        app.quit();
+        app.exit(0);
       });
   });
 

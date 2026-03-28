@@ -1,0 +1,38 @@
+{
+  "elapsedMs": 30005,
+  "terminalMode": [],
+  "statuses": [],
+  "tokens": [],
+  "debugOutputCount": 0,
+  "finalType": "timeout",
+  "trace": [
+    {
+      "type": "chat:conversation-load",
+      "workspaceIdentity": "/Users/leemoore/code/md-viewer/docs",
+      "messages": [
+        {
+          "id": "5b083eab-ebe7-4e7d-8dbe-be26fc1903d5",
+          "role": "user",
+          "text": "Say exactly: Hi Lee.",
+          "timestamp": "2026-03-26T10:50:03.179Z"
+        },
+        {
+          "id": "5b083eab-ebe7-4e7d-8dbe-be26fc1903d5",
+          "role": "agent",
+          "text": "Hi Lee.\n",
+          "timestamp": "2026-03-26T10:50:07.539Z",
+          "format": "plain"
+        }
+      ],
+      "cliSessionId": null
+    },
+    {
+      "type": "chat:session",
+      "sessionId": null,
+      "pid": null,
+      "cwd": null,
+      "debugTranscript": ""
+    }
+  ],
+  "error": "Timed out after 30000ms"
+}

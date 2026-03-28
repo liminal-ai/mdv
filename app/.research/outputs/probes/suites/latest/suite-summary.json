@@ -1,0 +1,141 @@
+{
+  "outDir": "/Users/leemoore/code/md-viewer/app/.research/outputs/probes/suites/latest",
+  "summaries": [
+    {
+      "id": "ordinary_hi_lee",
+      "message": "Say exactly: Hi Lee.",
+      "expectedPolicy": "project_as_text",
+      "observedPolicy": "project_as_text",
+      "finalType": "chat:done",
+      "statuses": [
+        "provider:ready"
+      ],
+      "terminalMode": [],
+      "interactionState": [],
+      "tokens": [
+        {
+          "text": "Hi Lee.\n",
+          "format": "plain"
+        }
+      ]
+    },
+    {
+      "id": "slash_help",
+      "message": "/help",
+      "expectedPolicy": "project_as_text",
+      "observedPolicy": "project_as_text",
+      "finalType": "chat:done",
+      "statuses": [
+        "provider:ready"
+      ],
+      "terminalMode": [],
+      "interactionState": [],
+      "tokens": [
+        {
+          "text": "Claude understands your codebase, makes edits with your permission, and\n! for bash modes — double tap esc to clear        ctrl + z to suspend\n@ for file paths      shift + tab to auto-accept     meta + o to toggle fast\n/btw for side         ctrl + t to toggle tasks       ctrl + g to edit in\nquestion              shift + ⏎ for newline          /keybindings to\ncustomize\n",
+          "format": "plain"
+        },
+        {
+          "text": "For more help: https://code.claude.com/docs/en/overview\nEsc to cancel\n",
+          "format": "plain"
+        }
+      ]
+    },
+    {
+      "id": "slash_config",
+      "message": "/config",
+      "expectedPolicy": "terminal_mode_only",
+      "observedPolicy": "terminal_mode_only",
+      "finalType": "chat:done",
+      "statuses": [
+        "provider:ready"
+      ],
+      "terminalMode": [
+        {
+          "type": "chat:terminal-mode",
+          "active": true,
+          "reason": "boxed-screen"
+        }
+      ],
+      "interactionState": [
+        {
+          "type": "chat:interaction-state",
+          "active": true,
+          "reason": "boxed-screen",
+          "projection": "conservative"
+        }
+      ],
+      "tokens": []
+    },
+    {
+      "id": "slash_root",
+      "message": "/",
+      "expectedPolicy": "project_conservatively",
+      "observedPolicy": "project_conservatively",
+      "finalType": "chat:done",
+      "statuses": [
+        "provider:ready"
+      ],
+      "terminalMode": [],
+      "interactionState": [],
+      "tokens": []
+    },
+    {
+      "id": "slash_invalid",
+      "message": "/definitely-invalid-slash-command",
+      "expectedPolicy": "project_conservatively",
+      "observedPolicy": "project_conservatively",
+      "finalType": "chat:done",
+      "statuses": [
+        "provider:ready"
+      ],
+      "terminalMode": [],
+      "interactionState": [],
+      "tokens": []
+    },
+    {
+      "id": "multi_turn_followup",
+      "message": [
+        "Say exactly: Hi Lee.",
+        "Now say exactly: Bye Lee."
+      ],
+      "expectedPolicy": "project_as_text",
+      "observedPolicy": "project_as_text",
+      "finalType": "multi-turn",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "Say exactly: Hi Lee.",
+          "finalType": "chat:done",
+          "statuses": [
+            "provider:ready"
+          ],
+          "terminalMode": [],
+          "interactionState": [],
+          "tokens": [
+            {
+              "text": "Hi Lee.\n",
+              "format": "plain"
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "message": "Now say exactly: Bye Lee.",
+          "finalType": "chat:done",
+          "statuses": [
+            "provider:ready"
+          ],
+          "terminalMode": [],
+          "interactionState": [],
+          "tokens": [
+            {
+              "text": "Bye Lee.\n",
+              "format": "plain"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,8 @@ import { createElement } from '../utils/dom.js';
 const STORAGE_KEY = 'mdv-sidebar-width';
 const MIN_WIDTH = 140;
 const MAX_WIDTH = 500;
-const DEFAULT_WIDTH = 240;
+const LEGACY_DEFAULT_WIDTH = 240;
+const DEFAULT_WIDTH = 260;
 const DRAG_THRESHOLD = 3;
 
 export function mountSidebarResizer(
@@ -14,10 +15,20 @@ export function mountSidebarResizer(
   onToggleSidebar: () => void,
 ): () => void {
   const stored = localStorage.getItem(STORAGE_KEY);
+  const parsedWidth = stored ? parseInt(stored, 10) : NaN;
   let width = stored
-    ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, parseInt(stored, 10)))
+    ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, parsedWidth))
     : DEFAULT_WIDTH;
   if (Number.isNaN(width)) width = DEFAULT_WIDTH;
+
+  if (width === LEGACY_DEFAULT_WIDTH) {
+    width = DEFAULT_WIDTH;
+    try {
+      localStorage.setItem(STORAGE_KEY, String(DEFAULT_WIDTH));
+    } catch {
+      // localStorage may be unavailable — ignore
+    }
+  }
 
   main.style.setProperty('--sidebar-width', `${width}px`);
 

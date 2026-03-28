@@ -7,6 +7,11 @@ import { WARNING_PANEL_TOGGLE_EVENT } from './warning-panel.js';
 type OpenMenuId = 'default-mode' | 'export' | null;
 type ExportFormat = 'pdf' | 'docx' | 'html';
 type ExportDirtyChoice = 'save-and-export' | 'export-anyway' | 'cancel';
+const READING_ZOOM_STORAGE_KEY = 'mdv-reading-zoom';
+const READING_ZOOM_DEFAULT = 1;
+const READING_ZOOM_STEP = 0.06;
+const READING_ZOOM_MIN = 0.5;
+const READING_ZOOM_MAX = 1.6;
 
 export interface ContentToolbarActions {
   onSetDefaultMode: (mode: SessionState['defaultOpenMode']) => void | Promise<void>;
@@ -31,12 +36,40 @@ function canExport(store: StateStore): boolean {
   return activeTab?.status === 'ok' && !state.exportState.inProgress;
 }
 
+function readReadingZoom(): number {
+  try {
+    const stored = localStorage.getItem(READING_ZOOM_STORAGE_KEY);
+    const parsed = stored ? parseFloat(stored) : NaN;
+    if (!Number.isNaN(parsed)) {
+      return Math.max(READING_ZOOM_MIN, Math.min(READING_ZOOM_MAX, parsed));
+    }
+  } catch {
+    // localStorage may be unavailable — ignore.
+  }
+
+  return READING_ZOOM_DEFAULT;
+}
+
+function applyReadingZoom(zoom: number): void {
+  document.documentElement.style.setProperty('--reading-zoom', zoom.toFixed(2));
+}
+
+function persistReadingZoom(zoom: number): void {
+  try {
+    localStorage.setItem(READING_ZOOM_STORAGE_KEY, zoom.toFixed(2));
+  } catch {
+    // localStorage may be unavailable — ignore.
+  }
+}
+
 export function mountContentToolbar(
   container: HTMLElement,
   store: StateStore,
   actions: ContentToolbarActions,
 ): () => void {
   let openMenuId: OpenMenuId = null;
+  let readingZoom = readReadingZoom();
+  applyReadingZoom(readingZoom);
 
   const focusExportTrigger = () => {
     container.querySelector<HTMLButtonElement>('[data-export-trigger="true"]')?.focus();
@@ -92,6 +125,20 @@ export function mountContentToolbar(
     );
   };
 
+  const adjustReadingZoom = (delta: number) => {
+    const roundedNextZoom = Number(
+      Math.max(READING_ZOOM_MIN, Math.min(READING_ZOOM_MAX, readingZoom + delta)).toFixed(2),
+    );
+    if (roundedNextZoom === readingZoom) {
+      return;
+    }
+
+    readingZoom = roundedNextZoom;
+    applyReadingZoom(readingZoom);
+    persistReadingZoom(readingZoom);
+    render();
+  };
+
   const render = () => {
     const state = store.get();
     const activeTab = getActiveTab(store);
@@ -109,6 +156,8 @@ export function mountContentToolbar(
       activeTab.cursorPosition === null
         ? 'Ln 1, Col 1'
         : `Ln ${activeTab.cursorPosition.line}, Col ${activeTab.cursorPosition.column}`;
+    const canDecreaseReadingZoom = readingZoom > READING_ZOOM_MIN;
+    const canIncreaseReadingZoom = readingZoom < READING_ZOOM_MAX;
 
     const defaultModeDropdown =
       openMenuId === 'default-mode'
@@ -327,6 +376,44 @@ export function mountContentToolbar(
               createElement('div', {
                 className: 'content-toolbar__right',
                 children: [
+                  activeTab.mode === 'render'
+                    ? createElement('div', {
+                        className: 'reading-width-controls',
+                        attrs: { 'aria-label': 'Adjust reading width' },
+                        children: [
+                          createElement('button', {
+                            className: 'content-toolbar__button content-toolbar__button--compact',
+                            text: '+',
+                            attrs: {
+                              type: 'button',
+                              title: 'Make rendered preview bigger',
+                              'aria-label': 'Make rendered preview bigger',
+                              ...(canIncreaseReadingZoom ? {} : { disabled: true }),
+                            },
+                            on: {
+                              click: () => {
+                                adjustReadingZoom(READING_ZOOM_STEP);
+                              },
+                            },
+                          }),
+                          createElement('button', {
+                            className: 'content-toolbar__button content-toolbar__button--compact',
+                            text: '−',
+                            attrs: {
+                              type: 'button',
+                              title: 'Make rendered preview smaller',
+                              'aria-label': 'Make rendered preview smaller',
+                              ...(canDecreaseReadingZoom ? {} : { disabled: true }),
+                            },
+                            on: {
+                              click: () => {
+                                adjustReadingZoom(-READING_ZOOM_STEP);
+                              },
+                            },
+                          }),
+                        ],
+                      })
+                    : null,
                   createElement('div', {
                     className: 'content-toolbar__menu export-dropdown',
                     children: [
@@ -376,30 +463,32 @@ export function mountContentToolbar(
                               text: cursorLabel,
                             }),
                           ]
-                        : warningCount > 0
-                          ? [
-                              createElement('button', {
-                                className: 'warning-count',
-                                text: `⚠ ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
-                                attrs: {
-                                  type: 'button',
-                                  title: 'Show rendering warnings',
-                                },
-                                on: {
-                                  click: (event) => {
-                                    const target = event.currentTarget as HTMLElement;
-                                    document.dispatchEvent(
-                                      new CustomEvent(WARNING_PANEL_TOGGLE_EVENT, {
-                                        detail: {
-                                          anchorRect: target.getBoundingClientRect(),
-                                        },
-                                      }),
-                                    );
-                                  },
-                                },
-                              }),
-                            ]
-                          : [],
+                        : [
+                            ...(warningCount > 0
+                              ? [
+                                  createElement('button', {
+                                    className: 'warning-count',
+                                    text: `⚠ ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
+                                    attrs: {
+                                      type: 'button',
+                                      title: 'Show rendering warnings',
+                                    },
+                                    on: {
+                                      click: (event) => {
+                                        const target = event.currentTarget as HTMLElement;
+                                        document.dispatchEvent(
+                                          new CustomEvent(WARNING_PANEL_TOGGLE_EVENT, {
+                                            detail: {
+                                              anchorRect: target.getBoundingClientRect(),
+                                            },
+                                          }),
+                                        );
+                                      },
+                                    },
+                                  }),
+                                ]
+                              : []),
+                          ],
                   }),
                 ],
               }),

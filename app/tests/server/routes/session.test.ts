@@ -129,6 +129,32 @@ describe('session routes', () => {
     expect(app.listen).toHaveBeenNthCalledWith(2, { port: 0, host: '127.0.0.1' });
   });
 
+  it('Non-TC: imported startServer ignores ambient argv unless cliArg is passed explicitly', async () => {
+    const app = createFakeApp();
+    app.listen = vi.fn().mockResolvedValue('http://127.0.0.1:3000');
+    const buildAppMock = vi.fn().mockResolvedValue(app);
+    const originalArgv = process.argv;
+
+    process.argv = ['/usr/local/bin/node', '/tmp/playwright-worker.js', 'test'];
+
+    try {
+      await startServer({
+        buildApp: buildAppMock,
+        openUrl: vi.fn().mockResolvedValue(undefined),
+        log: { log: vi.fn(), error: vi.fn() },
+      });
+    } finally {
+      process.argv = originalArgv;
+    }
+
+    expect(buildAppMock).toHaveBeenCalledWith({
+      sessionDir: undefined,
+      sessionService: undefined,
+      browseService: undefined,
+      cliArg: undefined,
+    });
+  });
+
   it('TC-1.2a: Session with saved workspaces and root restored', async () => {
     const sessionDir = await createTempDir();
     tempDirs.push(sessionDir);

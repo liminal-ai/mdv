@@ -1,0 +1,327 @@
+{
+  "elapsedMs": 5483,
+  "terminalMode": [],
+  "statuses": [
+    "provider:ready",
+    "provider:ready"
+  ],
+  "tokens": [
+    {
+      "text": "▘▘ ▝▝    ~/code/md-viewer/docs\n",
+      "format": "plain"
+    },
+    {
+      "text": "Hi Lee.\n",
+      "format": "plain"
+    },
+    {
+      "text": "commands, not skills I can invoke. You can run them directly in the prompt:\n- Type /help for help with Claude Code\n",
+      "format": "plain"
+    }
+  ],
+  "debugOutputCount": 50,
+  "finalType": "chat:done",
+  "trace": [
+    {
+      "type": "chat:conversation-load",
+      "workspaceIdentity": "/Users/leemoore/code/md-viewer/docs",
+      "messages": [
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "role": "user",
+          "text": "Say exactly: Hi Lee.",
+          "timestamp": "2026-03-26T10:22:59.111Z"
+        },
+        {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "role": "agent",
+          "text": "Hi Lee.\n",
+          "timestamp": "2026-03-26T10:23:02.836Z",
+          "format": "plain"
+        },
+        {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "role": "user",
+          "text": "/config",
+          "timestamp": "2026-03-26T10:23:12.659Z"
+        },
+        {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "role": "agent",
+          "text": "Status   Config   Usage\n",
+          "timestamp": "2026-03-26T10:23:13.771Z",
+          "format": "plain"
+        },
+        {
+          "id": "55555555-5555-4555-8555-555555555555",
+          "role": "user",
+          "text": "/config",
+          "timestamp": "2026-03-26T10:29:57.036Z"
+        },
+        {
+          "id": "55555555-5555-4555-8555-555555555555",
+          "role": "agent",
+          "text": "Status   Config   Usage\n",
+          "timestamp": "2026-03-26T10:29:59.351Z",
+          "format": "plain"
+        },
+        {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "role": "user",
+          "text": "/config",
+          "timestamp": "2026-03-26T10:30:42.194Z"
+        }
+      ],
+      "cliSessionId": null
+    },
+    {
+      "type": "chat:session",
+      "sessionId": null,
+      "pid": null,
+      "cwd": null,
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:session",
+      "sessionId": "4765ece0-86be-4dd4-8696-32cf69f0c707",
+      "pid": 87588,
+      "cwd": "/Users/leemoore/code/md-viewer/docs",
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:ready"
+    },
+    {
+      "type": "chat:context",
+      "messageId": "77777777-7777-4777-8777-777777777777",
+      "activeDocument": null
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:ready"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "Say exactly: Hi Lee.\\r\n"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "/help\\r\n"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?25l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>4m\\x1b[<u\\x1b[?1004l\\x1b[?2004l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[31m ▐\\x1b[40m▛███▜\\x1b[49m▌\\x1b[3C\\x1b[39m\\x1b[1mClaude\\x1b[1CCode\\x1b[1C\\x1b[22m\\x1b[37mv2.1.84\\x1b[39m\\r\\r\n\\x1b[31m▝▜\\x1b[40m█████\\x1b[49m▛▘\\x1b[2C\\x1b[37mclaude-opus-4-6[1m][1m]\\x1b[1Cwith\\x1b[1Chigh\\x1b[1Ceffort\\x1b[1C·\\x1b[1CClaude\\x1b[1CMax\\x1b[39m\\r\\r\n\\x1b[31m \\x1b[1C▘▘\\x1b[1C▝▝\\x1b[4C\\x1b[37m~/code/md-viewer/docs\\x1b[39m\\r\\r\n\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n❯ Say\\x1b[1Cexactly:\\x1b[1CHi\\x1b[1CLee.\\r\\r\n\\x1b[2C\\x1b[97m/help\\x1b[39m\\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[57C\\x1b[37mctrl+g\\x1b[1Cto\\x1b[1Cedit\\x1b[1Cin\\x1b[1CCot\\x1b[39m\\r\\r\n\\x1b[7C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:token",
+      "messageId": "77777777-7777-4777-8777-777777777777",
+      "text": "▘▘ ▝▝    ~/code/md-viewer/docs\n",
+      "format": "plain"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[7D\\x1b[3B\\r\\x1b[2C\\x1b[1A\\x1b[37mdd9152c0-eb95-4a2e-b35b-a8870dff5ca6 | md-viewer/docs | […\\x1b[39m  \\x1b[37mctrl+g to\\x1b[1Cedit …\\x1b[39m\\r\\r\n\\x1b[7C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠂ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[7D\\x1b[3B\\r\\x1b[5A\\x1b[40m\\x1b[30m❯ \\x1b[97mSay exactly: Hi Lee.\\x1b[39m                                                          \\r\\x1b[1B\\x1b[97m/help/config\\x1b[39m                                                                    \\r\\x1b[2C\\x1b[1B\\x1b[49m      \\r\\x1b[1B\\x1b[31m✻\\x1b[39m \\x1b[31mWorking… \\x1b[39m                                                                     \\r\\x1b[2C\\x1b[1B                                                          \\x1b[2C                \\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[37m❯ \\x1b[39m\\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[37mdd9152c0-eb95-4a2e-b35b-a8870dff5ca6\\x1b[1C|\\x1b[1"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "Cmd-viewer/docs\\x1b[1C|\\x1b[1C[cla…\\x1b[2C●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[6A\\x1b[93mWor\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✽\\x1b[1CWo\\x1b[1C\\x1b[93mki\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4C\\x1b[6A\\x1b[31mr\\x1b[2C\\x1b[93mn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[5C\\x1b[6A\\x1b[31mk\\x1b[2C\\x1b[93mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6C\\x1b[6A\\x1b[31mi\\x1b[2C\\x1b[93m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[6Cn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[8C\\x1b[6A\\x1b[31mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[8C…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠂ Help and configuration commands\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m·\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠐ Help and configuration commands\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[6A\\x1b[93mWo\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[3C\\x1b[93mr\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[6A\\x1b[31mW\\x1b[2C\\x1b[93mk\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✽\\x1b[2Co\\x1b[2C\\x1b[93mi\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4C\\x1b[6A\\x1b[31mr\\x1b[2C\\x1b[93mn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[5C\\x1b[6A\\x1b[31mk\\x1b[2C\\x1b[93mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6C\\x1b[6A\\x1b[31mi\\x1b[2C\\x1b[93m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[6Cn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[8C\\x1b[6A\\x1b[31mg…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠂ Help and configuration commands\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[97m⏺\\x1b[1C\\x1b[39mHi Lee.  \\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:token",
+      "messageId": "77777777-7777-4777-8777-777777777777",
+      "text": "Hi Lee.\n",
+      "format": "plain"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠐ Help and configuration commands\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4A  It looks like you're trying to use \\x1b[97m/help\\x1b[39m or \\x1b[97m/config\\x1b[39m — those are built-in CLI  \\r\\x1b[1B  commands,\\x1b[1Cnot\\x1b[1Cskills\\x1b[1CI\\x1b[1Ccan\\x1b[1Cinvoke.\\x1b[1CYou\\x1b[1Ccan\\x1b[1Crun\\x1b[1Cthem\\x1b[1Cdirectly\\x1b[1Cin\\x1b[1Cthe\\x1b[1Cprompt:\\r\\x1b[1B                                                                                \\r\\x1b[2C\\x1b[1B- Type \\x1b[97m/help\\x1b[39m for help with Claude Code                       \\x1b[2C             \\r\\r\n\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[37m❯ \\x1b[39m\\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[37mdd9152c0-eb95-4a2e-b35b-a8870dff5ca6\\x1b[1C|\\x1b[1Cmd-v"
+    },
+    {
+      "type": "chat:token",
+      "messageId": "77777777-7777-4777-8777-777777777777",
+      "text": "commands, not skills I can invoke. You can run them directly in the prompt:\n- Type /help for help with Claude Code\n",
+      "format": "plain"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "iewer/docs\\x1b[1C|\\x1b[1C[cla…\\x1b[2C●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[5A-\\x1b[1CType\\x1b[1C\\x1b[97m/config\\x1b[1C\\x1b[39mfor\\x1b[1Cconfiguration\\x1b[1Coptions\\r\\x1b[1B                                                                                \\r\\x1b[1B\\x1b[31m✢\\x1b[39m \\x1b[31mForging… \\r\\x1b[1B\\x1b[39m                                                                                \\r\\x1b[1B\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[37m❯ \\x1b[39m\\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[37mdd9152c0-eb95-4a2e-b35b-a8870dff5ca6\\x1b[1C|\\x1b[1Cmd-viewer/docs\\x1b[1C|\\x1b[1C[cla…\\x1b[2C●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Help and configuration commands\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\x1b[2K\\x1b[1A\\x1b[2K\\x1b[G\\x1b[1A\\r\\x1b[4A\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\r\\x1b[1B\\x1b[39m❯ \\x1b[7m \\r\\x1b[2B\\x1b[27m  \\x1b[37mdd9152c0-eb95-4a2e-b35b-a8870dff5ca6 | md-viewer/docs | [cla…\\x1b[2C● high · /ef…\\r\\x1b[1B\\x1b[39m                                                                                \\r\\x1b[1B                                                                                \\r\\x1b[1A\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:done",
+      "messageId": "77777777-7777-4777-8777-777777777777"
+    }
+  ]
+}

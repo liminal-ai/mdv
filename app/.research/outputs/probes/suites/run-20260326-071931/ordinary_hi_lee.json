@@ -1,0 +1,500 @@
+{
+  "elapsedMs": 4711,
+  "terminalMode": [],
+  "statuses": [
+    "provider:ready"
+  ],
+  "tokens": [
+    {
+      "text": "Hi Lee.\n",
+      "format": "plain"
+    }
+  ],
+  "debugOutputCount": 49,
+  "finalType": "chat:done",
+  "currentTurnTrace": [
+    {
+      "type": "chat:context",
+      "messageId": "b7f17f5a-e14a-4e9f-859f-c565e33b604f",
+      "activeDocument": null
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m\\x1b[?25l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>4m\\x1b[<u\\x1b[?1004l\\x1b[?2004l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[31m ▐\\x1b[40m▛███▜\\x1b[49m▌\\x1b[3C\\x1b[39m\\x1b[1mClaude\\x1b[1CCode\\x1b[1C\\x1b[22m\\x1b[37mv2.1.84\\x1b[39m\\r\\r\n\\x1b[31m▝▜\\x1b[40m█████\\x1b[49m▛▘\\x1b[2C\\x1b[37mclaude-opus-4-6[1m][1m]\\x1b[1Cwith\\x1b[1Chigh\\x1b[1Ceffort\\x1b[1C·\\x1b[1CClaude\\x1b[1CMax\\x1b[39m\\r\\r\n\\x1b[31m \\x1b[1C▘▘\\x1b[1C▝▝\\x1b[4C\\x1b[37m~/code/md-viewer/docs\\x1b[39m\\r\\r\n\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n❯ \\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[62C\\x1b[37m●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/effort\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[1A\\x1b[37m4a6dabe1-b219-422f-b0d4-dc63939b75b3 | md-viewer/docs | [cla…\\x1b[39m  \\x1b[37m● \\x1b[1Cigh · /ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:ready"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠂ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4A\\x1b[40m\\x1b[30m❯ \\x1b[97mSay exactly: Hi Lee.\\x1b[39m                                                          \\r\\x1b[1B\\x1b[49m   \\r\\x1b[1B\\x1b[31m✻\\x1b[39m \\x1b[31mUnravelling… \\x1b[39m                                                                 \\r\\x1b[2C\\x1b[1B                                                             \\x1b[2C             \\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[37m❯ \\x1b[39m\\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[37m4a6dabe1-b219-422f-b0d4-dc63939b75b3\\x1b[1C|\\x1b[1Cmd-viewer/docs\\x1b[1C|\\x1b[1C[cla…\\x1b[2C●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[6A\\x1b[93mUn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✽\\x1b[1CU\\x1b[1C\\x1b[93mra\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[3C\\x1b[6A\\x1b[31mn\\x1b[2C\\x1b[93mv\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4C\\x1b[6A\\x1b[31mr\\x1b[2C\\x1b[93me\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[5C\\x1b[6A\\x1b[31ma\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6C\\x1b[6A\\x1b[31mv\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[6Ce\\x1b[2C\\x1b[93mi\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[8C\\x1b[6A\\x1b[31ml\\x1b[2C\\x1b[93mn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[8Cl\\x1b[2C\\x1b[93mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[10C\\x1b[6A\\x1b[31mi\\x1b[2C\\x1b[93m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[10Cn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[12C\\x1b[6A\\x1b[31mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[13C\\x1b[6A\\x1b[31m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m·\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠐ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠐ Hi Lee\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✽\\x1b[1C\\x1b[93mU\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[3C\\x1b[6A\\x1b[93mn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4C\\x1b[6A\\x1b[93mr\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[6A\\x1b[31mU\\x1b[2C\\x1b[93ma\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[3C\\x1b[6A\\x1b[31mn\\x1b[2C\\x1b[93mv\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[3Cr\\x1b[2C\\x1b[93me\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[5C\\x1b[6A\\x1b[31ma\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[5Cv\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠂ Hi Lee\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[7C\\x1b[6A\\x1b[31mel\\x1b[1C\\x1b[93min\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[8Cl\\x1b[2C\\x1b[93mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[10C\\x1b[6A\\x1b[31mi\\x1b[2C\\x1b[93m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[10Cn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[12C\\x1b[6A\\x1b[31mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m·\\x1b[12C…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Hi Lee\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[97m⏺\\x1b[1C\\x1b[39mHi Lee.      \\r\\x1b[3B❯ \\r\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:token",
+      "messageId": "b7f17f5a-e14a-4e9f-859f-c565e33b604f",
+      "text": "Hi Lee.\n",
+      "format": "plain"
+    },
+    {
+      "type": "chat:done",
+      "messageId": "b7f17f5a-e14a-4e9f-859f-c565e33b604f"
+    }
+  ],
+  "trace": [
+    {
+      "type": "chat:conversation-load",
+      "workspaceIdentity": "/Users/leemoore/code/md-viewer/docs",
+      "messages": [
+        {
+          "id": "482622f8-5e96-4e59-aa7b-98aca595107d",
+          "role": "user",
+          "text": "/help",
+          "timestamp": "2026-03-26T11:03:57.086Z"
+        },
+        {
+          "id": "482622f8-5e96-4e59-aa7b-98aca595107d",
+          "role": "agent",
+          "text": "Claude understands your codebase, makes edits with your permission, and\n! for bash modeds — ridouble tap esc to clear        ctrl + z to suspend\n@ for file paths      shift + tab to auto-accept     meta + o to toggle fast\n/btw for side         ctrl + t to toggle tasks       ctrl + g to edit in\nquestion              shift + ⏎ for newline          /keybindings to\ncustomize\nFor more help: https://code.claude.com/docs/en/overview\nEsc to cancel\n",
+          "timestamp": "2026-03-26T11:03:58.869Z",
+          "format": "plain"
+        }
+      ],
+      "cliSessionId": null
+    },
+    {
+      "type": "chat:session",
+      "sessionId": null,
+      "pid": null,
+      "cwd": null,
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:conversation-load",
+      "workspaceIdentity": "/Users/leemoore/code/md-viewer/docs",
+      "messages": [],
+      "cliSessionId": null
+    },
+    {
+      "type": "chat:session",
+      "sessionId": null,
+      "pid": null,
+      "cwd": null,
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:session",
+      "sessionId": "872ce820-17a8-4d6a-97b2-a14f02d05491",
+      "pid": 22208,
+      "cwd": "/Users/leemoore/code/md-viewer/docs",
+      "debugTranscript": ""
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:starting"
+    },
+    {
+      "type": "chat:context",
+      "messageId": "b7f17f5a-e14a-4e9f-859f-c565e33b604f",
+      "activeDocument": null
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m\\x1b[?25l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>4m\\x1b[<u\\x1b[?1004l\\x1b[?2004l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2004h\\x1b[?1004h\\x1b[>1u\\x1b[>4;2m"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[31m ▐\\x1b[40m▛███▜\\x1b[49m▌\\x1b[3C\\x1b[39m\\x1b[1mClaude\\x1b[1CCode\\x1b[1C\\x1b[22m\\x1b[37mv2.1.84\\x1b[39m\\r\\r\n\\x1b[31m▝▜\\x1b[40m█████\\x1b[49m▛▘\\x1b[2C\\x1b[37mclaude-opus-4-6[1m][1m]\\x1b[1Cwith\\x1b[1Chigh\\x1b[1Ceffort\\x1b[1C·\\x1b[1CClaude\\x1b[1CMax\\x1b[39m\\r\\r\n\\x1b[31m \\x1b[1C▘▘\\x1b[1C▝▝\\x1b[4C\\x1b[37m~/code/md-viewer/docs\\x1b[39m\\r\\r\n\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n❯ \\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[62C\\x1b[37m●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/effort\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[>0q\\x1b[c"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[1A\\x1b[37m4a6dabe1-b219-422f-b0d4-dc63939b75b3 | md-viewer/docs | [cla…\\x1b[39m  \\x1b[37m● \\x1b[1Cigh · /ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:status",
+      "status": "provider:ready"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠂ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4A\\x1b[40m\\x1b[30m❯ \\x1b[97mSay exactly: Hi Lee.\\x1b[39m                                                          \\r\\x1b[1B\\x1b[49m   \\r\\x1b[1B\\x1b[31m✻\\x1b[39m \\x1b[31mUnravelling… \\x1b[39m                                                                 \\r\\x1b[2C\\x1b[1B                                                             \\x1b[2C             \\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[37m❯ \\x1b[39m\\x1b[7m \\x1b[27m\\r\\r\n\\x1b[37m────────────────────────────────────────────────────────────────────────────────\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[37m4a6dabe1-b219-422f-b0d4-dc63939b75b3\\x1b[1C|\\x1b[1Cmd-viewer/docs\\x1b[1C|\\x1b[1C[cla…\\x1b[2C●\\x1b[1Chigh\\x1b[1C·\\x1b[1C/ef…\\x1b[39m\\r\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[6A\\x1b[93mUn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✽\\x1b[1CU\\x1b[1C\\x1b[93mra\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[3C\\x1b[6A\\x1b[31mn\\x1b[2C\\x1b[93mv\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4C\\x1b[6A\\x1b[31mr\\x1b[2C\\x1b[93me\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[5C\\x1b[6A\\x1b[31ma\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6C\\x1b[6A\\x1b[31mv\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[6Ce\\x1b[2C\\x1b[93mi\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[8C\\x1b[6A\\x1b[31ml\\x1b[2C\\x1b[93mn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[8Cl\\x1b[2C\\x1b[93mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[10C\\x1b[6A\\x1b[31mi\\x1b[2C\\x1b[93m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[10Cn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[12C\\x1b[6A\\x1b[31mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[13C\\x1b[6A\\x1b[31m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m·\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠐ Claude Code\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠐ Hi Lee\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✽\\x1b[1C\\x1b[93mU\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[3C\\x1b[6A\\x1b[93mn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[4C\\x1b[6A\\x1b[93mr\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[2C\\x1b[6A\\x1b[31mU\\x1b[2C\\x1b[93ma\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[3C\\x1b[6A\\x1b[31mn\\x1b[2C\\x1b[93mv\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✻\\x1b[3Cr\\x1b[2C\\x1b[93me\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[5C\\x1b[6A\\x1b[31ma\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✶\\x1b[5Cv\\x1b[2C\\x1b[93ml\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;⠂ Hi Lee\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[7C\\x1b[6A\\x1b[31mel\\x1b[1C\\x1b[93min\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✳\\x1b[8Cl\\x1b[2C\\x1b[93mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[10C\\x1b[6A\\x1b[31mi\\x1b[2C\\x1b[93m…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m✢\\x1b[10Cn\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[12C\\x1b[6A\\x1b[31mg\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[31m·\\x1b[12C…\\x1b[39m\\r\\r\n\\r\n\\r\n\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b]0;✳ Hi Lee\\x07"
+    },
+    {
+      "type": "chat:debug-output",
+      "data": "\\x1b[?2026h\\x1b[2D\\x1b[3B\\r\\x1b[6A\\x1b[97m⏺\\x1b[1C\\x1b[39mHi Lee.      \\r\\x1b[3B❯ \\r\\r\n\\r\n\\r\n\\x1b[2C\\x1b[3A\\x1b[?2026l"
+    },
+    {
+      "type": "chat:token",
+      "messageId": "b7f17f5a-e14a-4e9f-859f-c565e33b604f",
+      "text": "Hi Lee.\n",
+      "format": "plain"
+    },
+    {
+      "type": "chat:done",
+      "messageId": "b7f17f5a-e14a-4e9f-859f-c565e33b604f"
+    }
+  ]
+}

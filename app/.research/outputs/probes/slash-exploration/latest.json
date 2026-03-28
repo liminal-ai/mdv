@@ -1,0 +1,487 @@
+{
+  "cwd": "/Users/leemoore/code/md-viewer/app",
+  "sessionId": "59698687-d2c1-478c-b7e6-3968abc9de87",
+  "steps": [
+    {
+      "id": "initial",
+      "input": "",
+      "classification": "no-suggestions-detected",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 2,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": false,
+        "commandRows": [],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯  "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  446619f8-85fe-43bc-8c98-6d195a00d9fd | md-viewer/app | [clau…  ● high · /ef…"
+          }
+        ]
+      }
+    },
+    {
+      "id": "slash_root",
+      "input": "/",
+      "classification": "inline-suggestions",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 3,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": true,
+        "commandRows": [
+          "/codex-subagent                 Run OpenAI Codex CLI as a subagent for code…",
+          "/ls-epic                        Write complete, traceable Epics using Limin…",
+          "/ls-tech-design                 Transform a Feature Spec into implementable…",
+          "/skill-creator                  Create new skills, modify and improve exist…",
+          "/ls-publish-epic                Publish a detailed epic as individual story…",
+          "/add-dir                        Add a new working directory"
+        ],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯ / "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  /codex-subagent                 Run OpenAI Codex CLI as a subagent for code…  "
+          },
+          {
+            "index": 8,
+            "text": "  /ls-epic                        Write complete, traceable Epics using Limin…"
+          },
+          {
+            "index": 9,
+            "text": "  /ls-tech-design                 Transform a Feature Spec into implementable…"
+          },
+          {
+            "index": 10,
+            "text": "  /skill-creator                  Create new skills, modify and improve exist…"
+          },
+          {
+            "index": 11,
+            "text": "  /ls-publish-epic                Publish a detailed epic as individual story…"
+          },
+          {
+            "index": 12,
+            "text": "  /add-dir                        Add a new working directory"
+          }
+        ]
+      }
+    },
+    {
+      "id": "slash_help_prefix",
+      "input": "h",
+      "classification": "inline-suggestions",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 4,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": true,
+        "commandRows": [
+          "/help                           Show help and available commands",
+          "/hooks                          View hook configurations for tool events",
+          "/hook-development               (plugin-dev) This skill should be used when…",
+          "/ls-tech-design                 Transform a Feature Spec into implementable…",
+          "/skill-creator                  Create new skills, modify and improve exist…",
+          "/ls-publish-epic                Publish a detailed epic as individual story…"
+        ],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯ /h "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  /help                           Show help and available commands              "
+          },
+          {
+            "index": 8,
+            "text": "  /hooks                          View hook configurations for tool events    "
+          },
+          {
+            "index": 9,
+            "text": "  /hook-development               (plugin-dev) This skill should be used when…"
+          },
+          {
+            "index": 10,
+            "text": "  /ls-tech-design                 Transform a Feature Spec into implementable…"
+          },
+          {
+            "index": 11,
+            "text": "  /skill-creator                  Create new skills, modify and improve exist…"
+          },
+          {
+            "index": 12,
+            "text": "  /ls-publish-epic                Publish a detailed epic as individual story…"
+          }
+        ]
+      }
+    },
+    {
+      "id": "clear_line_before_config_prefix",
+      "input": "\u0015",
+      "classification": "no-suggestions-detected",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 2,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": false,
+        "commandRows": [],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯    "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  446619f8-85fe-43bc-8c98-6d195a00d9fd | md-viewer/app | [clau● h● high · /ef…  "
+          }
+        ]
+      }
+    },
+    {
+      "id": "slash_config_prefix",
+      "input": "/c",
+      "classification": "inline-suggestions",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 4,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": true,
+        "commandRows": [
+          "/copy                           Copy Claude's last response to clipboard (o…",
+          "/clear                          Clear conversation history and free up cont…",
+          "/color                          Set the prompt bar color for this session",
+          "/chrome                         Claude in Chrome (Beta) settings",
+          "/config                         Open config panel",
+          "/compact                        Clear conversation history but keep a summa…"
+        ],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯ /c "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  /copy                           Copy Claude's last response to clipboard (o…  "
+          },
+          {
+            "index": 8,
+            "text": "  /clear                          Clear conversation history and free up cont…  "
+          },
+          {
+            "index": 9,
+            "text": "  /color                          Set the prompt bar color for this session"
+          },
+          {
+            "index": 10,
+            "text": "  /chrome                         Claude in Chrome (Beta) settings              "
+          },
+          {
+            "index": 11,
+            "text": "  /config                         Open config panel                             "
+          },
+          {
+            "index": 12,
+            "text": "  /compact                        Clear conversation history but keep a summa…  "
+          }
+        ]
+      }
+    },
+    {
+      "id": "slash_config_prefix_more",
+      "input": "o",
+      "classification": "inline-suggestions",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 5,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": true,
+        "commandRows": [
+          "/copy                           Copy Claude's last response to clipboard (o…",
+          "/color                          Set the prompt bar color for this session",
+          "/config                         Open config panel",
+          "/compact                        Clear conversation history but keep a summa…",
+          "/context                        Visualize current context usage as a colore…",
+          "/codex-subagent                 Run OpenAI Codex CLI as a subagent for code…"
+        ],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯ /co "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  /copy                           Copy Claude's last response to clipboard (o…  "
+          },
+          {
+            "index": 8,
+            "text": "  /color                          Set the prompt bar color for this session     "
+          },
+          {
+            "index": 9,
+            "text": "  /config                         Open config panel                        "
+          },
+          {
+            "index": 10,
+            "text": "  /compact                        Clear conversation history but keep a summa…  "
+          },
+          {
+            "index": 11,
+            "text": "  /context                        Visualize current context usage as a colore…  "
+          },
+          {
+            "index": 12,
+            "text": "  /codex-subagent                 Run OpenAI Codex CLI as a subagent for code…  "
+          }
+        ]
+      }
+    },
+    {
+      "id": "clear_line_before_escape",
+      "input": "\u0015",
+      "classification": "no-suggestions-detected",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 2,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": false,
+        "commandRows": [],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯     "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  446619f8-85fe-43bc-8c98-6d195a00d9fd | md-viewer/app | [clau● h● high · /ef…  "
+          }
+        ]
+      }
+    },
+    {
+      "id": "escape",
+      "input": "\u001b",
+      "classification": "no-suggestions-detected",
+      "snapshot": {
+        "bufferType": "normal",
+        "cursor": {
+          "x": 2,
+          "y": 5
+        },
+        "promptVisible": true,
+        "boxedScreenVisible": false,
+        "slashMenuVisible": false,
+        "commandRows": [],
+        "lines": [
+          {
+            "index": 0,
+            "text": " ▐▛███▜▌   Claude Code v2.1.85"
+          },
+          {
+            "index": 1,
+            "text": "▝▜█████▛▘  claude-opus-4-6[1m][1m] with high effort · Claude Max"
+          },
+          {
+            "index": 2,
+            "text": "  ▘▘ ▝▝    ~/code/md-viewer/app"
+          },
+          {
+            "index": 4,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 5,
+            "text": "❯     "
+          },
+          {
+            "index": 6,
+            "text": "────────────────────────────────────────────────────────────────────────────────"
+          },
+          {
+            "index": 7,
+            "text": "  446619f8-85fe-43bc-8c98-6d195a00d9fd | md-viewer/app | [clau● h● high · /ef…  "
+          }
+        ]
+      }
+    }
+  ],
+  "traceSummary": {
+    "started": true,
+    "exit": null,
+    "outputEvents": 24
+  }
+}

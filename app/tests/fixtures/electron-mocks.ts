@@ -65,6 +65,7 @@ export function createMockApp() {
       listeners.set(event, [...current, handler]);
     }),
     quit: vi.fn(),
+    exit: vi.fn(),
     requestSingleInstanceLock: vi.fn().mockReturnValue(true),
     emit(event: string, ...args: unknown[]) {
       for (const handler of listeners.get(event) ?? []) {

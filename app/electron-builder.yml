@@ -15,11 +15,11 @@ fileAssociations:
   - ext: md
     name: Markdown Document
     role: Viewer
-    rank: Default
+    rank: Owner
   - ext: markdown
     name: Markdown Document
     role: Viewer
-    rank: Default
+    rank: Owner
 asar: true
 asarUnpack:
   - dist/client/**/*
