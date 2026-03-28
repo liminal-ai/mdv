@@ -39,27 +39,27 @@ export async function buildApp(opts?: AppOptions) {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  await app.register(staticPlugin);
-  await app.register(websocket);
-  await app.register(sessionRoutes, {
+  app.register(staticPlugin);
+  app.register(websocket);
+  app.register(sessionRoutes, {
     sessionService,
     packageService,
   });
-  await app.register(packageRoutes, { packageService });
-  await app.register(browseRoutes, {
+  app.register(packageRoutes, { packageService });
+  app.register(browseRoutes, {
     browseService: opts?.browseService,
   });
-  await app.register(treeRoutes);
-  await app.register(clipboardRoutes);
-  await app.register(fileRoutes);
-  await app.register(imageRoutes);
-  await app.register(openExternalRoutes);
-  await app.register(renderRoutes);
-  await app.register(saveDialogRoutes);
-  await app.register(exportRoutes, {
+  app.register(treeRoutes);
+  app.register(clipboardRoutes);
+  app.register(fileRoutes);
+  app.register(imageRoutes);
+  app.register(openExternalRoutes);
+  app.register(renderRoutes);
+  app.register(saveDialogRoutes);
+  app.register(exportRoutes, {
     sessionService,
   });
-  await app.register(wsRoutes);
+  app.register(wsRoutes);
 
   if (opts?.cliArg) {
     const resolvedPath = path.resolve(opts.cliArg);
@@ -92,7 +92,9 @@ export async function buildApp(opts?: AppOptions) {
 
   if (runStartupTasks) {
     await packageService.restore();
-    await tempDirManager.cleanupStale();
+    tempDirManager.cleanupStale().catch((error) => {
+      console.warn('Stale temp cleanup failed:', error);
+    });
   }
 
   app.addHook('onResponse', async (request, reply) => {

@@ -42,9 +42,15 @@ async function loadWindow({ displays, stateOverrides }: LoadWindowOptions = {}) 
     return instance;
   });
 
+  const ipcMain = {
+    on: vi.fn(),
+    once: vi.fn(),
+  };
+
   vi.doMock('electron', () => ({
     BrowserWindow,
     screen,
+    ipcMain,
   }));
   vi.doMock('node:module', () => ({
     createRequire: vi.fn(() =>

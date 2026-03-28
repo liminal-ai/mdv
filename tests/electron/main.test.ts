@@ -143,14 +143,18 @@ describe('electron main process', () => {
     );
   });
 
-  it('TC-7.1c: window hidden until ready', async () => {
-    const { createdWindows } = await loadMain();
+  it('TC-7.1c: window hidden until renderer ready', async () => {
+    const { createdWindows, ipcMain } = await loadMain();
     const createdWindow = createdWindows[0];
 
     expect(createdWindow?.options.show).toBe(false);
 
+    // Window should NOT show on ready-to-show (HTML parsed but content not restored yet)
     createdWindow?.instance.emit('ready-to-show');
+    expect(createdWindow?.instance.show).toHaveBeenCalledTimes(0);
 
+    // Window shows when renderer signals bootstrap complete
+    ipcMain.invoke('app:renderer-ready', { sender: createdWindow?.instance.webContents });
     expect(createdWindow?.instance.show).toHaveBeenCalledTimes(1);
   });
 

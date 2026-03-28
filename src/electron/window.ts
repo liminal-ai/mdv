@@ -1,9 +1,11 @@
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, ipcMain, screen } from 'electron';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const windowStateKeeper = require('electron-window-state');
+
+const SHOW_TIMEOUT_MS = 5_000;
 
 export function createMainWindow(serverUrl: string | null): BrowserWindow {
   const state = windowStateKeeper({
@@ -46,8 +48,23 @@ export function createMainWindow(serverUrl: string | null): BrowserWindow {
     return win;
   }
 
-  win.once('ready-to-show', () => {
+  // Delay showing the window until the renderer has finished restoring tabs,
+  // so the user never sees the empty welcome screen flash before content loads.
+  // Fall back to showing after a timeout in case bootstrap fails silently.
+  let shown = false;
+  const showOnce = () => {
+    if (shown) return;
+    shown = true;
     win.show();
+  };
+
+  const timeout = setTimeout(showOnce, SHOW_TIMEOUT_MS);
+
+  ipcMain.once('app:renderer-ready', (event) => {
+    if (event.sender === win.webContents) {
+      clearTimeout(timeout);
+      showOnce();
+    }
   });
 
   return win;

@@ -37,20 +37,31 @@ export function createMockBrowserWindow() {
 }
 
 export function createMockIpcMain() {
-  const handlers = new Map<string, (...args: unknown[]) => unknown>();
+  const handlers = new Map<string, Array<(...args: unknown[]) => unknown>>();
+
+  const addHandler = (channel: string, handler: (...args: unknown[]) => unknown) => {
+    const list = handlers.get(channel) ?? [];
+    list.push(handler);
+    handlers.set(channel, list);
+  };
 
   return {
     on: vi.fn((channel: string, handler: (...args: unknown[]) => void) => {
-      handlers.set(channel, handler);
+      addHandler(channel, handler);
+    }),
+    once: vi.fn((channel: string, handler: (...args: unknown[]) => void) => {
+      addHandler(channel, handler);
     }),
     handle: vi.fn((channel: string, handler: (...args: unknown[]) => unknown) => {
-      handlers.set(channel, handler);
+      addHandler(channel, handler);
     }),
     removeHandler: vi.fn((channel: string) => {
       handlers.delete(channel);
     }),
     invoke(channel: string, ...args: unknown[]) {
-      return handlers.get(channel)?.(...args);
+      for (const handler of handlers.get(channel) ?? []) {
+        handler(...args);
+      }
     },
   };
 }
