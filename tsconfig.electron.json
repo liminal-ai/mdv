@@ -4,8 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "outDir": "dist/electron",
-    "rootDir": "src/electron"
+    "rootDir": "src"
   },
-  "include": ["src/electron/**/*.ts"],
+  "include": ["src/electron/**/*.ts", "src/shared/**/*.ts"],
   "exclude": ["node_modules", "tests"]
 }

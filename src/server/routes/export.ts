@@ -9,7 +9,7 @@ import {
   RevealRequestSchema,
   SessionStateSchema,
   SetLastExportDirSchema,
-} from '../schemas/index.js';
+} from '../../shared/contracts/index.js';
 import { AssetService } from '../services/asset.service.js';
 import { DocxService } from '../services/docx.service.js';
 import { ExportService } from '../services/export.service.js';

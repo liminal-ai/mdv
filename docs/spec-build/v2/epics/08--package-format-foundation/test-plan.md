@@ -477,15 +477,15 @@ TC-7.x distribution:
 
 ---
 
-## Gorilla Testing Scenarios
+## Exploratory QA Scenarios
 
-Epic 8 is a standalone library and CLI with no browser UI surface. Gorilla testing is not applicable.
+Epic 8 is a standalone library and CLI with no browser UI surface. Exploratory QA is not applicable.
 
 **New capabilities to test:**
 - N/A — no browser UI. All capabilities are library functions and CLI commands exercised by the scripted test suite.
 
 **Adjacent features to recheck:**
-- N/A — Epic 8 introduces no changes to the viewer. UI-level validation of the package library is deferred to Epic 9 (Package Viewer Integration), whose gorilla scenarios cover rendering, navigation, and round-trip fidelity through the viewer's integration surface.
+- N/A — Epic 8 introduces no changes to the viewer. UI-level validation of the package library is deferred to Epic 9 (Package Viewer Integration), whose exploratory QA scenarios cover rendering, navigation, and round-trip fidelity through the viewer's integration surface.
 
 **Edge cases for agent exploration:**
 - N/A

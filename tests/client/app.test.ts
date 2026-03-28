@@ -510,6 +510,50 @@ describe('client bootstrap api injection', () => {
     expect(document.body.textContent).toContain('The requested file no longer exists.');
   });
 
+  it('removes stale recent files and surfaces an error when opening from the recent-files list returns 404', async () => {
+    const api = await renderApp(
+      {
+        ...emptySession,
+        lastRoot: '/root',
+        recentFiles: [{ path: '/root/missing.md', openedAt: '2026-03-19T00:00:00.000Z' }],
+      },
+      {
+        getTree: vi
+          .fn()
+          .mockResolvedValueOnce({
+            root: '/root',
+            tree: [],
+          })
+          .mockResolvedValueOnce({
+            root: '/root',
+            tree: [],
+          }),
+        readFile: vi
+          .fn()
+          .mockRejectedValue(
+            new ApiError(404, 'FILE_NOT_FOUND', 'The requested file no longer exists.'),
+          ),
+        removeRecentFile: vi.fn().mockResolvedValue({
+          ...emptySession,
+          lastRoot: '/root',
+          recentFiles: [],
+        }),
+      },
+    );
+
+    document.querySelector<HTMLButtonElement>('.content-area__recent-button')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(api.readFile).toHaveBeenCalledWith('/root/missing.md');
+    expect(api.removeRecentFile).toHaveBeenCalledWith('/root/missing.md');
+    expect(api.getTree).toHaveBeenNthCalledWith(1, '/root');
+    expect(api.getTree).toHaveBeenNthCalledWith(2, '/root');
+    expect(document.querySelector('[role="alert"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('The requested file no longer exists.');
+    expect(document.body.textContent).toContain('No recent files');
+  });
+
   it('renders fallback shell when bootstrap fails', async () => {
     await renderApp(emptySession, {
       bootstrap: vi.fn().mockRejectedValue(new Error('Bootstrap failed')),

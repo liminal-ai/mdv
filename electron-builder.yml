@@ -1,7 +1,7 @@
 appId: com.leemoore.mdviewer
 productName: mdv
 directories:
-  output: dist/electron
+  output: out/electron
 mac:
   icon: assets/icon/mdv.icns
   category: public.app-category.productivity
@@ -24,11 +24,16 @@ asar: true
 asarUnpack:
   - dist/client/**/*
 files:
-  - dist/**/*
-  - src/client/**/*.html
-  - src/client/**/*.css
+  - package.json
+  - dist/client/**/*
+  - dist/server/**/*
+  - dist/shared/**/*
+  - dist/pkg/**/*
+  - dist/electron/main.js
+  - dist/electron/preload.cjs
   - node_modules/**/*
-  - "!node_modules/**/test/**"
-  - "!node_modules/**/*.md"
+  - '!node_modules/**/test/**'
+  - '!node_modules/**/*.md'
+  - '!node_modules/**/*.map'
 extraMetadata:
   main: dist/electron/main.js

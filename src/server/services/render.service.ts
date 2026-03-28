@@ -7,7 +7,7 @@ import { fromHighlighter } from '@shikijs/markdown-it';
 import markdownItAnchor from 'markdown-it-anchor';
 import markdownItTaskLists from 'markdown-it-task-lists';
 import { createHighlighter } from 'shiki';
-import type { RenderWarning } from '../schemas/index.js';
+import type { RenderWarning } from '../../shared/contracts/index.js';
 
 const IMG_TAG_RE = /<img\s+([^>]*?)src\s*=\s*(?:(["'])(.*?)\2|([^>\s]+))([^>]*?)>/gi;
 const MERMAID_RE = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/gi;

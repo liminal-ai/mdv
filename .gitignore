@@ -9,3 +9,5 @@ yarn-error.log*
 .vscode/
 *.swp
 *.swo
+qa-output/
+.qa-artifacts/

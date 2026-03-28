@@ -8,7 +8,7 @@ import type {
   PackageExportResponse,
   PackageManifestResponse,
   PackageOpenResponse,
-} from '../schemas/package.js';
+} from '../../shared/contracts/packages.js';
 import {
   createPackage,
   extractPackage,

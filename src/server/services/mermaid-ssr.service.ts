@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import puppeteer, { type Browser } from 'puppeteer';
-import type { ExportWarning } from '../schemas/index.js';
+import type { ExportWarning } from '../../shared/contracts/index.js';
 
 const MERMAID_PLACEHOLDER_RE =
   /<div class="mermaid-placeholder">[\s\S]*?<code class="language-mermaid">([\s\S]*?)<\/code>[\s\S]*?<\/div>/g;

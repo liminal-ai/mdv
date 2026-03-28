@@ -4,7 +4,7 @@ import {
   ErrorResponseSchema,
   SaveDialogRequestSchema,
   SaveDialogResponseSchema,
-} from '../schemas/index.js';
+} from '../../shared/contracts/index.js';
 import { openSaveDialog } from '../utils/save-dialog.js';
 import { ErrorCode, toApiError } from '../utils/errors.js';
 

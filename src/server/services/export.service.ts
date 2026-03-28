@@ -1,6 +1,6 @@
 import { rename, unlink, writeFile } from 'node:fs/promises';
 import puppeteer, { type Browser } from 'puppeteer';
-import type { ExportRequest, ExportResponse, ExportWarning } from '../schemas/index.js';
+import type { ExportRequest, ExportResponse, ExportWarning } from '../../shared/contracts/index.js';
 import {
   ExportInProgressError,
   ExportInsufficientStorageError,

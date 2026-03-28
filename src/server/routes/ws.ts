@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
-import { ClientWsMessageSchema, ServerWsMessageSchema } from '../schemas/index.js';
+import { ClientWsMessageSchema, ServerWsMessageSchema } from '../../shared/contracts/index.js';
 import { WatchService } from '../services/watch.service.js';
 
 const MARKDOWN_EXTENSIONS_RE = /\.(md|markdown)$/i;

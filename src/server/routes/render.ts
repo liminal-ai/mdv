@@ -3,7 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import {
   RenderFromContentRequestSchema,
   RenderFromContentResponseSchema,
-} from '../schemas/index.js';
+} from '../../shared/contracts/index.js';
 import { RenderService } from '../services/render.service.js';
 
 export async function renderRoutes(app: FastifyInstance) {

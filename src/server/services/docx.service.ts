@@ -1,6 +1,6 @@
 import htmlToDocx from '@turbodocx/html-to-docx';
 import { Resvg } from '@resvg/resvg-js';
-import type { ExportWarning } from '../schemas/index.js';
+import type { ExportWarning } from '../../shared/contracts/index.js';
 
 const SVG_TAG_RE = /<svg[\s\S]*?<\/svg>/gi;
 

@@ -3,7 +3,7 @@ import {
   PackageCreateRequestSchema,
   PackageExportRequestSchema,
   PackageOpenRequestSchema,
-} from '../../../src/server/schemas/package.js';
+} from '../../../src/shared/contracts/packages.js';
 
 describe('package schemas', () => {
   it('PackageOpenRequestSchema accepts valid absolute path', () => {

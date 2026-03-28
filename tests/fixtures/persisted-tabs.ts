@@ -1,4 +1,4 @@
-import type { PersistedTab } from '../../src/server/schemas/index.js';
+import type { PersistedTab } from '../../src/shared/types.js';
 
 export const PERSISTED_TABS_CLEAN: PersistedTab[] = [
   { path: '/docs/readme.md', mode: 'render' },

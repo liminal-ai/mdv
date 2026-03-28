@@ -1,6 +1,6 @@
 import { watch as chokidarWatch, type FSWatcher } from 'chokidar';
 import type { WebSocket } from 'ws';
-import { ServerWsMessageSchema, type ServerWsMessage } from '../schemas/index.js';
+import { ServerWsMessageSchema, type ServerWsMessage } from '../../shared/contracts/index.js';
 
 export const WATCH_DEBOUNCE_MS = 300;
 

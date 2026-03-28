@@ -3,7 +3,7 @@ import { access } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
-import { ErrorResponseSchema, ImageRequestSchema } from '../schemas/index.js';
+import { ErrorResponseSchema, ImageRequestSchema } from '../../shared/contracts/index.js';
 import { ImageService } from '../services/image.service.js';
 import {
   ErrorCode,

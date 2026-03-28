@@ -1,4 +1,12 @@
-interface ElectronBridge {
+import type { MenuState } from '../../shared/contracts/electron.js';
+
+export interface ShellSaveDialogRequest {
+  defaultPath: string;
+  defaultFilename: string;
+  prompt?: string;
+}
+
+export interface ElectronBridge {
   isElectron: boolean;
   onMenuAction: (callback: (action: string, args?: unknown) => void) => void;
   onOpenFile: (callback: (path: string) => void) => void;
@@ -7,15 +15,10 @@ interface ElectronBridge {
   cancelQuit: () => void;
   sendRendererReady: () => void;
   sendMenuState: (state: MenuState) => void;
-}
-
-export interface MenuState {
-  hasDocument: boolean;
-  hasDirtyTab: boolean;
-  activeTabDirty: boolean;
-  activeTheme: string;
-  activeMode: 'render' | 'edit';
-  defaultMode: 'render' | 'edit';
+  pickMarkdownFile: () => Promise<{ path: string } | null>;
+  pickFolder: () => Promise<{ path: string } | null>;
+  pickPackage: () => Promise<{ path: string } | null>;
+  saveDialog: (request: ShellSaveDialogRequest) => Promise<{ path: string } | null>;
 }
 
 declare global {

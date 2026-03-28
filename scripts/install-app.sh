@@ -6,17 +6,14 @@ APP_NAME="mdv.app"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 BUNDLE_ID="com.leemoore.mdviewer"
 
-echo "Building MD Viewer..."
-npm run build:electron
-
 echo "Packaging..."
-npx electron-builder --mac --dir
+npm run package:mac
 
 ARCH=$(uname -m)
 if [ "$ARCH" = "arm64" ]; then
-  SOURCE="dist/electron/mac-arm64/$APP_NAME"
+  SOURCE="out/electron/mac-arm64/$APP_NAME"
 else
-  SOURCE="dist/electron/mac/$APP_NAME"
+  SOURCE="out/electron/mac/$APP_NAME"
 fi
 
 if [ ! -d "$SOURCE" ]; then
@@ -46,6 +43,8 @@ if [ -x "$LSREGISTER" ]; then
 
   "$LSREGISTER" -u "$PWD/dist/electron/mac-arm64/$APP_NAME" >/dev/null 2>&1 || true
   "$LSREGISTER" -u "$PWD/dist/electron/mac/$APP_NAME" >/dev/null 2>&1 || true
+  "$LSREGISTER" -u "$PWD/out/electron/mac-arm64/$APP_NAME" >/dev/null 2>&1 || true
+  "$LSREGISTER" -u "$PWD/out/electron/mac/$APP_NAME" >/dev/null 2>&1 || true
   "$LSREGISTER" -u "$PWD/out/MD Viewer-darwin-arm64/MD Viewer.app" >/dev/null 2>&1 || true
   "$LSREGISTER" -u "/Applications/MD Viewer.app" >/dev/null 2>&1 || true
   "$LSREGISTER" -u "$HOME/Applications/MD Viewer.app" >/dev/null 2>&1 || true

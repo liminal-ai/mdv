@@ -1,4 +1,7 @@
-import type { MermaidCacheEntry as CacheEntry } from '../../server/schemas/index.js';
+interface CacheEntry {
+  svg: string;
+  accessedAt: number;
+}
 
 export function fnv1a(str: string): string {
   let hash = 0x811c9dc5;

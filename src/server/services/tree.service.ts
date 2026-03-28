@@ -1,7 +1,7 @@
 import { readdir, realpath, stat } from 'node:fs/promises';
 import type { Dirent } from 'node:fs';
 import path from 'node:path';
-import type { TreeNode } from '../schemas/index.js';
+import type { TreeNode } from '../../shared/contracts/index.js';
 import { ScanTimeoutError } from '../utils/errors.js';
 
 const MD_EXTENSIONS = new Set(['.md', '.markdown']);

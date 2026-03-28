@@ -1,4 +1,4 @@
-import type { ThemeInfo } from '../schemas/index.js';
+import type { ThemeInfo } from '../../shared/contracts/index.js';
 
 const THEMES: ThemeInfo[] = [
   { id: 'light-default', label: 'Light Default', variant: 'light' },

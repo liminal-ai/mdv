@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { ErrorResponseSchema, FilePickerResponseSchema } from '../schemas/index.js';
+import { ErrorResponseSchema, FilePickerResponseSchema } from '../../shared/contracts/index.js';
 import {
   PackageCreateRequestSchema,
   PackageCreateResponseSchema,
@@ -11,7 +11,7 @@ import {
   PackageManifestResponseSchema,
   PackageOpenRequestSchema,
   PackageOpenResponseSchema,
-} from '../schemas/package.js';
+} from '../../shared/contracts/packages.js';
 import type { PackageService } from '../services/package.service.js';
 import {
   ExtractionError,

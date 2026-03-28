@@ -144,25 +144,25 @@ User reviewed the epic. Accepted with one exception: the Playwright choice was u
 
 ---
 
-## Process Enhancement: Gorilla Testing with Agent Browser (for ls-team-impl)
+## Process Enhancement: Exploratory QA with Agent Browser (for ls-team-impl)
 
-**What:** Add an automated gorilla testing stage to the implementation orchestration process (ls-team-impl / ls-team-impl-c). At epic closeout, after all stories pass and the deterministic E2E suite is green, launch an Agent Browser-driven AI agent to exploratorily test the app. The agent navigates the app with context about what changed, pokes around, tries edge cases, and reports anything broken or unexpected. If issues are found, the orchestrator triages and dispatches fixes before closing the epic.
+**What:** Add an automated exploratory QA stage to the implementation orchestration process (ls-team-impl / ls-team-impl-c). At epic closeout, after all stories pass and the deterministic E2E suite is green, launch an Agent Browser-driven AI agent to exploratorily test the app. The agent navigates the app with context about what changed, pokes around, tries edge cases, and reports anything broken or unexpected. If issues are found, the orchestrator triages and dispatches fixes before closing the epic.
 
 **Where this lives:**
 
-1. **Per-project gorilla testing file** — NOT in CLAUDE.md (too broad). A dedicated file (e.g., `gorilla-testing.md` or similar) that provides instructions, focus areas, and scenarios for the gorilla agent. The orchestrator reads this file when it's time to run gorilla testing. This file can be project-specific.
+1. **Per-project exploratory QA file** — NOT in CLAUDE.md (too broad). A dedicated file (e.g., `exploratory-qa-approach.md` or similar) that provides instructions, focus areas, and scenarios for the exploratory QA agent. The orchestrator reads this file when it's time to run exploratory QA. This file can be project-specific.
 
-2. **Tech design responsibility** — Each epic's tech design should determine what gorilla testing scenarios are relevant for that epic's changes. The tech design says "gorilla testing should at least cover these scenarios" and the implementation orchestrator uses that guidance when launching the gorilla agent.
+2. **Tech design responsibility** — Each epic's tech design should determine what exploratory QA scenarios are relevant for that epic's changes. The tech design says "exploratory QA should at least cover these scenarios" and the implementation orchestrator uses that guidance when launching the exploratory QA agent.
 
-3. **ls-team-impl skill update** — Add a gorilla testing phase to the implementation orchestration, after verification passes and before epic closeout. The orchestrator checks for the gorilla testing file, loads it, and dispatches an Agent Browser agent with the relevant context and scenarios.
+3. **ls-team-impl skill update** — Add an exploratory QA phase to the implementation orchestration, after verification passes and before epic closeout. The orchestrator checks for the exploratory QA file, loads it, and dispatches an Agent Browser agent with the relevant context and scenarios.
 
 **Tooling:** Vercel Agent Browser (CLI, Rust-based, accessibility-tree snapshots, token-efficient). The agent uses Agent Browser to navigate and observe; it reports findings in plain text back to the orchestrator. Not a replacement for deterministic Playwright tests — a complement that catches the category of bugs scripted tests miss.
 
 **Action items:**
-- Update ls-team-impl / ls-team-impl-c skills to include gorilla testing stage
-- Create prompts/instructions for the gorilla testing agent
-- Define the per-project gorilla testing file convention
-- Potentially create an ls-gorilla skill or integrate into existing verification flow
+- Update ls-team-impl / ls-team-impl-c skills to include exploratory QA stage
+- Create prompts/instructions for the exploratory QA agent
+- Define the per-project exploratory QA file convention
+- Potentially create an ls-exploratory-qa skill or integrate into existing verification flow
 
 ---
 

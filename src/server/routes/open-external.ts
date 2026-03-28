@@ -3,7 +3,7 @@ import { stat } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
-import { ErrorResponseSchema, OpenExternalRequestSchema } from '../schemas/index.js';
+import { ErrorResponseSchema, OpenExternalRequestSchema } from '../../shared/contracts/index.js';
 import { ErrorCode, isNotFoundError, isPermissionError, toApiError } from '../utils/errors.js';
 
 const OpenExternalResponseSchema = z.object({ ok: z.literal(true) });

@@ -1,7 +1,11 @@
 import * as fs from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { SessionStateSchema, type PersistedTab, type SessionState } from '../schemas/index.js';
+import {
+  SessionStateSchema,
+  type PersistedTab,
+  type SessionState,
+} from '../../shared/contracts/index.js';
 import { isNotFoundError, isPermissionError } from '../utils/errors.js';
 
 const SESSION_FILE_NAME = 'session.json';

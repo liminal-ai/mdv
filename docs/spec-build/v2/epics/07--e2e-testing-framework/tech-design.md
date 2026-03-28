@@ -1051,7 +1051,7 @@ This epic is unique — the "implementation" IS the tests. There is no separate 
 
 ```
          /\
-        /  \  Manual gorilla testing (verify tests catch real issues)
+        /  \  Manual exploratory QA (verify tests catch real issues)
        /----\
       /      \  E2E tests (this IS the deliverable)
      /--------\  ~30 Playwright tests across 4 spec files

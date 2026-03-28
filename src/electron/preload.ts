@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { MenuState } from '../shared/contracts/electron.js';
 
 contextBridge.exposeInMainWorld('electron', {
   isElectron: true,
@@ -33,14 +34,16 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.send('app:renderer-ready');
   },
 
-  sendMenuState: (state: {
-    hasDocument: boolean;
-    hasDirtyTab: boolean;
-    activeTabDirty: boolean;
-    activeTheme: string;
-    activeMode: string;
-    defaultMode: string;
-  }) => {
+  sendMenuState: (state: MenuState) => {
     ipcRenderer.send('menu:state-update', state);
   },
+
+  pickMarkdownFile: () => ipcRenderer.invoke('dialog:pick-markdown-file'),
+
+  pickFolder: () => ipcRenderer.invoke('dialog:pick-folder'),
+
+  pickPackage: () => ipcRenderer.invoke('dialog:pick-package'),
+
+  saveDialog: (request: { defaultPath: string; defaultFilename: string; prompt?: string }) =>
+    ipcRenderer.invoke('dialog:save', request),
 });

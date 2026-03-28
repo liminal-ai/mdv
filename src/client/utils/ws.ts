@@ -1,4 +1,4 @@
-import { ServerWsMessageSchema } from '../../server/schemas/index.js';
+import { ServerWsMessageSchema } from '../../shared/contracts/ws.js';
 import type { ClientWsMessage, ServerWsMessage } from '../../shared/types.js';
 
 type ServerMessageByType<T extends ServerWsMessage['type']> = Extract<ServerWsMessage, { type: T }>;

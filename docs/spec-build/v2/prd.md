@@ -990,7 +990,7 @@ A collapsible outline panel or heading dropdown extracted from the current
 document. Long documents with many headings need a way to jump between
 sections. Headings already have proper IDs for anchor linking — the UI
 to navigate them is missing. Standard feature for any markdown viewer.
-Identified during gorilla testing.
+Identified during exploratory QA.
 
 ### Liminal Spec Skill Updates
 

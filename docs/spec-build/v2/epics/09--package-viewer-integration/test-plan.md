@@ -429,7 +429,7 @@ After TDD Green, verify manually:
 
 ---
 
-## Gorilla Testing Scenarios
+## Exploratory QA Scenarios
 
 ### New capabilities to test:
 

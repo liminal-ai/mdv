@@ -8,7 +8,7 @@ import {
   FileReadResponseSchema,
   FileSaveRequestSchema,
   FileSaveResponseSchema,
-} from '../schemas/index.js';
+} from '../../shared/contracts/index.js';
 import { FileService } from '../services/file.service.js';
 import { RenderService } from '../services/render.service.js';
 import {

@@ -159,6 +159,20 @@ describe('epic 2 keyboard shortcuts', () => {
     expect(document.querySelector('.tab--active')?.getAttribute('title')).toBe('/b.md');
   });
 
+  it('Ctrl+Tab activates the next tab when multiple tabs are open', async () => {
+    await renderApp({
+      openTabs: ['/a.md', '/b.md', '/c.md'],
+      activeTab: '/a.md',
+    });
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true, bubbles: true }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(document.querySelector('.tab--active')?.getAttribute('title')).toBe('/b.md');
+  });
+
   it('Cmd+W with no open tabs is a no-op', async () => {
     await renderApp();
 

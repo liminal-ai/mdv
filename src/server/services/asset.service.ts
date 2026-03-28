@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ExportWarning } from '../schemas/index.js';
+import type { ExportWarning } from '../../shared/contracts/index.js';
 
 const IMG_TAG_RE = /<img\s+([^>]*?)src\s*=\s*(?:(["'])(.*?)\2|([^>\s]+))([^>]*?)>/gi;
 

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod/v4';
-import { AbsolutePathSchema } from '../schemas/index.js';
+import { AbsolutePathSchema } from '../../shared/contracts/index.js';
 import { BrowseService } from '../services/browse.service.js';
 
 const BrowseResponseSchema = z.union([z.object({ path: AbsolutePathSchema }), z.null()]);

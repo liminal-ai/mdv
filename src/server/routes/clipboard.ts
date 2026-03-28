@@ -2,7 +2,7 @@ import { exec } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
-import { ClipboardRequestSchema } from '../schemas/index.js';
+import { ClipboardRequestSchema } from '../../shared/contracts/index.js';
 
 const ClipboardResponseSchema = z.object({ ok: z.literal(true) });
 

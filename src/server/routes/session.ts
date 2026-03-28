@@ -14,7 +14,7 @@ import {
   TouchRecentFileRequestSchema,
   UpdateTabsRequestSchema,
   UpdateSidebarRequestSchema,
-} from '../schemas/index.js';
+} from '../../shared/contracts/index.js';
 import type { PackageService } from '../services/package.service.js';
 import { SessionService } from '../services/session.service.js';
 import { themeRegistry } from '../services/theme-registry.js';

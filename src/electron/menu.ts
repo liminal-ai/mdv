@@ -1,13 +1,5 @@
 import { app, Menu, BrowserWindow, ipcMain } from 'electron';
-
-interface MenuState {
-  hasDocument: boolean;
-  hasDirtyTab: boolean;
-  activeTabDirty: boolean;
-  activeTheme: string;
-  activeMode: string;
-  defaultMode: string;
-}
+import type { MenuState } from '../shared/contracts/electron.js';
 
 let currentState: MenuState = {
   hasDocument: false,

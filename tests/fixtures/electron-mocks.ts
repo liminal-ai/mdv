@@ -59,10 +59,29 @@ export function createMockIpcMain() {
       handlers.delete(channel);
     }),
     invoke(channel: string, ...args: unknown[]) {
-      for (const handler of handlers.get(channel) ?? []) {
-        handler(...args);
+      const channelHandlers = handlers.get(channel) ?? [];
+      let lastResult: unknown;
+
+      for (const handler of channelHandlers) {
+        lastResult = handler(...args);
       }
+
+      return lastResult;
     },
+  };
+}
+
+export function createMockIpcRenderer(ipcMain?: ReturnType<typeof createMockIpcMain>) {
+  return {
+    on: vi.fn(),
+    send: vi.fn(),
+    invoke: vi.fn(async (channel: string, ...args: unknown[]) => {
+      if (!ipcMain) {
+        return undefined;
+      }
+
+      return ipcMain.invoke(channel, ...args);
+    }),
   };
 }
 
@@ -90,5 +109,18 @@ export function createMockMenu() {
   return {
     buildFromTemplate: vi.fn((template: unknown[]) => ({ template })),
     setApplicationMenu: vi.fn(),
+  };
+}
+
+export function createMockDialog() {
+  return {
+    showOpenDialog: vi.fn(),
+    showSaveDialog: vi.fn(),
+  };
+}
+
+export function createMockContextBridge() {
+  return {
+    exposeInMainWorld: vi.fn(),
   };
 }

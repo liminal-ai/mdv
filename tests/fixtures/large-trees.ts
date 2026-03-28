@@ -1,4 +1,4 @@
-import type { TreeNode } from '../../src/server/schemas/index.js';
+import type { TreeNode } from '../../src/shared/types.js';
 
 export function generateTreeNodes(fileCount: number, maxDepth: number): TreeNode[] {
   const rootChildren: TreeNode[] = [];
