@@ -25,6 +25,10 @@ function flushPendingFile(): void {
   clearPendingFilePathRef?.();
 }
 
+export function flushPendingOpenFile(): void {
+  flushPendingFile();
+}
+
 export function setupFileHandler(
   win: BrowserWindow,
   getPendingFilePath: () => string | null,

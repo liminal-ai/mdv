@@ -14,11 +14,11 @@ mac:
 fileAssociations:
   - ext: md
     name: Markdown Document
-    role: Viewer
+    role: Editor
     rank: Owner
   - ext: markdown
     name: Markdown Document
-    role: Viewer
+    role: Editor
     rank: Owner
 asar: true
 asarUnpack:

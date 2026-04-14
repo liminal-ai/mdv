@@ -166,14 +166,41 @@ describe('electron main process', () => {
   });
 
   it('TC-7.2b: second instance routes file', async () => {
-    const { app, createdWindows } = await loadMain();
+    const { app, createdWindows, ipcMain } = await loadMain();
     const createdWindow = createdWindows[0]?.instance;
+    const didFinishLoadHandler = (
+      createdWindow?.webContents.on.mock.calls as Array<[string, (...args: unknown[]) => void]>
+    ).find(([event]) => event === 'did-finish-load')?.[1];
+
+    didFinishLoadHandler?.();
+    ipcMain.invoke('app:renderer-ready', { sender: createdWindow?.webContents });
 
     app.emit('second-instance', {}, ['md-viewer', '/tmp/notes.md']);
 
     expect(createdWindow?.focus).toHaveBeenCalledTimes(1);
     expect(createdWindow?.webContents.send).toHaveBeenCalledWith('app:open-file', {
       path: '/tmp/notes.md',
+    });
+  });
+
+  it('queues second-instance markdown paths until renderer readiness', async () => {
+    const { app, createdWindows, ipcMain } = await loadMain();
+    const createdWindow = createdWindows[0]?.instance;
+    const didFinishLoadHandler = (
+      createdWindow?.webContents.on.mock.calls as Array<[string, (...args: unknown[]) => void]>
+    ).find(([event]) => event === 'did-finish-load')?.[1];
+
+    didFinishLoadHandler?.();
+    app.emit('second-instance', {}, ['md-viewer', '/tmp/race.md']);
+
+    expect(createdWindow?.webContents.send).not.toHaveBeenCalledWith('app:open-file', {
+      path: '/tmp/race.md',
+    });
+
+    ipcMain.invoke('app:renderer-ready', { sender: createdWindow?.webContents });
+
+    expect(createdWindow?.webContents.send).toHaveBeenCalledWith('app:open-file', {
+      path: '/tmp/race.md',
     });
   });
 

@@ -3,7 +3,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import type { FastifyInstance } from 'fastify';
 import { createMainWindow } from './window.js';
 import { registerIpcHandlers } from './ipc.js';
-import { setupFileHandler } from './file-handler.js';
+import { flushPendingOpenFile, setupFileHandler } from './file-handler.js';
 import { buildMenu } from './menu.js';
 
 let mainWindow: BrowserWindow | null = null;
@@ -113,11 +113,11 @@ function attachStartupProfiling(win: BrowserWindow): void {
 
 app.on('open-file', (event, path) => {
   event.preventDefault();
-  if (mainWindow && !mainWindow.webContents.isLoading()) {
-    mainWindow.webContents.send('app:open-file', { path });
+  pendingFilePath = path;
+
+  if (mainWindow) {
+    flushPendingOpenFile();
     mainWindow.focus();
-  } else {
-    pendingFilePath = path;
   }
 });
 
@@ -138,11 +138,8 @@ if (!gotLock) {
 
       targetWindow.focus();
       if (filePath) {
-        if (targetWindow.webContents.isLoading()) {
-          pendingFilePath = filePath;
-        } else {
-          targetWindow.webContents.send('app:open-file', { path: filePath });
-        }
+        pendingFilePath = filePath;
+        flushPendingOpenFile();
       }
     }
   });
