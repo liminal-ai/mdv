@@ -187,6 +187,33 @@ npm run dev:electron
 npm run package:mac
 ```
 
+### Package for Windows
+
+Build a Windows installer for the current machine architecture:
+
+```bash
+npm run package:win
+```
+
+Build an explicit Windows installer target:
+
+```bash
+npm run package:win:x64
+npm run package:win:arm64
+```
+
+Build an unpacked Windows app directory for smoke testing:
+
+```bash
+npm run package:win:dir
+```
+
+Build both Windows installer architectures:
+
+```bash
+npm run package:win:all
+```
+
 ### Install into `~/Applications`
 
 ```bash
@@ -232,7 +259,7 @@ npm run verify-all
 `verify-all` adds:
 
 - Playwright E2E
-- macOS packaging
+- host-platform desktop packaging
 - packaged archive smoke validation
 
 ### Focused Commands
@@ -308,7 +335,7 @@ A few important notes for anyone learning from or building on it:
 - **Web mode is intentional**
   - but it is a local fallback/runtime surface, not a remote hosted app model
 - **macOS is the strongest desktop target today**
-  - Windows packaging/support is not yet the primary distribution path
+  - Windows packaging now exists, but macOS is still the most battle-tested desktop path
 - **Exports and packages are active growth areas**
   - those parts of the system are implemented and useful today, but they are also the most likely places to evolve next
 

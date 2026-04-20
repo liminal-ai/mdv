@@ -1,6 +1,13 @@
 import { z } from 'zod/v4';
 
-export const AbsolutePathSchema = z.string().refine((p) => p.startsWith('/'), {
+const WINDOWS_DRIVE_ABSOLUTE_PATH = /^[a-zA-Z]:\//;
+
+export function isAbsolutePath(path: string): boolean {
+  const normalized = path.replace(/\\/g, '/');
+  return normalized.startsWith('/') || WINDOWS_DRIVE_ABSOLUTE_PATH.test(normalized);
+}
+
+export const AbsolutePathSchema = z.string().refine(isAbsolutePath, {
   message: 'Path must be absolute',
 });
 

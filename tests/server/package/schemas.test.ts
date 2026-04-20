@@ -14,6 +14,14 @@ describe('package schemas', () => {
     expect(result.success).toBe(true);
   });
 
+  it('PackageOpenRequestSchema accepts valid Windows absolute path', () => {
+    const result = PackageOpenRequestSchema.safeParse({
+      filePath: 'C:\\tmp\\sample.mpk',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it('PackageOpenRequestSchema rejects relative path', () => {
     const result = PackageOpenRequestSchema.safeParse({
       filePath: 'fixtures/sample.mpk',

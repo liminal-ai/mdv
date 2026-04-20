@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
@@ -6,6 +5,7 @@ import {
   ErrorResponseSchema,
   ExportRequestSchema,
   ExportResponseSchema,
+  isAbsolutePath,
   RevealRequestSchema,
   SessionStateSchema,
   SetLastExportDirSchema,
@@ -34,33 +34,14 @@ import {
   isPermissionError,
   toApiError,
 } from '../utils/errors.js';
+import { revealPathInShell } from '../utils/system-shell.js';
 
 const RevealResponseSchema = z.object({ ok: z.literal(true) });
 const EXPORT_TIMEOUT_MS = 120_000;
-function execFileAsync(
-  file: string,
-  args: string[],
-  options: { timeout: number },
-): Promise<{ stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    execFile(file, args, options, (error, stdout, stderr) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      resolve({ stdout, stderr });
-    });
-  });
-}
 
 export interface ExportRoutesOptions {
   sessionService?: SessionService;
   sessionDir?: string;
-}
-
-function isAbsolutePath(value: unknown): boolean {
-  return typeof value === 'string' && value.startsWith('/');
 }
 
 function classifyValidationError(body: unknown) {
@@ -70,7 +51,12 @@ function classifyValidationError(body: unknown) {
     format: string;
   }> | null;
 
-  if (!isAbsolutePath(candidate?.path) || !isAbsolutePath(candidate?.savePath)) {
+  if (
+    typeof candidate?.path !== 'string' ||
+    typeof candidate?.savePath !== 'string' ||
+    !isAbsolutePath(candidate.path) ||
+    !isAbsolutePath(candidate.savePath)
+  ) {
     return toApiError(ErrorCode.INVALID_PATH, 'Path must be absolute');
   }
 
@@ -212,7 +198,7 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
       }
 
       try {
-        await execFileAsync('open', ['-R', request.body.path], { timeout: 15_000 });
+        await revealPathInShell(request.body.path, 15_000);
         return { ok: true as const };
       } catch (error) {
         return reply
@@ -220,7 +206,7 @@ export async function exportRoutes(app: FastifyInstance, opts: ExportRoutesOptio
           .send(
             toApiError(
               ErrorCode.EXPORT_ERROR,
-              `Could not reveal exported file in Finder: ${
+              `Could not reveal exported file in the system file manager: ${
                 error instanceof Error ? error.message : request.body.path
               }`,
             ),

@@ -7,7 +7,16 @@ const windowStateKeeper = require('electron-window-state');
 
 const SHOW_TIMEOUT_MS = 5_000;
 
-export function createMainWindow(serverUrl: string | null): BrowserWindow {
+export interface StartupFailureDetails {
+  details?: string;
+  guidance?: string;
+  logPath?: string;
+}
+
+export function createMainWindow(
+  serverUrl: string | null,
+  startupFailure: StartupFailureDetails | null = null,
+): BrowserWindow {
   const state = windowStateKeeper({
     defaultWidth: 1420,
     defaultHeight: 960,
@@ -41,9 +50,7 @@ export function createMainWindow(serverUrl: string | null): BrowserWindow {
   if (serverUrl) {
     win.loadURL(`${serverUrl}/?electron=1`);
   } else {
-    win.loadURL(
-      'data:text/html,<h1>Server failed to start</h1><p>Check the console for errors.</p>',
-    );
+    win.loadURL(buildStartupFailureUrl(startupFailure));
     win.show();
     return win;
   }
@@ -68,4 +75,101 @@ export function createMainWindow(serverUrl: string | null): BrowserWindow {
   });
 
   return win;
+}
+
+function buildStartupFailureUrl(startupFailure: StartupFailureDetails | null): string {
+  return `data:text/html;charset=utf-8,${encodeURIComponent(buildStartupFailureHtml(startupFailure))}`;
+}
+
+function buildStartupFailureHtml(startupFailure: StartupFailureDetails | null): string {
+  const guidance = startupFailure?.guidance
+    ? `<p>${escapeHtml(startupFailure.guidance)}</p>`
+    : '<p>Check the startup log for details.</p>';
+  const logPath = startupFailure?.logPath
+    ? `<p>Startup log: <code>${escapeHtml(startupFailure.logPath)}</code></p>`
+    : '';
+  const details = startupFailure?.details
+    ? `<details open><summary>Error details</summary><pre>${escapeHtml(startupFailure.details)}</pre></details>`
+    : '';
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>mdv startup error</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI", sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: #f6f7fb;
+        color: #182131;
+      }
+
+      main {
+        max-width: 760px;
+        margin: 48px auto;
+        padding: 32px;
+        background: #ffffff;
+        border: 1px solid #d9dfeb;
+        border-radius: 18px;
+        box-shadow: 0 18px 48px rgba(24, 33, 49, 0.08);
+      }
+
+      h1 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: 28px;
+      }
+
+      p,
+      summary {
+        line-height: 1.5;
+      }
+
+      code,
+      pre {
+        font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      }
+
+      code {
+        word-break: break-all;
+      }
+
+      details {
+        margin-top: 20px;
+      }
+
+      pre {
+        margin-top: 12px;
+        padding: 16px;
+        overflow: auto;
+        background: #101826;
+        color: #f5f7fb;
+        border-radius: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Server failed to start</h1>
+      ${guidance}
+      ${logPath}
+      ${details}
+    </main>
+  </body>
+</html>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }

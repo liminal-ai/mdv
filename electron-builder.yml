@@ -11,6 +11,8 @@ mac:
         - arm64
         - x64
   identity: null
+win:
+  icon: assets/icon/mdv.ico
 fileAssociations:
   - ext: md
     name: Markdown Document

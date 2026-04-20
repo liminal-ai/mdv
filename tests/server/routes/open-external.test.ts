@@ -21,6 +21,7 @@ vi.mock('node:child_process', async (importOriginal) => {
 });
 
 import { buildApp } from '../../../src/server/app.js';
+import { getOpenPathCommand } from '../../../src/server/utils/system-shell.js';
 
 function makeFileStat(): Stats {
   return {
@@ -29,13 +30,21 @@ function makeFileStat(): Stats {
 }
 
 function mockExecSuccess(path: string) {
+  const { command, args } = getOpenPathCommand(path);
   vi.mocked(execFile).mockImplementationOnce(((
-    command: string,
-    args: readonly string[],
-    callback?: (error: Error | null, stdout: string, stderr: string) => void,
+    actualCommand: string,
+    actualArgs: readonly string[],
+    optionsOrCallback?:
+      | { timeout?: number }
+      | ((error: Error | null, stdout: string, stderr: string) => void),
+    maybeCallback?: (error: Error | null, stdout: string, stderr: string) => void,
   ) => {
-    expect(command).toBe('open');
-    expect(args).toEqual([path]);
+    const callback = typeof optionsOrCallback === 'function' ? optionsOrCallback : maybeCallback;
+    expect(actualCommand).toBe(command);
+    expect(actualArgs).toEqual(args);
+    if (typeof optionsOrCallback === 'object') {
+      expect(optionsOrCallback).toEqual(expect.objectContaining({ timeout: 15_000 }));
+    }
     callback?.(null, '', '');
     return {} as ChildProcess;
   }) as unknown as typeof execFile);
@@ -127,7 +136,13 @@ describe('open external route', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ ok: true });
-    expect(execFile).toHaveBeenCalledWith('open', [path], expect.any(Function));
+    const { command, args } = getOpenPathCommand(path);
+    expect(execFile).toHaveBeenCalledWith(
+      command,
+      args,
+      expect.objectContaining({ timeout: 15_000 }),
+      expect.any(Function),
+    );
 
     await app.close();
   });

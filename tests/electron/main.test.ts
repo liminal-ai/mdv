@@ -239,8 +239,10 @@ describe('electron main process', () => {
       startServerError: new Error('boom'),
     });
 
-    expect(createdWindows[0]?.instance.loadURL).toHaveBeenCalledWith(
-      'data:text/html,<h1>Server failed to start</h1><p>Check the console for errors.</p>',
-    );
+    const failureUrl = createdWindows[0]?.instance.loadURL.mock.calls[0]?.[0];
+    expect(typeof failureUrl).toBe('string');
+    const html = decodeURIComponent(String(failureUrl).split(',')[1] ?? '');
+    expect(html).toContain('Server failed to start');
+    expect(html).toContain('boom');
   });
 });

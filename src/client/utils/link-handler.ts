@@ -1,4 +1,5 @@
 import type { TabState } from '../state.js';
+import { normalizeFsPath, resolveFsPath } from './fs-path.js';
 
 export type LinkAction =
   | { type: 'external'; url: string }
@@ -47,45 +48,13 @@ function splitHref(href: string): { path: string; anchor?: string } {
   };
 }
 
-function normalizeAbsolutePath(inputPath: string): string {
-  const parts = inputPath.split('/');
-  const normalized: string[] = [];
-
-  for (const part of parts) {
-    if (!part || part === '.') {
-      continue;
-    }
-
-    if (part === '..') {
-      normalized.pop();
-      continue;
-    }
-
-    normalized.push(part);
-  }
-
-  return `/${normalized.join('/')}`;
-}
-
-function dirname(filePath: string): string {
-  const normalizedPath = normalizeAbsolutePath(filePath);
-  const segments = normalizedPath.split('/').filter(Boolean);
-  segments.pop();
-
-  return segments.length > 0 ? `/${segments.join('/')}` : '/';
-}
-
 function resolvePath(hrefPath: string, documentPath: string): string {
   const decodedPath = safeDecode(hrefPath);
-  if (decodedPath.startsWith('/')) {
-    return normalizeAbsolutePath(decodedPath);
-  }
-
-  return normalizeAbsolutePath(`${dirname(documentPath)}/${decodedPath}`);
+  return resolveFsPath(documentPath, decodedPath);
 }
 
 function extname(filePath: string): string {
-  const fileName = filePath.split('/').filter(Boolean).at(-1) ?? '';
+  const fileName = normalizeFsPath(filePath).split('/').filter(Boolean).at(-1) ?? '';
   const dotIndex = fileName.lastIndexOf('.');
   if (dotIndex <= 0) {
     return '';

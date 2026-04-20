@@ -1,44 +1,18 @@
 import type { PackageNavigationNode, StateStore } from '../state.js';
 import { createElement } from '../utils/dom.js';
+import { isWithinFsRoot, normalizeFsPath, resolveFsPath } from '../utils/fs-path.js';
 import { mountPackageHeader } from './package-header.js';
 
-function normalizePath(input: string): string {
-  const absolute = input.startsWith('/');
-  const segments: string[] = [];
-
-  for (const segment of input.split('/')) {
-    if (!segment || segment === '.') {
-      continue;
-    }
-
-    if (segment === '..') {
-      if (segments.length > 0) {
-        segments.pop();
-      }
-      continue;
-    }
-
-    segments.push(segment);
-  }
-
-  if (segments.length === 0) {
-    return absolute ? '/' : '.';
-  }
-
-  return `${absolute ? '/' : ''}${segments.join('/')}`;
-}
-
 function isWithinRoot(root: string, targetPath: string): boolean {
-  const normalizedRoot = normalizePath(root).replace(/\/$/, '') || '/';
-  return targetPath === normalizedRoot || targetPath.startsWith(`${normalizedRoot}/`);
+  return isWithinFsRoot(root, targetPath);
 }
 
 function toAbsolutePath(root: string | null, filePath: string): string | null {
   if (!root) {
-    return filePath;
+    return normalizeFsPath(filePath);
   }
 
-  const absolutePath = normalizePath(`${root.replace(/\/$/, '')}/${filePath}`);
+  const absolutePath = resolveFsPath(root, filePath, { baseIsDirectory: true });
   return isWithinRoot(root, absolutePath) ? absolutePath : null;
 }
 

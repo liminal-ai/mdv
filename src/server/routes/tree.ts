@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
-import { ErrorResponseSchema, FileTreeResponseSchema } from '../../shared/contracts/index.js';
+import {
+  ErrorResponseSchema,
+  FileTreeResponseSchema,
+  isAbsolutePath,
+} from '../../shared/contracts/index.js';
 import { scanTree } from '../services/tree.service.js';
 import {
   ErrorCode,
@@ -29,7 +33,7 @@ export async function treeRoutes(app: FastifyInstance) {
     async (request, reply) => {
       const { root } = request.query;
 
-      if (!root.startsWith('/')) {
+      if (!isAbsolutePath(root)) {
         return reply
           .code(400)
           .send(toApiError(ErrorCode.INVALID_PATH, 'Root path must be absolute.'));

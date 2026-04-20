@@ -176,6 +176,14 @@ describe('link handler', () => {
     });
   });
 
+  it('Non-TC: Windows absolute document paths resolve relative markdown links correctly', () => {
+    expect(classifyLink('./design.md', 'C:\\Users\\leemoore\\code\\docs\\readme.md')).toEqual({
+      type: 'markdown',
+      path: 'C:/Users/leemoore/code/docs/design.md',
+      anchor: undefined,
+    });
+  });
+
   it('Non-TC: Unsupported schemes fall back to the browser instead of local-file handling', () => {
     const container = renderLink('mailto:team@example.com');
     const state = createLinkHandlerState();

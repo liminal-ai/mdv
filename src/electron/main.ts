@@ -1,7 +1,8 @@
 import path from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import type { FastifyInstance } from 'fastify';
-import { createMainWindow } from './window.js';
+import { createMainWindow, type StartupFailureDetails } from './window.js';
 import { registerIpcHandlers } from './ipc.js';
 import { flushPendingOpenFile, setupFileHandler } from './file-handler.js';
 import { buildMenu } from './menu.js';
@@ -71,6 +72,49 @@ function getLaunchFilePath(argv: string[]): string | null {
   }
 
   return null;
+}
+
+function formatStartupError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+
+  return String(error);
+}
+
+function buildStartupGuidance(details: string): string {
+  if (
+    details.includes('@resvg/resvg-js-win32-x64-msvc') ||
+    details.includes('@resvg/resvg-js-win32-arm64-msvc')
+  ) {
+    return 'This build is missing a Windows-native resvg module. Repackage mdv for the correct architecture and reinstall it.';
+  }
+
+  return 'The embedded local server could not start. The startup log path and error details are shown below.';
+}
+
+async function recordStartupFailure(error: unknown): Promise<StartupFailureDetails> {
+  const details = formatStartupError(error);
+  const startupFailure: StartupFailureDetails = {
+    details,
+    guidance: buildStartupGuidance(details),
+  };
+
+  try {
+    if (typeof app.getPath !== 'function') {
+      return startupFailure;
+    }
+
+    const logDir = path.join(app.getPath('userData'), 'logs');
+    const logPath = path.join(logDir, 'startup-error.log');
+    await mkdir(logDir, { recursive: true });
+    await writeFile(logPath, `${details}\n`, 'utf8');
+    startupFailure.logPath = logPath;
+  } catch (logError) {
+    console.error('Failed to write startup log:', logError);
+  }
+
+  return startupFailure;
 }
 
 function wireMainWindow(win: BrowserWindow, currentServerUrl: string | null): void {
@@ -163,7 +207,8 @@ if (!gotLock) {
       attachStartupProfiling(mainWindow);
     } catch (error) {
       console.error('Server failed to start:', error);
-      mainWindow = createMainWindow(null);
+      const startupFailure = await recordStartupFailure(error);
+      mainWindow = createMainWindow(null, startupFailure);
     }
   });
 

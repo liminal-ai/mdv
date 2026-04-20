@@ -194,6 +194,30 @@ describe('package sidebar', () => {
     expect(actions.onOpenFile).toHaveBeenCalledWith('/tmp/mdv-pkg-sample/auth/oauth2.md');
   });
 
+  it('Non-TC: Windows extracted roots resolve package documents correctly', () => {
+    const { actions } = renderPackageSidebar({
+      effectiveRoot: 'C:\\tmp\\mdv-pkg-sample',
+      navigation: [
+        {
+          displayName: 'Authentication',
+          children: [
+            {
+              displayName: 'OAuth2 Flow',
+              filePath: 'auth\\oauth2.md',
+              children: [],
+              isGroup: false,
+            },
+          ],
+          isGroup: true,
+        },
+      ],
+    });
+
+    document.querySelector<HTMLButtonElement>('.pkg-nav__link')?.click();
+
+    expect(actions.onOpenFile).toHaveBeenCalledWith('C:/tmp/mdv-pkg-sample/auth/oauth2.md');
+  });
+
   it('Non-TC: navigation entries cannot escape the package root', () => {
     const { actions } = renderPackageSidebar({
       navigation: [

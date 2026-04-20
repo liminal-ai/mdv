@@ -10,13 +10,14 @@ vi.mock('node:child_process', async (importOriginal) => {
 });
 
 import { buildApp } from '../../../src/server/app.js';
+import { getRevealPathCommand } from '../../../src/server/utils/system-shell.js';
 
 describe('export reveal routes', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('TC-2.2b: Reveal calls open -R with the path', async () => {
+  it('TC-2.2b: Reveal calls the platform reveal command with the path', async () => {
     vi.mocked(execFile).mockImplementation(((_file, _args, options, callback) => {
       const done = typeof options === 'function' ? options : callback;
       done?.(null, '', '');
@@ -33,9 +34,10 @@ describe('export reveal routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    const { command, args } = getRevealPathCommand('/Users/test/exports/architecture.pdf');
     expect(vi.mocked(execFile)).toHaveBeenCalledWith(
-      'open',
-      ['-R', '/Users/test/exports/architecture.pdf'],
+      command,
+      args,
       expect.objectContaining({ timeout: 15_000 }),
       expect.any(Function),
     );
@@ -65,7 +67,7 @@ describe('export reveal routes', () => {
     await app.close();
   });
 
-  it('Non-TC: Reveal returns 500 when Finder reveal fails', async () => {
+  it('Non-TC: Reveal returns 500 when the platform reveal command fails', async () => {
     vi.mocked(execFile).mockImplementation(((_file, _args, options, callback) => {
       const done = typeof options === 'function' ? options : callback;
       done?.(new Error('open failed'), '', 'open failed');
@@ -85,7 +87,7 @@ describe('export reveal routes', () => {
     expect(response.json()).toEqual({
       error: {
         code: 'EXPORT_ERROR',
-        message: 'Could not reveal exported file in Finder: open failed',
+        message: 'Could not reveal exported file in the system file manager: open failed',
       },
     });
 

@@ -1,14 +1,18 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { access } from 'node:fs/promises';
+import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
 const outputRoot = 'out/electron';
+const asarCliPath = path.resolve('node_modules/@electron/asar/bin/asar.js');
 
 async function resolveAsarPath() {
   const candidates = [
     `${outputRoot}/mac-arm64/mdv.app/Contents/Resources/app.asar`,
     `${outputRoot}/mac/mdv.app/Contents/Resources/app.asar`,
+    `${outputRoot}/win-unpacked/resources/app.asar`,
+    `${outputRoot}/win-arm64-unpacked/resources/app.asar`,
   ];
 
   for (const candidate of candidates) {
@@ -32,7 +36,7 @@ const forbiddenPatterns = [
 ];
 
 const asarPath = await resolveAsarPath();
-const { stdout } = await execFileAsync('npx', ['asar', 'list', asarPath]);
+const { stdout } = await execFileAsync(process.execPath, [asarCliPath, 'list', asarPath]);
 const entries = stdout
   .split('\n')
   .map((line) => line.trim())

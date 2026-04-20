@@ -109,4 +109,21 @@ describe('electron window creation', () => {
     expect(createdWindows[0]?.options.x).toBeUndefined();
     expect(createdWindows[0]?.options.y).toBeUndefined();
   });
+
+  it('renders startup failure details in the fallback window', async () => {
+    const { createMainWindow, createdWindows } = await loadWindow();
+
+    createMainWindow(null, {
+      details: 'Cannot find module boom',
+      guidance: 'Use the matching installer architecture.',
+      logPath: 'C:\\logs\\startup-error.log',
+    });
+
+    const failureUrl = createdWindows[0]?.instance.loadURL.mock.calls[0]?.[0];
+    expect(typeof failureUrl).toBe('string');
+    const html = decodeURIComponent(String(failureUrl).split(',')[1] ?? '');
+    expect(html).toContain('Use the matching installer architecture.');
+    expect(html).toContain('Cannot find module boom');
+    expect(html).toContain('C:\\logs\\startup-error.log');
+  });
 });

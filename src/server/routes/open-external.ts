@@ -1,10 +1,10 @@
-import { execFile } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod/v4';
 import { ErrorResponseSchema, OpenExternalRequestSchema } from '../../shared/contracts/index.js';
 import { ErrorCode, isNotFoundError, isPermissionError, toApiError } from '../utils/errors.js';
+import { openPathInShell } from '../utils/system-shell.js';
 
 const OpenExternalResponseSchema = z.object({ ok: z.literal(true) });
 
@@ -33,16 +33,7 @@ export async function openExternalRoutes(app: FastifyInstance) {
 
       try {
         await stat(filePath);
-        await new Promise<void>((resolve, reject) => {
-          execFile('open', [filePath], (error) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-
-            resolve();
-          });
-        });
+        await openPathInShell(filePath);
 
         return { ok: true } as const;
       } catch (error) {
