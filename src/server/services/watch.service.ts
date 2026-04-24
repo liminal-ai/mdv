@@ -1,15 +1,53 @@
-import { watch as chokidarWatch, type FSWatcher } from 'chokidar';
+import { watch as nativeWatch } from 'node:fs';
+import { watch as chokidarWatch } from 'chokidar';
 import type { WebSocket } from 'ws';
 import { ServerWsMessageSchema, type ServerWsMessage } from '../../shared/contracts/index.js';
 
 export const WATCH_DEBOUNCE_MS = 300;
+const MARKDOWN_EXTENSIONS_RE = /\.(md|markdown)$/i;
+
+const ROOT_WATCH_IGNORED_DIR_NAMES = new Set([
+  '.git',
+  '.next',
+  '.nuxt',
+  '.turbo',
+  '.cache',
+  '__pycache__',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'out',
+  'target',
+]);
+
+interface CloseableWatcher {
+  close: () => void | Promise<void>;
+}
+
+function normalizeSegments(candidatePath: string): string[] {
+  return candidatePath.replace(/\\/g, '/').split('/').filter(Boolean);
+}
+
+function isIgnoredRootWatchPath(candidatePath: string): boolean {
+  const normalized = candidatePath.replace(/\\/g, '/');
+  if (normalized.endsWith('.sock')) {
+    return true;
+  }
+
+  return normalizeSegments(normalized).some(
+    (segment) => segment.startsWith('.') || ROOT_WATCH_IGNORED_DIR_NAMES.has(segment),
+  );
+}
 
 export class WatchService {
-  private readonly watchers = new Map<string, FSWatcher>();
+  private readonly watchers = new Map<string, CloseableWatcher>();
 
   private readonly subscribers = new Map<string, Set<WebSocket>>();
 
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
+
+  constructor(private readonly platform = process.platform) {}
 
   watch(filePath: string, ws: WebSocket): void {
     let subscribers = this.subscribers.get(filePath);
@@ -86,24 +124,65 @@ export class WatchService {
   }
 
   private createRootWatcher(root: string, key: string): void {
+    if (this.platform === 'darwin' || this.platform === 'win32') {
+      const nativeWatcher = this.createNativeRootWatcher(root, key);
+      if (nativeWatcher) {
+        return;
+      }
+    }
+
+    this.createChokidarRootWatcher(root, key);
+  }
+
+  private createNativeRootWatcher(root: string, key: string): boolean {
+    try {
+      const watcher = nativeWatch(
+        root,
+        {
+          persistent: true,
+          recursive: true,
+        },
+        (eventType, relativePath) => {
+          if (eventType !== 'rename') {
+            return;
+          }
+
+          if (typeof relativePath === 'string' && isIgnoredRootWatchPath(relativePath)) {
+            return;
+          }
+
+          this.scheduleRootNotification(key, root);
+        },
+      );
+
+      watcher.on('error', () => {
+        // Ignore root watch errors — file watches still work.
+      });
+
+      this.watchers.set(key, watcher);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private createChokidarRootWatcher(root: string, key: string): void {
     try {
       const watcher = chokidarWatch(root, {
         persistent: true,
         ignoreInitial: true,
         depth: 20,
-        ignored: [/(^|[/\\])(node_modules|\.git)([/\\]|$)/, /\.sock$/],
+        ignored: (candidatePath, stats) => {
+          if (isIgnoredRootWatchPath(candidatePath)) {
+            return true;
+          }
+
+          return stats?.isFile() ? !MARKDOWN_EXTENSIONS_RE.test(candidatePath) : false;
+        },
       });
 
       const debouncedNotify = () => {
-        const existingTimer = this.debounceTimers.get(key);
-        if (existingTimer) {
-          clearTimeout(existingTimer);
-        }
-        const timer = setTimeout(() => {
-          this.debounceTimers.delete(key);
-          this.notifySubscribers(key, { type: 'tree-change', root });
-        }, WATCH_DEBOUNCE_MS);
-        this.debounceTimers.set(key, timer);
+        this.scheduleRootNotification(key, root);
       };
 
       watcher.on('add', debouncedNotify);
@@ -119,6 +198,19 @@ export class WatchService {
     } catch {
       // Ignore root watch errors — file watches still work.
     }
+  }
+
+  private scheduleRootNotification(key: string, root: string): void {
+    const existingTimer = this.debounceTimers.get(key);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(key);
+      this.notifySubscribers(key, { type: 'tree-change', root });
+    }, WATCH_DEBOUNCE_MS);
+    this.debounceTimers.set(key, timer);
   }
 
   private createWatcher(filePath: string): void {

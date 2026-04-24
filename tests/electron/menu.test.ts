@@ -135,6 +135,19 @@ describe('electron/menu', () => {
     expect(mockWin.webContents.send).toHaveBeenCalledWith('menu:action', 'open-file');
   });
 
+  it('exposes standard edit roles including copy', () => {
+    buildMenu(mockWin);
+
+    const template = getTemplate(mockMenu);
+    const editMenu = template.find((item) => item.label === 'Edit');
+    expect(editMenu).toBeDefined();
+
+    const roles = editMenu?.submenu?.filter((item) => item.role).map((item) => item.role) ?? [];
+    expect(roles).toContain('copy');
+    expect(roles).toContain('paste');
+    expect(roles).toContain('selectAll');
+  });
+
   it('TC-8.2a: Export disabled synced from state', () => {
     buildMenu(mockWin);
 

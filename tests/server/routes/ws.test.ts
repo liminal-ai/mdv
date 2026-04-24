@@ -9,7 +9,16 @@ vi.mock('chokidar', async (importOriginal) => {
   };
 });
 
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...actual,
+    watch: vi.fn(),
+  };
+});
+
 import { watch as chokidarWatch } from 'chokidar';
+import { watch as nativeWatch } from 'node:fs';
 import { buildApp } from '../../../src/server/app.js';
 import { WATCH_DEBOUNCE_MS, WatchService } from '../../../src/server/services/watch.service.js';
 
@@ -18,6 +27,10 @@ const FILE_B = '/tmp/watch-b.md';
 
 class MockChokidarWatcher extends EventEmitter {
   readonly close = vi.fn().mockResolvedValue(undefined);
+}
+
+class MockNativeWatcher extends EventEmitter {
+  readonly close = vi.fn();
 }
 
 function createSocketDouble() {
@@ -56,10 +69,19 @@ async function nextSocketClose(socket: {
 
 describe('websocket routes and watch service', () => {
   const watchersByPath = new Map<string, MockChokidarWatcher[]>();
+  const nativeWatchersByPath = new Map<
+    string,
+    {
+      watcher: MockNativeWatcher;
+      listener: (eventType: string, filename: string | Buffer | null | undefined) => void;
+      options: unknown;
+    }
+  >();
 
   beforeEach(() => {
     vi.clearAllMocks();
     watchersByPath.clear();
+    nativeWatchersByPath.clear();
     vi.mocked(chokidarWatch).mockImplementation(((filePath) => {
       const watcher = new MockChokidarWatcher();
       const watchedPath = Array.isArray(filePath) ? filePath[0] : filePath;
@@ -68,6 +90,25 @@ describe('websocket routes and watch service', () => {
       watchersByPath.set(watchedPath, watchers);
       return watcher as never;
     }) as typeof chokidarWatch);
+    vi.mocked(nativeWatch).mockImplementation(((
+      filePath: string | Buffer | URL,
+      optionsOrListener?:
+        | {
+            persistent?: boolean;
+            recursive?: boolean;
+            encoding?: BufferEncoding;
+          }
+        | ((eventType: string, filename: string | Buffer | null) => void),
+      maybeListener?: (eventType: string, filename: string | Buffer | null) => void,
+    ) => {
+      const watcher = new MockNativeWatcher();
+      const watchedPath = filePath.toString();
+      const listener =
+        typeof optionsOrListener === 'function' ? optionsOrListener : (maybeListener ?? (() => {}));
+      const options = typeof optionsOrListener === 'function' ? undefined : optionsOrListener;
+      nativeWatchersByPath.set(watchedPath, { watcher, listener, options });
+      return watcher as never;
+    }) as typeof nativeWatch);
   });
 
   afterEach(() => {
@@ -207,6 +248,47 @@ describe('websocket routes and watch service', () => {
     await waitForTick();
 
     expect(chokidarWatch).toHaveBeenCalledTimes(20);
+  });
+
+  it('Non-TC: Root watchers use native recursive fs.watch on darwin', () => {
+    const service = new WatchService('darwin');
+    const socket = createSocketDouble();
+
+    service.watchRoot('/tmp/workspace', socket as never);
+
+    expect(nativeWatch).toHaveBeenCalledWith(
+      '/tmp/workspace',
+      { persistent: true, recursive: true },
+      expect.any(Function),
+    );
+    expect(chokidarWatch).not.toHaveBeenCalled();
+  });
+
+  it('Non-TC: Native root watch emits a debounced tree-change on rename', async () => {
+    vi.useFakeTimers();
+    const service = new WatchService('darwin');
+    const socket = createSocketDouble();
+    const root = '/tmp/workspace';
+
+    service.watchRoot(root, socket as never);
+    nativeWatchersByPath.get(root)?.listener('rename', 'docs/new-note.md');
+    await vi.advanceTimersByTimeAsync(WATCH_DEBOUNCE_MS);
+
+    expect(parseSentMessages(socket)).toEqual([{ type: 'tree-change', root }]);
+  });
+
+  it('Non-TC: Native root watch ignores changes under hidden and ignored subtrees', async () => {
+    vi.useFakeTimers();
+    const service = new WatchService('darwin');
+    const socket = createSocketDouble();
+    const root = '/tmp/workspace';
+
+    service.watchRoot(root, socket as never);
+    nativeWatchersByPath.get(root)?.listener('rename', 'node_modules/pkg/readme.md');
+    nativeWatchersByPath.get(root)?.listener('rename', '.git/index.lock');
+    await vi.advanceTimersByTimeAsync(WATCH_DEBOUNCE_MS);
+
+    expect(socket.send).not.toHaveBeenCalled();
   });
 
   it('Non-TC: Invalid WebSocket messages receive an error response', async () => {
